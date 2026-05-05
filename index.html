@@ -2343,32 +2343,26 @@ function save(){
 load();
 
 // ── Migración: nombres de meses cortos → completos ──
-(function migrarMeses(){
+function migrarMeses(){
   const map={'Ene':'Enero','Feb':'Febrero','Mar':'Marzo','Abr':'Abril',
     'May':'Mayo','Jun':'Junio','Jul':'Julio','Ago':'Agosto',
     'Sep':'Septiembre','Oct':'Octubre','Nov':'Noviembre','Dic':'Diciembre'};
   let changed=false;
-  // creditosMec cuotasPlan
   (DB.creditosMec||[]).forEach(c=>{
     (c.cuotasPlan||[]).forEach(cu=>{
       if(map[cu.mes]){cu.mes=map[cu.mes];changed=true;}
     });
   });
-  // anticipos
   (DB.anticipos||[]).forEach(a=>{
     if(map[a.mes]){a.mes=map[a.mes];changed=true;}
   });
-  // liquidaciones
   (DB.liquidaciones||[]).forEach(l=>{
     if(map[l.mes]){l.mes=map[l.mes];changed=true;}
   });
-  if(changed){
-    Object.keys(DB).forEach(k=>{
-      try{localStorage.setItem('ts3_'+k,JSON.stringify(DB[k]));}catch(e){}
-    });
-    console.log('[migración] Meses cortos → completos aplicados');
-  }
-})();
+  if(changed)console.log('[migración] Meses cortos → completos aplicados');
+  return changed;
+}
+migrarMeses(); // Ejecutar al cargar desde localStorage
 // Inicializar categorías con defaults si está vacío
 if(!DB.categorias||DB.categorias.length===0){DB.categorias=[...CATS_DEFAULT];save();}
 
@@ -8983,8 +8977,10 @@ async function fbInit(){
     if(snap.exists){
       const data=snap.data();
       Object.keys(DB).forEach(k=>{if(Array.isArray(data[k]))DB[k]=data[k];});
+      if(data.comisionesAjustadas&&typeof data.comisionesAjustadas==='object')
+        DB.comisionesAjustadas=data.comisionesAjustadas;
+      migrarMeses(); // Migrar meses cortos → completos
       Object.keys(DB).forEach(k=>{try{localStorage.setItem('ts3_'+k,JSON.stringify(DB[k]));}catch(e){}});
-      // Restore CFG from Firebase if present
       if(data._cfg&&typeof data._cfg==='object'){
         CFG=Object.assign({},CFG_DEFAULT,data._cfg);
         saveCfg(CFG);
@@ -9004,6 +9000,10 @@ async function fbInit(){
       const cur =JSON.stringify(Object.keys(DB).map(k=>DB[k]?.length??0));
       if(sig!==cur){
         Object.keys(DB).forEach(k=>{if(Array.isArray(data[k]))DB[k]=data[k];});
+        if(data.comisionesAjustadas&&typeof data.comisionesAjustadas==='object')
+          DB.comisionesAjustadas=data.comisionesAjustadas;
+        // Migrar meses cortos → completos
+        migrarMeses();
         Object.keys(DB).forEach(k=>{try{localStorage.setItem('ts3_'+k,JSON.stringify(DB[k]));}catch(e){}});
         if(data._cfg&&typeof data._cfg==='object'){CFG=Object.assign({},CFG_DEFAULT,data._cfg);saveCfg(CFG);}
         llenarSelectsCat();renderDashboard();updateBadges();
