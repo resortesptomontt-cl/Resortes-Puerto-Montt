@@ -6412,9 +6412,15 @@ let _bkDirHandle = null; // persiste en sesión
 function getBkData(){
   return JSON.stringify({
     version:'3.0',fecha:new Date().toISOString(),taller:CFG,
-    clientes:DB.clientes,vehiculos:DB.vehiculos,inventario:DB.inventario,mecanicos:DB.mecanicos,
-    cotizaciones:DB.cotizaciones,ordenes:DB.ordenes,ventas:DB.ventas,gastos:DB.gastos,
-    categorias:DB.categorias,creditos:DB.creditos,anticipos:DB.anticipos
+    clientes:DB.clientes,vehiculos:DB.vehiculos,inventario:DB.inventario,
+    mecanicos:DB.mecanicos,cotizaciones:DB.cotizaciones,ordenes:DB.ordenes,
+    ventas:DB.ventas,gastos:DB.gastos,categorias:DB.categorias,
+    creditos:DB.creditos,anticipos:DB.anticipos,
+    notas:DB.notas||[],recordatorios:DB.recordatorios||[],reservas:DB.reservas||[],
+    creditosMec:DB.creditosMec||[],vacaciones:DB.vacaciones||[],
+    proveedores:DB.proveedores||[],compras:DB.compras||[],
+    comisionesAjustadas:DB.comisionesAjustadas||{},
+    liquidaciones:DB.liquidaciones||[]
   },null,2);
 }
 
@@ -6502,7 +6508,15 @@ function importarBackup(input){
     try{
       const bk=JSON.parse(e.target.result);
       if(!bk.version){toast('Archivo de backup inválido','err');return;}
-      ['clientes','vehiculos','inventario','mecanicos','cotizaciones','ordenes','ventas','gastos','categorias','creditos','anticipos'].forEach(k=>{if(Array.isArray(bk[k]))DB[k]=bk[k];});
+      // Restaurar todas las colecciones
+      ['clientes','vehiculos','inventario','mecanicos','cotizaciones','ordenes','ventas',
+       'gastos','categorias','creditos','anticipos','notas','recordatorios','reservas',
+       'creditosMec','vacaciones','proveedores','compras','liquidaciones'
+      ].forEach(k=>{if(Array.isArray(bk[k]))DB[k]=bk[k];});
+      // Restaurar objetos no-array
+      if(bk.comisionesAjustadas&&typeof bk.comisionesAjustadas==='object')
+        DB.comisionesAjustadas=bk.comisionesAjustadas;
+      // Restaurar configuración del taller
       if(bk.taller){CFG=Object.assign({},CFG_DEFAULT,bk.taller);saveCfg(CFG);}
       save();poblarFormConfig();renderDashboard();updateBadges();llenarSelectsCat();
       toast(`Backup restaurado — ${bk.fecha?bk.fecha.slice(0,10):''}`);}
