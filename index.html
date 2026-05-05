@@ -7557,11 +7557,10 @@ function calcComisionEstimadaMec(mecId, mes, anio){
 }
 
 function getComisionFinal(mecId, mes, anio){
-  // Returns the override if set, otherwise the estimated
   if(!DB.comisionesAjustadas)DB.comisionesAjustadas={};
   const key=`${mecId}_${mes}_${anio}`;
   if(DB.comisionesAjustadas[key]!==undefined)return DB.comisionesAjustadas[key];
-  return calcComisionMec(mecId,mes,anio);
+  return calcComisionEstimadaMec(mecId,mes,anio).estimado;
 }
 
 function guardarComisionAjustada(mecId, mes, anio){
@@ -7589,12 +7588,17 @@ function calcCuotaCreditoMec(mecId, mes, anio){
   const anioN=parseInt(anio);
   DB.creditosMec.filter(c=>c.mecanicoId===mecId&&c.estado!=='Pagado').forEach(c=>{
     (c.cuotasPlan||[]).forEach(cu=>{
-      // Siempre descontar si la cuota corresponde a este mes — pagada o no
-      if(String(cu.mes).trim()===String(mes).trim() && parseInt(cu.anio)===anioN){
-        total+=cu.monto;
-      }
+      const mesOk=String(cu.mes).trim()===String(mes).trim();
+      const anioOk=parseInt(cu.anio)===anioN;
+      if(mesOk&&anioOk){total+=cu.monto;}
     });
   });
+  // DEBUG — remove after fix
+  if(DB.creditosMec.filter(c=>c.mecanicoId===mecId&&c.estado!=='Pagado').length>0&&total===0){
+    const creds=DB.creditosMec.filter(c=>c.mecanicoId===mecId&&c.estado!=='Pagado');
+    console.warn('[CREDITO NO ENCONTRADO] buscando mes='+mes+' anio='+anioN+' disponibles:',
+      creds.flatMap(c=>(c.cuotasPlan||[]).map(cu=>cu.mes+'/'+cu.anio)));
+  }
   return total;
 }
 
