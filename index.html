@@ -2341,6 +2341,34 @@ function save(){
   fbSave();
 }
 load();
+
+// ── Migración: nombres de meses cortos → completos ──
+(function migrarMeses(){
+  const map={'Ene':'Enero','Feb':'Febrero','Mar':'Marzo','Abr':'Abril',
+    'May':'Mayo','Jun':'Junio','Jul':'Julio','Ago':'Agosto',
+    'Sep':'Septiembre','Oct':'Octubre','Nov':'Noviembre','Dic':'Diciembre'};
+  let changed=false;
+  // creditosMec cuotasPlan
+  (DB.creditosMec||[]).forEach(c=>{
+    (c.cuotasPlan||[]).forEach(cu=>{
+      if(map[cu.mes]){cu.mes=map[cu.mes];changed=true;}
+    });
+  });
+  // anticipos
+  (DB.anticipos||[]).forEach(a=>{
+    if(map[a.mes]){a.mes=map[a.mes];changed=true;}
+  });
+  // liquidaciones
+  (DB.liquidaciones||[]).forEach(l=>{
+    if(map[l.mes]){l.mes=map[l.mes];changed=true;}
+  });
+  if(changed){
+    Object.keys(DB).forEach(k=>{
+      try{localStorage.setItem('ts3_'+k,JSON.stringify(DB[k]));}catch(e){}
+    });
+    console.log('[migración] Meses cortos → completos aplicados');
+  }
+})();
 // Inicializar categorías con defaults si está vacío
 if(!DB.categorias||DB.categorias.length===0){DB.categorias=[...CATS_DEFAULT];save();}
 
@@ -2379,7 +2407,7 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
 const fmt=n=>'$'+Number(n||0).toLocaleString('es-CL');
 const fmtN=n=>Number(n||0).toLocaleString('es-CL');
 const today=()=>new Date().toISOString().slice(0,10);
-const meses=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 function toast(msg,type='ok'){
   const c=$('alerts');
