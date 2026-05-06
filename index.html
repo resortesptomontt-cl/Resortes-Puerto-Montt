@@ -1156,53 +1156,63 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
 
 <!-- ══ CRÉDITOS / CUENTAS POR COBRAR ══════════════════════════════════════════ -->
 <div id="sec-creditos" class="section">
-  <div class="stats" id="cred-stats" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px"></div>
+  <!-- Stats -->
+  <div class="stats" id="cred-stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px"></div>
 
-  <!-- Registrar crédito manual -->
-  <div class="card" style="margin-bottom:12px">
-    <div class="card-title">
-      <div class="card-title-left">Registrar crédito manual</div>
-      <span style="font-size:11px;color:var(--text2)">Los créditos también se generan al vender con forma de pago "Crédito"</span>
-    </div>
-    <div class="g4" style="margin-bottom:10px">
-      <div class="field"><label>Cliente *</label><select id="cr-cli"><option value="">— Seleccionar —</option></select></div>
-      <div class="field"><label>Monto ($) *</label><input id="cr-monto" type="number" placeholder="0" min="0"></div>
-      <div class="field"><label>Fecha otorgamiento</label><input id="cr-fecha" type="date"></div>
-      <div class="field"><label>Fecha vencimiento</label><input id="cr-vcto" type="date"></div>
-      <div class="field" style="grid-column:1/-1"><label>Descripción / motivo</label><input id="cr-desc" placeholder="Ej: Servicio N° OT-0012, arreglo motor..."></div>
-    </div>
-    <div style="display:flex;gap:6px"><button class="btn btn-primary" onclick="guardarCredito()">✓ Registrar</button><button class="btn" onclick="limpiarCR()">↺ Limpiar</button></div>
+  <!-- Buscador global -->
+  <div class="sbar" style="margin-bottom:14px">
+    <input id="scr" placeholder="Buscar cliente, descripción, N° cheque..." oninput="renderCreditos()">
   </div>
 
-  <!-- Cheques por cobrar -->
-  <div id="cheques-panel" class="card" style="margin-bottom:12px;display:none">
-    <div class="card-title">
-      <div class="card-title-left">🏦 Cheques por cobrar <span id="cheques-count" style="font-size:11px;font-weight:400;color:var(--text2)"></span></div>
+  <!-- SECCIÓN CHEQUES -->
+  <div id="cheques-panel" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:16px;overflow:hidden">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--teal-light)">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:16px">🏦</span>
+        <span style="font-size:14px;font-weight:700;color:var(--teal)">Cheques por cobrar</span>
+        <span id="cheques-count" style="font-size:11px;font-weight:600;background:var(--teal);color:#fff;padding:2px 8px;border-radius:20px"></span>
+      </div>
       <span style="font-size:11px;color:var(--text2)">Ordenados por fecha de cobro</span>
     </div>
     <div id="lista-cheques"></div>
   </div>
 
-  <!-- Tabs: Pendientes / Pagados -->
-  <div class="tabs" style="margin-bottom:0">
-    <button class="tab active" onclick="switchCredTab('pendiente',this)">⏳ Cuentas por cobrar</button>
-    <button class="tab" onclick="switchCredTab('pagado',this)">✅ Pagados / Cancelados</button>
+  <!-- SECCIÓN CRÉDITOS -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:14px">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:16px">💳</span>
+        <span style="font-size:14px;font-weight:700">Créditos por cobrar</span>
+        <span id="creditos-count" style="font-size:11px;font-weight:600;background:var(--amber);color:#fff;padding:2px 8px;border-radius:20px"></span>
+      </div>
+      <div class="tabs" style="margin:0;border:none">
+        <button class="tab active" onclick="switchCredTab('pendiente',this)" style="padding:4px 12px;font-size:11px">⏳ Pendientes</button>
+        <button class="tab" onclick="switchCredTab('pagado',this)" style="padding:4px 12px;font-size:11px">✅ Pagados</button>
+      </div>
+    </div>
+    <div style="padding:10px 14px">
+      <div id="cred-panel-pendiente"><div id="lista-creditos"></div></div>
+      <div id="cred-panel-pagado" style="display:none"><div id="lista-creditos-pagados"></div></div>
+    </div>
   </div>
 
-  <!-- Filtros -->
-  <div class="card" style="border-top-left-radius:0;border-top-right-radius:0;margin-top:0">
-    <div class="sbar" style="margin-bottom:10px">
-      <input id="scr" placeholder="Buscar cliente, descripción..." oninput="renderCreditos()">
+  <!-- Registrar crédito manual -->
+  <details style="margin-bottom:8px">
+    <summary style="font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;padding:8px 0;list-style:none;display:flex;align-items:center;gap:6px">
+      <span>+ Registrar crédito manual</span>
+      <span style="font-size:10px;color:var(--text3);font-weight:400">— los créditos también se generan automáticamente al registrar una venta o pago con forma "Crédito"</span>
+    </summary>
+    <div class="card" style="margin-top:8px">
+      <div class="g4" style="margin-bottom:10px">
+        <div class="field"><label>Cliente *</label><select id="cr-cli"><option value="">— Seleccionar —</option></select></div>
+        <div class="field"><label>Monto ($) *</label><input id="cr-monto" type="number" placeholder="0" min="0"></div>
+        <div class="field"><label>Fecha otorgamiento</label><input id="cr-fecha" type="date"></div>
+        <div class="field"><label>Fecha vencimiento</label><input id="cr-vcto" type="date"></div>
+        <div class="field" style="grid-column:1/-1"><label>Descripción / motivo</label><input id="cr-desc" placeholder="Ej: Servicio N° OT-0012, arreglo motor..."></div>
+      </div>
+      <div style="display:flex;gap:6px"><button class="btn btn-primary" onclick="guardarCredito()">✓ Registrar</button><button class="btn" onclick="limpiarCR()">↺ Limpiar</button></div>
     </div>
-    <!-- Panel pendientes -->
-    <div id="cred-panel-pendiente">
-      <div id="lista-creditos"></div>
-    </div>
-    <!-- Panel pagados -->
-    <div id="cred-panel-pagado" style="display:none">
-      <div id="lista-creditos-pagados"></div>
-    </div>
-  </div>
+  </details>
 </div>
 
 <!-- ══ GASTOS ══════════════════════════════════════════ -->
@@ -5294,22 +5304,26 @@ function renderCreditos(){
   }
 
   const pendientes=DB.creditos.filter(c=>c.estado!=="Pagado");
+  const soloCreditos=pendientes.filter(c=>c.tipo!=='Cheque');
+  const soloCheques=pendientes.filter(c=>c.tipo==='Cheque');
   const totalDeuda=pendientes.reduce((s,c)=>s+c.saldo,0);
-  const vencidos=DB.creditos.filter(c=>c.estado==="Vencido");
-  const proxVencer=DB.creditos.filter(c=>c.estado!=="Pagado"&&c.vcto&&c.vcto>hoy&&c.vcto<=en5str);
+  const totalCheques=soloCheques.reduce((s,c)=>s+c.saldo,0);
+  const totalCreditos=soloCreditos.reduce((s,c)=>s+c.saldo,0);
+  const vencidos=soloCreditos.filter(c=>c.estado==="Vencido");
+  const proxVencer=soloCreditos.filter(c=>c.estado!=="Pagado"&&c.vcto&&c.vcto>hoy&&c.vcto<=en5str);
   const sc=$("cred-stats");
   if(sc)sc.innerHTML=`
-    <div class="stat"><div class="stat-lbl">Deuda total pendiente</div><div class="stat-val" style="color:var(--red)">${fmt(totalDeuda)}</div><div class="stat-sub">${pendientes.length} cuenta${pendientes.length!==1?"s":""} activas</div></div>
-    <div class="stat"><div class="stat-lbl">Clientes con deuda</div><div class="stat-val" style="color:var(--amber)">${new Set(pendientes.map(c=>c.clienteId||c.clienteNombre)).size}</div><div class="stat-sub">clientes únicos</div></div>
-    <div class="stat"><div class="stat-lbl">Vencidos</div><div class="stat-val" style="color:var(--red)">${vencidos.length}</div><div class="stat-sub">${fmt(vencidos.reduce((s,c)=>s+c.saldo,0))}</div></div>
-    ${proxVencer.length?`<div class="stat" style="border:1px solid var(--amber);background:var(--amber-light)"><div class="stat-lbl" style="color:var(--amber)">⚠ Vencen pronto</div><div class="stat-val" style="color:var(--amber)">${proxVencer.length}</div><div class="stat-sub">próximos 5 días</div></div>`:""}
-    <div class="stat"><div class="stat-lbl">Total cobrado</div><div class="stat-val" style="color:var(--green)">${fmt(DB.creditos.reduce((s,c)=>s+(c.monto-c.saldo),0))}</div><div class="stat-sub">en abonos</div></div>`;
+    <div class="stat"><div class="stat-lbl">Total por cobrar</div><div class="stat-val" style="color:var(--red)">${fmt(totalDeuda)}</div><div class="stat-sub">${pendientes.length} cuenta${pendientes.length!==1?"s":""} activas</div></div>
+    <div class="stat" style="border-left:3px solid var(--teal)"><div class="stat-lbl">🏦 Cheques pendientes</div><div class="stat-val" style="color:var(--teal)">${fmt(totalCheques)}</div><div class="stat-sub">${soloCheques.length} cheque${soloCheques.length!==1?"s":""}</div></div>
+    <div class="stat" style="border-left:3px solid var(--amber)"><div class="stat-lbl">💳 Créditos activos</div><div class="stat-val" style="color:var(--amber)">${fmt(totalCreditos)}</div><div class="stat-sub">${soloCreditos.length} cuenta${soloCreditos.length!==1?"s":""}${vencidos.length>0?" · "+vencidos.length+" vencido"+( vencidos.length!==1?"s":""):""}</div></div>`;
 
   const q=($("scr")?.value||"").toLowerCase();
 
-  // ── PANEL PENDIENTES (agrupado por cliente) ──
-  const activos=DB.creditos.filter(c=>c.estado!=="Pagado");
+  // ── PANEL CRÉDITOS (sin cheques) ──────────────────
+  const activos=DB.creditos.filter(c=>c.estado!=="Pagado"&&c.tipo!=='Cheque');
   const filtrados=q?activos.filter(c=>c.clienteNombre.toLowerCase().includes(q)||(c.desc||"").toLowerCase().includes(q)):activos;
+  const creditosCount=$('creditos-count');
+  if(creditosCount)creditosCount.textContent=activos.length;
 
   const porCliente={};
   filtrados.forEach(cr=>{
@@ -5417,7 +5431,7 @@ function renderCreditos(){
   }
 
   // ── PANEL PAGADOS ─────────────────────────────────
-  const pagados=DB.creditos.filter(c=>c.estado==="Pagado");
+  const pagados=DB.creditos.filter(c=>c.estado==="Pagado"&&c.tipo!=='Cheque');
   const filtPag=q?pagados.filter(c=>c.clienteNombre.toLowerCase().includes(q)):pagados;
   filtPag.sort((a,b)=>b.fecha>a.fecha?1:-1);
   const elPag=$("lista-creditos-pagados");
