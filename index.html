@@ -5221,9 +5221,13 @@ function confirmarAbono(){
   toast(cr.saldo===0?`✓ Deuda de ${cr.clienteNombre} saldada completamente`:`Abono de ${fmt(monto)} registrado — saldo: ${fmt(cr.saldo)}`);
 }
 function eliminarCredito(id){
-  if(!confirm('¿Eliminar este registro de crédito?'))return;
+  const cr=DB.creditos.find(c=>c.id===id);if(!cr)return;
+  const tipo=cr.tipo==='Cheque'?'cheque':'crédito';
+  const msg=`⚠️ ¿Eliminar este ${tipo}?\n\nCliente: ${cr.clienteNombre}\nDescripción: ${cr.desc||'—'}\nSaldo: $${cr.saldo.toLocaleString('es-CL')}\n\nEsta acción no se puede deshacer.`;
+  if(!confirm(msg))return;
   DB.creditos=DB.creditos.filter(c=>c.id!==id);
-  save();renderCreditos();updateBadges();toast('Crédito eliminado');
+  save();renderCreditos();updateBadges();
+  toast(`${tipo.charAt(0).toUpperCase()+tipo.slice(1)} eliminado`);
 }
 function marcarCheque(id, nuevoEstado){
   const cr=DB.creditos.find(c=>c.id===id);if(!cr)return;
@@ -5295,6 +5299,7 @@ function renderCreditos(){
             <button onclick="marcarCheque('${cr.id}','Al cobro')" class="btn btn-xs btn-teal">🏦 Al cobro</button>
             <button onclick="marcarCheque('${cr.id}','Cobrado')" class="btn btn-xs" style="background:var(--green);color:#fff">✅ Cobrado</button>
             <button onclick="marcarCheque('${cr.id}','Rechazado')" class="btn btn-xs btn-red">✕ Rechazado</button>
+            <button onclick="eliminarCredito('${cr.id}')" class="btn btn-xs btn-red" title="Eliminar cheque">🗑</button>
           </div>
         </div>`;
       }).join('');
