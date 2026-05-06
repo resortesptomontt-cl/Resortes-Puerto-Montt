@@ -4443,7 +4443,8 @@ function confirmarFpagoOT(){
   const fpago=$('fpago-ot-sel').value;
   const fecha=$('fpago-ot-fecha').value||today();
   const vcto=$('fpago-ot-vcto').value||'';
-  const vFolio='VT-'+String(DB.ventas.length+1).padStart(4,'0');
+  const vtNums=DB.ventas.map(v=>parseInt((v.folio||'').replace('VT-',''))||0);
+  const vFolio='VT-'+String((vtNums.length?Math.max(...vtNums):0)+1).padStart(4,'0');
   DB.ventas.unshift({folio:vFolio,fecha,
     clienteId:ot.clienteId,clienteNombre:ot.clienteNombre,clienteRut:ot.clienteRut,tel:ot.tel,
     vehiculoId:ot.vehiculoId,patente:ot.patente,marca:ot.marca,modelo:ot.modelo,
@@ -4492,7 +4493,10 @@ function exportarResumenAnt(){
 function poblarSelsV(){
   setToday('v-fecha');setVFolio();
 }
-function setVFolio(){if($('v-folio'))$('v-folio').value='VT-'+String(DB.ventas.length+1).padStart(4,'0');}
+function setVFolio(){
+  const vtN=DB.ventas.map(v=>parseInt((v.folio||'').replace('VT-',''))||0);
+  if($('v-folio'))$('v-folio').value='VT-'+String((vtN.length?Math.max(...vtN):0)+1).padStart(4,'0');
+}
 
 // ── Autocomplete CLIENTE en ventas ──
 let _acVCliIdx=-1;
@@ -4615,7 +4619,8 @@ function guardarVenta(){
   const fpago=$('v-fpago')?.value||'Contado';
   const vcto=$('v-fecha-vcto')?.value||'';
   const docTipo=$('v-doc-tipo')?.value||'';
-  const folio=$('v-folio').value||'VT-'+String(DB.ventas.length+1).padStart(4,'0');
+  const vtN2=DB.ventas.map(v=>parseInt((v.folio||'').replace('VT-',''))||0);
+  const folio=$('v-folio').value||'VT-'+String((vtN2.length?Math.max(...vtN2):0)+1).padStart(4,'0');
   DB.ventas.unshift({folio,fecha:$('v-fecha').value,
     clienteId:c?.id||null,clienteNombre:c?c.nombre:cliNombre,
     clienteRut:c?.rut||'',tel:c?.tel||'',
