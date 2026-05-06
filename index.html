@@ -845,6 +845,14 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
     </div>
     <div id="cot-lineas-wrap"></div>
     <div id="cot-totales-wrap" style="margin-top:10px"></div>
+
+    <!-- Descuento cotización -->
+    <div style="display:flex;align-items:center;gap:10px;margin-top:8px;padding:8px 12px;background:var(--surface2);border-radius:var(--radius)">
+      <span style="font-size:12px;color:var(--text2);flex:1">🏷️ Descuento ($)</span>
+      <input id="cot-descuento" type="number" min="0" placeholder="0" oninput="recalcTotalesCot()"
+        style="width:130px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--text);outline:none;text-align:right">
+    </div>
+
     <hr>
     <div class="field" style="margin-bottom:10px"><label>Notas / alcance del trabajo</label><textarea id="cot-obs" placeholder="Describe el trabajo, condiciones, garantías..."></textarea></div>
     <div style="display:flex;gap:6px"><button class="btn btn-purple" onclick="guardarCot()">✓ Guardar cotización</button><button class="btn" onclick="limpiarCot()">↺ Limpiar</button></div>
@@ -926,12 +934,9 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
       <div class="g4">
         <div class="field"><label>Tipo documento</label>
           <select id="ot-doc-tipo" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none">
-            <option value="">— Sin documento —</option>
-            <option value="Boleta">Boleta</option>
+            <option value="Sin Boleta/Factura">Sin Boleta / Factura</option>
             <option value="Boleta electrónica">Boleta electrónica</option>
-            <option value="Factura">Factura</option>
             <option value="Factura electrónica">Factura electrónica</option>
-            <option value="Nota de crédito">Nota de crédito</option>
           </select>
         </div>
         <div class="field"><label>N° folio / documento</label><input id="ot-doc-folio" placeholder="Ej: 000123"></div>
@@ -1039,23 +1044,41 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
     </div>
     <hr>
     <div class="field" style="margin-bottom:10px"><label>Observaciones</label><textarea id="v-obs" placeholder="Descripción del servicio..."></textarea></div>
-    <!-- Factura / documento tributario -->
+
+    <!-- Descuento venta -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:8px 12px;background:var(--surface2);border-radius:var(--radius)">
+      <span style="font-size:12px;color:var(--text2);flex:1">🏷️ Descuento ($)</span>
+      <input id="v-descuento" type="number" min="0" placeholder="0" oninput="recalcTotalesV()"
+        style="width:130px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--text);outline:none;text-align:right">
+    </div>
+
+    <!-- Documento tributario -->
     <div style="background:var(--surface2);border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;border:1px solid var(--border)">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:8px">🧾 Documento tributario <small style="font-weight:400;text-transform:none">(opcional)</small></div>
-      <div class="g4">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:8px">🧾 Documento tributario</div>
+      <div class="g2" style="margin-bottom:8px">
         <div class="field"><label>Tipo documento</label>
           <select id="v-doc-tipo" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none">
-            <option value="">— Sin documento —</option>
-            <option value="Boleta">Boleta</option>
+            <option value="Sin Boleta/Factura">Sin Boleta / Factura</option>
             <option value="Boleta electrónica">Boleta electrónica</option>
-            <option value="Factura">Factura</option>
             <option value="Factura electrónica">Factura electrónica</option>
-            <option value="Nota de crédito">Nota de crédito</option>
           </select>
         </div>
         <div class="field"><label>N° folio / documento</label><input id="v-doc-folio" placeholder="Ej: 000123"></div>
         <div class="field"><label>Fecha emisión</label><input id="v-doc-fecha" type="date"></div>
-        <div class="field"><label>Monto facturado ($)</label><input id="v-doc-monto" type="number" placeholder="Dejar vacío = igual a total venta" min="0"></div>
+        <div class="field"><label>Monto facturado ($)</label><input id="v-doc-monto" type="number" placeholder="Vacío = total venta" min="0"></div>
+      </div>
+      <!-- Adjuntar documento -->
+      <div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:6px">📎 Adjuntar documento (PDF o imagen)</div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <label class="btn btn-xs" style="cursor:pointer">
+            📎 Seleccionar archivo
+            <input type="file" accept=".pdf,image/*" style="display:none" onchange="adjuntarDocV(this)">
+          </label>
+          <span id="v-doc-adj-nom" style="font-size:11px;color:var(--text3)">Sin archivo</span>
+          <button id="v-doc-adj-clear" style="display:none;background:none;border:none;color:var(--red);cursor:pointer;font-size:12px" onclick="limpiarDocAdjV()">✕</button>
+        </div>
+        <input type="hidden" id="v-doc-adj-data">
       </div>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -2054,12 +2077,9 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
       <div class="g2" style="margin-bottom:12px">
         <div class="field"><label>Tipo de documento</label>
           <select id="doc-ot-tipo" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none;width:100%">
-            <option value="">— Sin documento —</option>
-            <option value="Boleta">Boleta</option>
+            <option value="Sin Boleta/Factura">Sin Boleta / Factura</option>
             <option value="Boleta electrónica">Boleta electrónica</option>
-            <option value="Factura">Factura</option>
             <option value="Factura electrónica">Factura electrónica</option>
-            <option value="Nota de crédito">Nota de crédito</option>
           </select>
         </div>
         <div class="field"><label>N° folio / documento</label><input id="doc-ot-folio" placeholder="Ej: 000123"></div>
@@ -2067,6 +2087,19 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
         <div class="field"><label>Monto facturado ($)</label><input id="doc-ot-monto" type="number" placeholder="Vacío = total OT" min="0"></div>
       </div>
       <div id="doc-ot-actual" style="display:none;background:var(--teal-light);border:1px solid var(--teal);border-radius:var(--radius);padding:8px 14px;font-size:12px;margin-bottom:4px"></div>
+      <!-- Adjuntar documento -->
+      <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:6px">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:6px">📎 Adjuntar documento (PDF o imagen)</div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <label class="btn btn-xs" style="cursor:pointer">
+            📎 Seleccionar
+            <input type="file" accept=".pdf,image/*" style="display:none" onchange="adjuntarDocOT(this)">
+          </label>
+          <span id="doc-ot-adj-nom" style="font-size:11px;color:var(--text3)">Sin archivo</span>
+          <button id="doc-ot-adj-clear" style="display:none;background:none;border:none;color:var(--red);cursor:pointer;font-size:12px" onclick="limpiarDocAdjOT()">✕</button>
+        </div>
+        <input type="hidden" id="doc-ot-adj-data">
+      </div>
     </div>
     <div class="modal-footer" style="justify-content:space-between">
       <button class="btn btn-red btn-sm" onclick="quitarDocOT()" id="doc-ot-quitar" style="display:none">✕ Quitar documento</button>
@@ -3941,12 +3974,14 @@ function guardarCot(){
   const cotNums=DB.cotizaciones.map(c=>parseInt((c.folio||'').replace('COT-',''))||0);
   const cotNext=(cotNums.length?Math.max(...cotNums):0)+1;
   const folio='COT-'+String(cotNext).padStart(4,'0');
-  const total=calcTotales('cot').total;
+  const subtotal=calcTotales('cot').total;
+  const descuento=parseFloat($('cot-descuento')?.value)||0;
+  const total=Math.max(0,subtotal-descuento);
   DB.cotizaciones.unshift({folio,fecha:$('cot-fecha').value,
     clienteId:c?.id||null,clienteNombre:c?c.nombre:cliNombre,
     clienteRut:c?.rut||'',tel:c?.tel||'',
     vehiculoId:v?.id||null,patente:v?.patente||'',marca:v?.marca||'',modelo:v?.modelo||'',
-    items:[...lines.cot],total,obs:$('cot-obs').value.trim(),
+    items:[...lines.cot],descuento,total,obs:$('cot-obs').value.trim(),
     estado:'Pendiente',creado:new Date().toISOString()});
   save();limpiarCot();renderCots();updateBadges();
   toast(`Cotización ${folio} guardada — ${fmt(total)}`);
@@ -3957,6 +3992,7 @@ function limpiarCot(){
   if($('cot-cli-id'))$('cot-cli-id').value='';
   if($('cot-veh'))$('cot-veh').value='';
   if($('cot-obs'))$('cot-obs').value='';
+  if($('cot-descuento'))$('cot-descuento').value='';
   $('cot-pill').style.display='none';
   if($('cot-prod-txt'))$('cot-prod-txt').value='';
   if($('cot-prod-id'))$('cot-prod-id').value='';
@@ -4608,6 +4644,76 @@ function toggleCreditoFecha(ctx){
   const fp=$('v-fpago'),wrap=$('v-fecha-vcto-wrap');
   if(fp&&wrap)wrap.style.display=fp.value==='Crédito'?'block':'none';
 }
+// ── Descuento y adjunto documentos ──────────────
+function recalcTotalesV(){
+  const {total:subtotal}=calcTotales('v');
+  const descuento=parseFloat($('v-descuento')?.value)||0;
+  const total=Math.max(0,subtotal-descuento);
+  const el=$('v-total-display');
+  if(el)el.innerHTML=descuento>0?`${fmt(total)} <span style="font-size:10px;color:var(--amber)">(-${fmt(descuento)} dto.)</span>`:fmt(total);
+}
+function recalcTotalesCot(){
+  const descuento=parseFloat($('cot-descuento')?.value)||0;
+  // cotizacion totales re-render
+  const el=$('cot-totales-wrap');
+  if(el){const items=lines.cot||[];const sub=items.reduce((s,i)=>s+i.sub,0);const total=Math.max(0,sub-descuento);
+    el.innerHTML=`<div class="tbar tbar-blue"><div><div class="lbl">Total cotización${descuento>0?' (con descuento)':''}</div></div><div class="amt">${fmt(total)}${descuento>0?` <span style="font-size:11px;font-weight:400;color:var(--amber)">(-${fmt(descuento)})</span>`:''}</div></div>`;}
+}
+
+// Adjuntar documento PDF/imagen
+function adjuntarDocV(input){
+  const file=input.files[0];if(!file)return;
+  if(file.size>2*1024*1024){toast('Archivo demasiado grande (máx. 2MB)','err');return;}
+  const r=new FileReader();
+  r.onload=e=>{
+    if($('v-doc-adj-data'))$('v-doc-adj-data').value=e.target.result;
+    if($('v-doc-adj-nom'))$('v-doc-adj-nom').textContent=file.name;
+    if($('v-doc-adj-clear'))$('v-doc-adj-clear').style.display='inline';
+    toast(`📎 ${file.name} adjuntado`);
+  };
+  r.readAsDataURL(file);
+  input.value='';
+}
+function limpiarDocAdjV(){
+  if($('v-doc-adj-data'))$('v-doc-adj-data').value='';
+  if($('v-doc-adj-nom'))$('v-doc-adj-nom').textContent='Sin archivo';
+  if($('v-doc-adj-clear'))$('v-doc-adj-clear').style.display='none';
+}
+function adjuntarDocOT(input){
+  const file=input.files[0];if(!file)return;
+  if(file.size>2*1024*1024){toast('Archivo demasiado grande (máx. 2MB)','err');return;}
+  const r=new FileReader();
+  r.onload=e=>{
+    if($('doc-ot-adj-data'))$('doc-ot-adj-data').value=e.target.result;
+    if($('doc-ot-adj-nom'))$('doc-ot-adj-nom').textContent=file.name;
+    if($('doc-ot-adj-clear'))$('doc-ot-adj-clear').style.display='inline';
+    toast(`📎 ${file.name} adjuntado`);
+  };
+  r.readAsDataURL(file);
+  input.value='';
+}
+function limpiarDocAdjOT(){
+  if($('doc-ot-adj-data'))$('doc-ot-adj-data').value='';
+  if($('doc-ot-adj-nom'))$('doc-ot-adj-nom').textContent='Sin archivo';
+  if($('doc-ot-adj-clear'))$('doc-ot-adj-clear').style.display='none';
+}
+// Ver documento adjunto
+function verDocAdj(data,nom){
+  if(!data){toast('Sin documento adjunto','warn');return;}
+  const win=window.open('','_blank');
+  if(win){
+    if(data.startsWith('data:image')){
+      win.document.write(`<html><body style="margin:0;background:#000"><img src="${data}" style="max-width:100%;max-height:100vh;display:block;margin:auto"></body></html>`);
+    } else {
+      win.document.write(`<html><body style="margin:0"><iframe src="${data}" style="width:100%;height:100vh;border:none"></iframe></body></html>`);
+    }
+    win.document.title=nom||'Documento';
+  } else {
+    // fallback
+    const a=document.createElement('a');a.href=data;a.download=nom||'documento';a.click();
+  }
+}
+
 function guardarVenta(){
   const cliNombre=($('v-cli-txt')?.value||'').trim();
   if(!cliNombre){toast('Ingresa el nombre del cliente','err');return;}
@@ -4615,22 +4721,27 @@ function guardarVenta(){
   const cid=$('v-cli-id').value||null;
   const c=cid?DB.clientes.find(x=>x.id===cid):null;
   const v=pillar('v-veh',DB.vehiculos);
-  const {total,desc}=calcTotales('v');
+  const {total:subtotal,desc}=calcTotales('v');
+  const descuento=parseFloat($('v-descuento')?.value)||0;
+  const total=Math.max(0,subtotal-descuento);
   const fpago=$('v-fpago')?.value||'Contado';
   const vcto=$('v-fecha-vcto')?.value||'';
-  const docTipo=$('v-doc-tipo')?.value||'';
+  const docTipo=$('v-doc-tipo')?.value||'Sin Boleta/Factura';
+  const docAdj=$('v-doc-adj-data')?.value||'';
+  const docAdjNom=$('v-doc-adj-nom')?.textContent||'';
   const vtN2=DB.ventas.map(v=>parseInt((v.folio||'').replace('VT-',''))||0);
   const folio=$('v-folio').value||'VT-'+String((vtN2.length?Math.max(...vtN2):0)+1).padStart(4,'0');
   DB.ventas.unshift({folio,fecha:$('v-fecha').value,
     clienteId:c?.id||null,clienteNombre:c?c.nombre:cliNombre,
     clienteRut:c?.rut||'',tel:c?.tel||'',
     vehiculoId:v?.id||null,patente:v?.patente||'',marca:v?.marca||'',modelo:v?.modelo||'',
-    items:[...lines.v],descuento:desc,total,fpago,
+    items:[...lines.v],descuento:descuento,total,fpago,
     obs:$('v-obs').value.trim(),
     docTipo,
-    docFolio:docTipo?($('v-doc-folio')?.value||'').trim():'',
-    docFecha:docTipo?($('v-doc-fecha')?.value||''):'',
-    docMonto:docTipo?(parseFloat($('v-doc-monto')?.value)||total):0,
+    docFolio:(docTipo!=='Sin Boleta/Factura'?($('v-doc-folio')?.value||'').trim():''),
+    docFecha:(docTipo!=='Sin Boleta/Factura'?($('v-doc-fecha')?.value||''):''),
+    docMonto:(docTipo!=='Sin Boleta/Factura'?(parseFloat($('v-doc-monto')?.value)||total):0),
+    docAdj:docAdj||'',docAdjNom:docAdjNom&&docAdjNom!=='Sin archivo'?docAdjNom:'',
     creado:new Date().toISOString()});
   lines.v.forEach(l=>{
     if(l.libre)return;
@@ -4655,13 +4766,14 @@ function limpiarV(){
   if($('v-prod-id'))$('v-prod-id').value='';
   if($('v-pu'))$('v-pu').value='';
   ['v-veh','v-obs','v-doc-folio','v-doc-fecha','v-doc-monto'].forEach(i=>{if($(i))$(i).value='';});
-  if($('v-doc-tipo'))$('v-doc-tipo').value='';
+  if($('v-doc-tipo'))$('v-doc-tipo').value='Sin Boleta/Factura';
+  if($('v-descuento'))$('v-descuento').value='';
   if($('v-fecha'))$('v-fecha').value='';
-  if($('v-desc'))$('v-desc').value=0;
   if($('v-fpago'))$('v-fpago').value='Contado';
   if($('v-fecha-vcto'))$('v-fecha-vcto').value='';
   if($('v-fecha-vcto-wrap'))$('v-fecha-vcto-wrap').style.display='none';
   $('v-pill').style.display='none';
+  limpiarDocAdjV();
   renderLineas('v');setToday('v-fecha');setVFolio();
 }
 
@@ -5750,11 +5862,18 @@ function abrirDocOT(folio){
   if(o.docTipo){
     const fmtF=d=>{if(!d)return'';const[y,m,dd]=d.split('-');return`${dd}/${m}/${y}`;};
     cur.style.display='block';
-    cur.innerHTML=`Documento actual: <strong>${o.docTipo}</strong>${o.docFolio?' · N°'+o.docFolio:''}${o.docFecha?' · '+fmtF(o.docFecha):''}${o.docMonto?' · '+fmt(o.docMonto):''}`;
+    cur.innerHTML=`Documento: <strong>${o.docTipo}</strong>${o.docFolio?' · N°'+o.docFolio:''}${o.docFecha?' · '+fmtF(o.docFecha):''}${o.docMonto?' · '+fmt(o.docMonto):''}
+      ${o.docAdj?`<button class="btn btn-xs btn-teal" style="margin-left:8px" onclick="verDocAdj(DB.ordenes.find(x=>x.folio==='${o.folio}')?.docAdj,'${o.docAdjNom||'documento'}')">📎 Ver adjunto</button>`:''}`;
     quitarBtn.style.display='flex';
   } else {
     cur.style.display='none';
     quitarBtn.style.display='none';
+  }
+  // Reset adjunto fields
+  limpiarDocAdjOT();
+  if(o.docAdj&&$('doc-ot-adj-nom')){
+    $('doc-ot-adj-nom').textContent=o.docAdjNom||'Archivo adjunto';
+    if($('doc-ot-adj-clear'))$('doc-ot-adj-clear').style.display='inline';
   }
   $('modal-doc-ot').style.display='flex';
   document.body.style.overflow='hidden';
@@ -5769,10 +5888,13 @@ function guardarDocOT(){
   const o=DB.ordenes.find(x=>x.folio===_docOTFolio);if(!o){cerrarDocOT();return;}
   const tipo=$('doc-ot-tipo').value;
   o.docTipo=tipo;
-  o.docFolio=tipo?($('doc-ot-folio').value||'').trim():'';
-  o.docFecha=tipo?($('doc-ot-fecha').value||''):'';
+  o.docFolio=tipo&&tipo!=='Sin Boleta/Factura'?($('doc-ot-folio').value||'').trim():'';
+  o.docFecha=tipo&&tipo!=='Sin Boleta/Factura'?($('doc-ot-fecha').value||''):'';
   const montoV=parseFloat($('doc-ot-monto').value)||0;
-  o.docMonto=tipo?(montoV||o.total):0;
+  o.docMonto=tipo&&tipo!=='Sin Boleta/Factura'?(montoV||o.total):0;
+  const adjData=$('doc-ot-adj-data')?.value||'';
+  const adjNom=$('doc-ot-adj-nom')?.textContent||'';
+  if(adjData){o.docAdj=adjData;o.docAdjNom=adjNom!=='Sin archivo'?adjNom:'';}
   save();cerrarDocOT();renderOTs();
   toast(tipo?`Documento ${tipo} asignado a ${o.folio}`:`Documento quitado de ${o.folio}`);
 }
