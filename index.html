@@ -1037,10 +1037,20 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
           <option value="Transferencia">Transferencia</option>
           <option value="Débito">Débito</option>
           <option value="Crédito">Crédito (cuenta corriente)</option>
+          <option value="Cheque">Cheque</option>
           <option value="Otro">Otro</option>
         </select>
       </div>
       <div class="field" id="v-fecha-vcto-wrap" style="display:none"><label>Fecha vencimiento crédito</label><input id="v-fecha-vcto" type="date"></div>
+    </div>
+    <!-- Campos cheque -->
+    <div id="v-cheque-wrap" style="display:none;background:var(--surface2);border-radius:var(--radius);padding:10px 14px;margin-bottom:10px;border:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:8px">🏦 Datos del cheque</div>
+      <div class="g3">
+        <div class="field"><label>N° de cheque</label><input id="v-cheque-num" placeholder="Ej: 0012345"></div>
+        <div class="field"><label>Banco emisor</label><input id="v-cheque-banco" placeholder="Ej: BancoEstado"></div>
+        <div class="field"><label>Fecha de cobro</label><input id="v-cheque-fecha" type="date"></div>
+      </div>
     </div>
     <hr>
     <div class="field" style="margin-bottom:10px"><label>Observaciones</label><textarea id="v-obs" placeholder="Descripción del servicio..."></textarea></div>
@@ -2267,6 +2277,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
             <option value="Débito">Tarjeta débito</option>
             <option value="Tarjeta">Tarjeta crédito</option>
             <option value="Crédito">Crédito (cuenta corriente)</option>
+            <option value="Cheque">Cheque</option>
             <option value="Otro">Otro</option>
           </select>
         </div>
@@ -2279,6 +2290,17 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
         </div>
         <div style="background:var(--amber-light);border:1px solid #e0c070;border-radius:var(--radius);padding:8px 12px;font-size:11px;color:var(--amber);margin-top:8px">
           ⚠ Se creará automáticamente una cuenta por cobrar a nombre del cliente.
+        </div>
+      </div>
+      <div id="fpago-ot-cheque-wrap" style="display:none;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:8px">🏦 Datos del cheque</div>
+        <div class="g3">
+          <div class="field"><label>N° de cheque</label><input id="fpago-ot-cheque-num" placeholder="Ej: 0012345"></div>
+          <div class="field"><label>Banco emisor</label><input id="fpago-ot-cheque-banco" placeholder="Ej: BancoEstado"></div>
+          <div class="field"><label>Fecha de cobro</label><input id="fpago-ot-cheque-fecha" type="date"></div>
+        </div>
+        <div style="background:var(--teal-light);border:1px solid var(--teal);border-radius:var(--radius);padding:8px 12px;font-size:11px;color:var(--teal);margin-top:8px">
+          🏦 El cheque quedará registrado como pendiente de cobro hasta su fecha.
         </div>
       </div>
     </div>
@@ -4473,7 +4495,10 @@ function otAVenta(folio){
   document.body.style.overflow='hidden';
 }
 function onFpagoOTChange(){
-  $('fpago-ot-credito-wrap').style.display=$('fpago-ot-sel').value==='Crédito'?'block':'none';
+  const val=$('fpago-ot-sel').value;
+  $('fpago-ot-credito-wrap').style.display=val==='Crédito'?'block':'none';
+  const chequeWrap=$('fpago-ot-cheque-wrap');
+  if(chequeWrap)chequeWrap.style.display=val==='Cheque'?'block':'none';
 }
 function cerrarFpagoOT(){
   $('modal-fpago-ot').style.display='none';
@@ -4488,11 +4513,19 @@ function confirmarFpagoOT(){
   const vcto=$('fpago-ot-vcto').value||'';
   const vtNums=DB.ventas.map(v=>parseInt((v.folio||'').replace('VT-',''))||0);
   const vFolio='VT-'+String((vtNums.length?Math.max(...vtNums):0)+1).padStart(4,'0');
+  // Cheque data
+  const chequeNum=($('fpago-ot-cheque-num')?.value||'').trim();
+  const chequeBanco=($('fpago-ot-cheque-banco')?.value||'').trim();
+  const chequeFecha=$('fpago-ot-cheque-fecha')?.value||'';
   DB.ventas.unshift({folio:vFolio,fecha,
     clienteId:ot.clienteId,clienteNombre:ot.clienteNombre,clienteRut:ot.clienteRut,tel:ot.tel,
     vehiculoId:ot.vehiculoId,patente:ot.patente,marca:ot.marca,modelo:ot.modelo,
     mecanico:ot.mecanico,items:[...ot.items],total:ot.total,descuento:0,fpago,
     obs:ot.obs||ot.diag||'',otOrigen:ot.folio,cotOrigen:ot.cotizacionOrigen||'',
+    chequeNum:fpago==='Cheque'?chequeNum:'',
+    chequeBanco:fpago==='Cheque'?chequeBanco:'',
+    chequeFecha:fpago==='Cheque'?chequeFecha:'',
+    chequeEstado:fpago==='Cheque'?'Pendiente':'',
     creado:new Date().toISOString()});
   ot.estado='Entregado';
   ot.items.forEach(l=>{
@@ -4507,6 +4540,15 @@ function confirmarFpagoOT(){
       desc:`Venta ${vFolio} (OT: ${ot.folio})`,ventaFolio:vFolio,
       estado:'Pendiente',creado:new Date().toISOString()});
     toast(`Venta ${vFolio} en crédito — ${fmt(ot.total)} en cuentas por cobrar`,'warn');
+  } else if(fpago==='Cheque'){
+    DB.creditos.unshift({id:uid(),
+      clienteId:ot.clienteId,clienteNombre:ot.clienteNombre,clienteRut:ot.clienteRut,
+      monto:ot.total,saldo:ot.total,abonos:[],fecha,vcto:chequeFecha,
+      desc:`Cheque N°${chequeNum||'?'} — ${chequeBanco||'?'} (OT: ${ot.folio})`,
+      ventaFolio:vFolio,tipo:'Cheque',
+      chequeNum,chequeBanco,chequeFecha,chequeEstado:'Pendiente',
+      estado:'Pendiente',creado:new Date().toISOString()});
+    toast(`Cheque N°${chequeNum} registrado — cobro el ${chequeFecha||'?'}`, 'warn');
   } else {
     toast(`Venta ${vFolio} registrada — ${fmt(ot.total)} (${fpago})`);
   }
@@ -4648,8 +4690,11 @@ function addLineaV(){
 }
 
 function toggleCreditoFecha(ctx){
-  const fp=$('v-fpago'),wrap=$('v-fecha-vcto-wrap');
+  const fp=$('v-fpago');
+  const wrap=$('v-fecha-vcto-wrap');
+  const chequeWrap=$('v-cheque-wrap');
   if(fp&&wrap)wrap.style.display=fp.value==='Crédito'?'block':'none';
+  if(fp&&chequeWrap)chequeWrap.style.display=fp.value==='Cheque'?'block':'none';
 }
 // ── Descuento y adjunto documentos ──────────────
 function recalcTotalesV(){
@@ -4736,6 +4781,9 @@ function guardarVenta(){
   const docTipo=$('v-doc-tipo')?.value||'Sin Boleta/Factura';
   const docAdj=$('v-doc-adj-data')?.value||'';
   const docAdjNom=$('v-doc-adj-nom')?.textContent||'';
+  const chequeNum=($('v-cheque-num')?.value||'').trim();
+  const chequeBanco=($('v-cheque-banco')?.value||'').trim();
+  const chequeFecha=$('v-cheque-fecha')?.value||'';
   const vtN2=DB.ventas.map(v=>parseInt((v.folio||'').replace('VT-',''))||0);
   const folio=$('v-folio').value||'VT-'+String((vtN2.length?Math.max(...vtN2):0)+1).padStart(4,'0');
   DB.ventas.unshift({folio,fecha:$('v-fecha').value,
@@ -4749,6 +4797,10 @@ function guardarVenta(){
     docFecha:(docTipo!=='Sin Boleta/Factura'?($('v-doc-fecha')?.value||''):''),
     docMonto:(docTipo!=='Sin Boleta/Factura'?(parseFloat($('v-doc-monto')?.value)||total):0),
     docAdj:docAdj||'',docAdjNom:docAdjNom&&docAdjNom!=='Sin archivo'?docAdjNom:'',
+    chequeNum:fpago==='Cheque'?chequeNum:'',
+    chequeBanco:fpago==='Cheque'?chequeBanco:'',
+    chequeFecha:fpago==='Cheque'?chequeFecha:'',
+    chequeEstado:fpago==='Cheque'?'Pendiente':'',
     creado:new Date().toISOString()});
   lines.v.forEach(l=>{
     if(l.libre)return;
@@ -4760,6 +4812,14 @@ function guardarVenta(){
       monto:total,saldo:total,abonos:[],fecha:$('v-fecha').value,vcto,
       desc:`Venta ${folio}`,ventaFolio:folio,estado:'Pendiente',creado:new Date().toISOString()});
     toast(`Venta ${folio} en crédito — ${fmt(total)} pendiente de cobro`,'warn');
+  } else if(fpago==='Cheque'){
+    DB.creditos.unshift({id:uid(),clienteId:c?.id||null,clienteNombre:c?c.nombre:cliNombre,clienteRut:c?.rut||'',
+      monto:total,saldo:total,abonos:[],fecha:$('v-fecha').value,vcto:chequeFecha,
+      desc:`Cheque N°${chequeNum||'?'} — ${chequeBanco||'?'} (${folio})`,
+      ventaFolio:folio,tipo:'Cheque',
+      chequeNum,chequeBanco,chequeFecha,chequeEstado:'Pendiente',
+      estado:'Pendiente',creado:new Date().toISOString()});
+    toast(`Cheque N°${chequeNum} registrado — cobro el ${chequeFecha||'?'}`, 'warn');
   } else {
     toast(`Venta ${folio} guardada — ${fmt(total)}`);
   }
@@ -4775,6 +4835,10 @@ function limpiarV(){
   ['v-veh','v-obs','v-doc-folio','v-doc-fecha','v-doc-monto'].forEach(i=>{if($(i))$(i).value='';});
   if($('v-doc-tipo'))$('v-doc-tipo').value='Sin Boleta/Factura';
   if($('v-descuento'))$('v-descuento').value='';
+  if($('v-cheque-num'))$('v-cheque-num').value='';
+  if($('v-cheque-banco'))$('v-cheque-banco').value='';
+  if($('v-cheque-fecha'))$('v-cheque-fecha').value='';
+  if($('v-cheque-wrap'))$('v-cheque-wrap').style.display='none';
   if($('v-fecha'))$('v-fecha').value='';
   if($('v-fpago'))$('v-fpago').value='Contado';
   if($('v-fecha-vcto'))$('v-fecha-vcto').value='';
@@ -5142,6 +5206,21 @@ function eliminarCredito(id){
   DB.creditos=DB.creditos.filter(c=>c.id!==id);
   save();renderCreditos();updateBadges();toast('Crédito eliminado');
 }
+function marcarCheque(id, nuevoEstado){
+  const cr=DB.creditos.find(c=>c.id===id);if(!cr)return;
+  cr.chequeEstado=nuevoEstado;
+  if(nuevoEstado==='Cobrado'){
+    cr.estado='Pagado';cr.saldo=0;
+    toast(`Cheque N°${cr.chequeNum||'?'} marcado como cobrado ✅`);
+  } else if(nuevoEstado==='Rechazado'){
+    cr.estado='Pendiente'; // Sigue pendiente pero rechazado
+    toast(`Cheque N°${cr.chequeNum||'?'} marcado como rechazado ⚠`,'warn');
+  } else {
+    toast(`Cheque actualizado: ${nuevoEstado}`);
+  }
+  save();renderCreditos();updateBadges();
+}
+
 function marcarPagado(id){
   const cr=DB.creditos.find(x=>x.id===id);if(!cr)return;
   if(!confirm(`¿Marcar como PAGADA la cuenta de ${cr.clienteNombre} por ${fmt(cr.saldo)} de saldo restante?`))return;
@@ -5244,7 +5323,9 @@ function renderCreditos(){
             return`<div style="border-top:1px solid var(--border);background:${cri%2===0?"var(--bg)":"var(--surface2)"}">
               <div onclick="toggle('cr-det-${cr.id}')" style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px 10px 24px;cursor:pointer">
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                  <span class="status ${venc?"s-vencido":cr.estado==="Pagado parcial"?"s-proceso":"s-pendiente"}" style="font-size:10px">${venc?"Vencido":cr.estado}</span>
+                  ${cr.tipo==='Cheque'
+                    ?`<span style="font-size:10px;font-weight:700;background:var(--teal);color:#fff;padding:2px 8px;border-radius:10px">🏦 Cheque · ${cr.chequeEstado||'Pendiente'}</span>`
+                    :`<span class="status ${venc?"s-vencido":cr.estado==="Pagado parcial"?"s-proceso":"s-pendiente"}" style="font-size:10px">${venc?"Vencido":cr.estado}</span>`}
                   ${cr.ventaFolio?`<span class="folio-tag" style="font-size:9px">${cr.ventaFolio}</span>`:""}
                   <span style="font-size:12px;color:var(--text2)">${cr.desc||"Sin descripción"}</span>
                   ${cr.vcto?`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:${venc?"var(--red-light)":proxA?"var(--amber-light)":"var(--surface2)"};color:${venc?"var(--red)":proxA?"var(--amber)":"var(--text2)"}">📅 ${fmtF(cr.vcto)}${venc?" · Vencido":(dias!==null&&dias<=5?" · "+dias+"d":"")}</span>`:""}
@@ -5254,18 +5335,35 @@ function renderCreditos(){
                     <div style="font-size:11px;color:var(--text2)">Saldo: <strong style="font-family:'JetBrains Mono',monospace;color:var(--red)">${fmt(cr.saldo)}</strong> / <span style="font-size:10px">${fmt(cr.monto)}</span></div>
                     <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:3px"><div style="height:100%;width:${pct}%;background:${pct===100?"var(--green)":"var(--accent2)"};border-radius:3px"></div></div>
                   </div>
-                  <button onclick="event.stopPropagation();abrirAbono('${cr.id}')" class="btn btn-xs btn-teal" title="Registrar abono parcial">💵 Abono</button>
-                  <button onclick="event.stopPropagation();marcarPagado('${cr.id}')" class="btn btn-xs" style="background:var(--green);color:#fff;white-space:nowrap" title="Marcar como pagada completamente">✅ Pagada</button>
+                  ${cr.tipo==='Cheque'
+                    ?`<button onclick="event.stopPropagation();marcarCheque('${cr.id}','Al cobro')" class="btn btn-xs btn-teal" title="Marcar al cobro">🏦 Al cobro</button>
+                       <button onclick="event.stopPropagation();marcarCheque('${cr.id}','Cobrado')" class="btn btn-xs" style="background:var(--green);color:#fff" title="Marcar cobrado">✅ Cobrado</button>
+                       <button onclick="event.stopPropagation();marcarCheque('${cr.id}','Rechazado')" class="btn btn-xs btn-red" title="Cheque rechazado">✕ Rechazado</button>`
+                    :`<button onclick="event.stopPropagation();abrirAbono('${cr.id}')" class="btn btn-xs btn-teal" title="Registrar abono parcial">💵 Abono</button>
+                       <button onclick="event.stopPropagation();marcarPagado('${cr.id}')" class="btn btn-xs" style="background:var(--green);color:#fff;white-space:nowrap" title="Marcar como pagada completamente">✅ Pagada</button>`}
                 </div>
               </div>
               <div id="cr-det-${cr.id}" style="display:none;padding:10px 24px 14px 32px;border-top:1px dashed var(--border)">
+                ${cr.tipo==='Cheque'?`
+                <div style="background:var(--teal-light);border:1px solid var(--teal);border-radius:var(--radius);padding:8px 12px;font-size:12px;margin-bottom:8px;display:flex;gap:16px;flex-wrap:wrap">
+                  <span>🏦 <strong>${cr.chequeBanco||'—'}</strong></span>
+                  <span>N° <strong>${cr.chequeNum||'—'}</strong></span>
+                  <span>Cobro: <strong>${fmtF(cr.chequeFecha)}</strong></span>
+                  <span>Estado: <strong style="color:${cr.chequeEstado==='Cobrado'?'var(--green)':cr.chequeEstado==='Rechazado'?'var(--red)':'var(--teal)'}">${cr.chequeEstado||'Pendiente'}</strong></span>
+                </div>
+                <div class="row-acts" style="justify-content:flex-end">
+                  <button class="btn btn-xs btn-teal" onclick="event.stopPropagation();marcarCheque('${cr.id}','Al cobro')">🏦 Al cobro</button>
+                  <button class="btn btn-xs" style="background:var(--green);color:#fff" onclick="event.stopPropagation();marcarCheque('${cr.id}','Cobrado')">✅ Cobrado</button>
+                  <button class="btn btn-xs btn-red" onclick="event.stopPropagation();marcarCheque('${cr.id}','Rechazado')">✕ Rechazado</button>
+                  <button class="btn btn-xs btn-red" onclick="event.stopPropagation();eliminarCredito('${cr.id}')">🗑 Eliminar</button>
+                </div>`:`
                 <div style="font-size:11px;color:var(--text2);margin-bottom:8px">📋 ${cr.desc||"—"} · Otorgado: ${fmtF(cr.fecha)} · Vence: ${fmtF(cr.vcto)}</div>
                 ${cr.abonos.length?`<div class="tw" style="margin-bottom:10px"><table><thead><tr><th>Fecha</th><th>Observación</th><th class="tr">Monto</th></tr></thead><tbody>${cr.abonos.map(a=>`<tr><td>${fmtF(a.fecha)}</td><td>${a.obs||"—"}</td><td class="tr" style="font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--green)">${fmt(a.monto)}</td></tr>`).join("")}</tbody></table></div>`:"<div style=\"font-size:12px;color:var(--text3);margin-bottom:10px\">Sin abonos</div>"}
                 <div class="row-acts" style="justify-content:flex-end">
                   <button class="btn btn-xs btn-green" onclick="event.stopPropagation();abrirAbono('${cr.id}')">💵 Registrar abono</button>
                   <button class="btn btn-xs" style="background:var(--green);color:#fff" onclick="event.stopPropagation();marcarPagado('${cr.id}')">✅ Marcar pagada</button>
                   <button class="btn btn-xs btn-red" onclick="event.stopPropagation();eliminarCredito('${cr.id}')">🗑 Eliminar</button>
-                </div>
+                </div>`}
               </div>
             </div>`;
           }).join("")}
