@@ -9067,6 +9067,31 @@ function buildPDFVac(m,v){
   </div>`;
 }
 
+function _aplicarUpdateFirebase(data){
+  Object.keys(DB).forEach(k=>{if(Array.isArray(data[k]))DB[k]=data[k];});
+  if(data.comisionesAjustadas&&typeof data.comisionesAjustadas==='object')
+    DB.comisionesAjustadas=data.comisionesAjustadas;
+  migrarMeses();
+  Object.keys(DB).forEach(k=>{try{localStorage.setItem('ts3_'+k,JSON.stringify(DB[k]));}catch(e){}});
+  if(data._cfg&&typeof data._cfg==='object'){CFG=Object.assign({},CFG_DEFAULT,data._cfg);saveCfg(CFG);}
+  llenarSelectsCat();renderDashboard();updateBadges();
+}
+
+// Apply pending Firebase update when user stops interacting
+document.addEventListener('focusout',()=>{
+  if(window._pendingFBUpdate){
+    const data=window._pendingFBUpdate.data;
+    window._pendingFBUpdate=null;
+    setTimeout(()=>{
+      const activeModal=document.querySelector('.modal-overlay[style*="flex"]');
+      if(!activeModal){
+        _aplicarUpdateFirebase(data);
+        toast('🔄 Sincronizado con otro dispositivo','info');
+      }
+    },800);
+  }
+});
+
 function setSyncUI(state){
   // state: 'connecting' | 'online' | 'offline' | 'saving' | 'error'
   const dot=$('sync-dot'), txt=$('sync-txt'), wrap=$('sync-status');
@@ -9427,19 +9452,20 @@ async function fbInit(){
     docRef.onSnapshot(snap=>{
       if(!snap.exists)return;
       const data=snap.data();
-      const sig =JSON.stringify(Object.keys(DB).map(k=>data[k]?.length??0));
-      const cur =JSON.stringify(Object.keys(DB).map(k=>DB[k]?.length??0));
+      const sig=JSON.stringify(Object.keys(DB).map(k=>data[k]?.length??0));
+      const cur=JSON.stringify(Object.keys(DB).map(k=>DB[k]?.length??0));
       if(sig!==cur){
-        Object.keys(DB).forEach(k=>{if(Array.isArray(data[k]))DB[k]=data[k];});
-        if(data.comisionesAjustadas&&typeof data.comisionesAjustadas==='object')
-          DB.comisionesAjustadas=data.comisionesAjustadas;
-        // Migrar meses cortos → completos
-        migrarMeses();
-        Object.keys(DB).forEach(k=>{try{localStorage.setItem('ts3_'+k,JSON.stringify(DB[k]));}catch(e){}});
-        if(data._cfg&&typeof data._cfg==='object'){CFG=Object.assign({},CFG_DEFAULT,data._cfg);saveCfg(CFG);}
-        llenarSelectsCat();renderDashboard();updateBadges();
-        const mod=document.querySelector('.section.active')?.id?.replace('sec-','');
-        if(mod&&window._navActions?.[mod])window._navActions[mod]();
+        // Check if user is actively using a form — don't interrupt
+        const activeModal=document.querySelector('.modal-overlay[style*="flex"]');
+        const activeInput=document.activeElement;
+        const userTyping=activeInput&&(activeInput.tagName==='INPUT'||activeInput.tagName==='TEXTAREA'||activeInput.tagName==='SELECT');
+        if(activeModal||userTyping){
+          // Store pending update and apply when user is done
+          window._pendingFBUpdate={data};
+          setSyncUI('online');
+          return;
+        }
+        _aplicarUpdateFirebase(data);
         toast('🔄 Datos actualizados desde otro dispositivo','info');
       }
       setSyncUI('online');
