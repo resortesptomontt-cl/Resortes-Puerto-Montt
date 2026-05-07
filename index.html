@@ -9503,7 +9503,23 @@ async function fbSaveNow(){
   try{
     setSyncUI('saving');
     const data={};
-    Object.keys(DB).forEach(k=>{data[k]=DB[k];});
+    Object.keys(DB).forEach(k=>{
+      if(Array.isArray(DB[k])){
+        // Strip base64 docAdj from ventas and ordenes before sending to Firestore
+        // Base64 files can exceed Firestore's 1MB document limit
+        data[k]=DB[k].map(item=>{
+          if(item.docAdj||item.imgs){
+            const clean={...item};
+            if(clean.docAdj)clean.docAdj=''; // strip — kept only in localStorage
+            if(clean.imgs)clean.imgs=[]; // strip imgs too — too large for Firestore
+            return clean;
+          }
+          return item;
+        });
+      } else {
+        data[k]=DB[k];
+      }
+    });
     data._cfg=CFG;
     data._updated=new Date().toISOString();
     await window._fbDocRef.set(data);
@@ -9511,6 +9527,7 @@ async function fbSaveNow(){
   }catch(err){
     console.error('Firestore save error:',err);
     setSyncUI('error');
+    toast('Error guardando en la nube — datos guardados localmente','warn');
   }
 }
 
