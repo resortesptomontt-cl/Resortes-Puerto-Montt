@@ -1859,6 +1859,14 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
       <div style="font-size:12px;color:var(--text2)">Facturas electrónicas del SII · Se extraen automáticamente proveedor, ítems, precios y stock</div>
       <input type="file" id="compra-pdf-input" accept=".pdf,image/*" style="display:none" onchange="procesarFacturaPDF(this.files[0])">
     </div>
+    <!-- Importar JSON procesado desde Claude -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 12px;background:var(--teal-light);border:1px solid var(--teal);border-radius:var(--radius)">
+      <span style="font-size:12px;color:var(--teal)">🤖 ¿Factura procesada con Claude? Importa el JSON directamente:</span>
+      <label class="btn btn-xs btn-teal" style="cursor:pointer">
+        📥 Importar JSON
+        <input type="file" accept=".json" style="display:none" onchange="importarFacturasJSON(this)">
+      </label>
+    </div>
 
     <!-- ESTADO PROCESAMIENTO -->
     <div id="compra-pdf-status" style="display:none;padding:12px 14px;border-radius:var(--radius);margin-bottom:12px;font-size:13px"></div>
@@ -9309,6 +9317,44 @@ function recalcPreciosFactura(){
     const el=$(`pdf-pv-${i}`);
     if(el)el.value=Math.round((it.precioUnitario||0)*factor);
   });
+}
+
+function importarFacturasJSON(input){
+  const file=input.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(data.tipo!=='importacion_facturas'){toast('Archivo no válido','err');return;}
+      let nuevos=0,actualizados=0;
+      // Add proveedor if not exists
+      if(data.proveedor){
+        const existe=DB.proveedores.find(p=>p.rut===data.proveedor.rut||p.nombre===data.proveedor.nombre);
+        if(!existe)DB.proveedores.push(data.proveedor);
+      }
+      // Process inventario
+      (data.inventario||[]).forEach(item=>{
+        const existe=DB.inventario.find(p=>p.codigo===item.codigo&&item.codigo);
+        if(existe){
+          existe.stock=(existe.stock||0)+item.stock;
+          existe.costo=item.costo;
+          if(item.precio>0&&!existe.precio)existe.precio=item.precio;
+          actualizados++;
+        } else {
+          DB.inventario.push(item);
+          nuevos++;
+        }
+      });
+      // Add compras
+      (data.compras||[]).forEach(c=>{
+        if(!DB.compras.find(x=>x.folio===c.folio))DB.compras.unshift(c);
+      });
+      save();llenarSelectsCat();renderInventario();
+      toast(`✅ ${nuevos} productos nuevos · ${actualizados} actualizados`);
+    }catch(err){toast('Error leyendo JSON: '+err.message,'err');}
+    input.value='';
+  };
+  r.readAsText(file);
 }
 
 function cancelarImportacionFactura(){
