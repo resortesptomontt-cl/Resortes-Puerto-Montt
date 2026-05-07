@@ -2482,7 +2482,9 @@ function load(){
     });
   }catch(e){}
 }
+let _lastSaveTime=0;
 function save(){
+  _lastSaveTime=Date.now();
   // always persist locally as fallback
   Object.keys(DB).forEach(k=>{
     try{localStorage.setItem('ts3_'+k,JSON.stringify(DB[k]));}catch(e){}
@@ -9451,16 +9453,33 @@ async function fbInit(){
     // Real-time listener
     docRef.onSnapshot(snap=>{
       if(!snap.exists)return;
+
+      // Ignore snapshots for 10 seconds after any local save
+      const msSinceSave=Date.now()-_lastSaveTime;
+      if(msSinceSave<10000){
+        setSyncUI('online');
+        return;
+      }
+
       const data=snap.data();
-      const sig=JSON.stringify(Object.keys(DB).map(k=>data[k]?.length??0));
-      const cur=JSON.stringify(Object.keys(DB).map(k=>DB[k]?.length??0));
-      if(sig!==cur){
-        // Check if user is actively using a form — don't interrupt
+
+      // Compare total record counts across all collections
+      const sigRemote=Object.keys(DB).map(k=>Array.isArray(data[k])?data[k].length:0).join(',');
+      const sigLocal=Object.keys(DB).map(k=>Array.isArray(DB[k])?DB[k].length:0).join(',');
+
+      if(sigRemote!==sigLocal){
+        // Only apply if remote has MORE data than local (never less — that would be a rollback)
+        const remoteTotal=sigRemote.split(',').reduce((s,n)=>s+parseInt(n),0);
+        const localTotal=sigLocal.split(',').reduce((s,n)=>s+parseInt(n),0);
+        if(remoteTotal<=localTotal){
+          // Remote has same or fewer records — likely stale, ignore
+          setSyncUI('online');
+          return;
+        }
         const activeModal=document.querySelector('.modal-overlay[style*="flex"]');
         const activeInput=document.activeElement;
         const userTyping=activeInput&&(activeInput.tagName==='INPUT'||activeInput.tagName==='TEXTAREA'||activeInput.tagName==='SELECT');
         if(activeModal||userTyping){
-          // Store pending update and apply when user is done
           window._pendingFBUpdate={data};
           setSyncUI('online');
           return;
