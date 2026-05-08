@@ -3190,8 +3190,13 @@ function renderDashboard(){
   const gasTotal=DB.gastos.reduce((s,g)=>s+g.monto,0);
   const otActivas=DB.ordenes.filter(o=>o.estado!=='Entregado').length;
 
+  // Ventas de hoy
+  const ventasHoy=DB.ventas.filter(v=>(v.fecha||'').slice(0,10)===today());
+  const ingHoy=ventasHoy.reduce((s,v)=>s+v.total,0);
+
   // Stats bar
   $('stats-bar').innerHTML=`
+    ${esMesActual?`<div class="stat" style="border-left:3px solid var(--teal)"><div class="stat-lbl">📅 Ventas hoy</div><div class="stat-val" style="color:var(--teal)">${fmt(ingHoy)}</div><div class="stat-sub">${ventasHoy.length} venta${ventasHoy.length!==1?'s':''} · ${today().split('-').reverse().join('/')}</div></div>`:''}
     <div class="stat"><div class="stat-lbl">Ingresos</div><div class="stat-val">${fmt(ingMes)}</div><div class="stat-sub">${ventasMes.length} venta${ventasMes.length!==1?'s':''}</div></div>
     <div class="stat"><div class="stat-lbl">Gastos</div><div class="stat-val" style="color:var(--red)">${fmt(gasMes)}</div><div class="stat-sub">egresos del mes</div></div>
     <div class="stat"><div class="stat-lbl">Utilidad</div><div class="stat-val" style="color:${utilMes>=0?'var(--green)':'var(--red)'}">${fmt(utilMes)}</div><div class="stat-sub">ingresos − gastos</div></div>
