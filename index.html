@@ -502,6 +502,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
     <div class="nav-group">Operaciones</div>
     <button class="nav-item" title="Cotizaciones" id="nav-cot" onclick="nav('cotizaciones',this)"><span class="ni">📝</span><span>Cotizaciones</span><span class="nav-badge" id="badge-cot" style="display:none">0</span></button>
     <button class="nav-item" title="Órdenes de Trabajo" onclick="nav('ordenes',this)"><span class="ni">🔧</span><span>Órdenes de Trabajo</span></button>
+    <button class="nav-item" title="Pedidos de Fabricación" onclick="nav('pedidos',this)"><span class="ni">🏭</span><span>Pedidos Fabricación</span><span class="nav-badge" id="badge-ped" style="display:none">0</span></button>
     <button class="nav-item" title="Ventas" onclick="nav('ventas',this)"><span class="ni">🧾</span><span>Ventas</span></button>
 
     <div class="nav-group">Informes</div>
@@ -1299,6 +1300,163 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
       </div>
     </div>
     <div id="inf-veh-result"></div>
+  </div>
+</div>
+
+<!-- ══ PEDIDOS DE FABRICACIÓN ══════════════════════════════════════════ -->
+<div id="sec-pedidos" class="section">
+  <div class="card">
+    <div class="card-title"><div class="card-title-left">Nuevo pedido de fabricación</div></div>
+
+    <!-- PASO 1 — CLIENTE -->
+    <div style="border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--radius);margin-bottom:8px;overflow:hidden">
+      <div style="padding:8px 14px;background:var(--surface2);display:flex;align-items:center;gap:8px">
+        <span style="width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">1</span>
+        <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Cliente y fechas</span>
+      </div>
+      <div style="padding:12px 14px">
+        <div class="g4" style="margin-bottom:8px">
+          <div class="field ac-wrap">
+            <label>Cliente <span style="color:var(--text3);font-weight:400;font-size:9px">— busca o ingresa libre</span></label>
+            <input id="ped-cli-txt" placeholder="Nombre del cliente..." autocomplete="off"
+              oninput="acSearchCliPed()" onkeydown="acKeyCliPed(event)" onfocus="acSearchCliPed()" onblur="setTimeout(()=>$('ped-cli-drop').style.display='none',180)">
+            <div id="ped-cli-drop" class="ac-dropdown" style="display:none"></div>
+            <input type="hidden" id="ped-cli-id">
+          </div>
+          <div class="field"><label>Teléfono contacto</label><input id="ped-tel" placeholder="Ej: +56 9 1234 5678"></div>
+          <div class="field"><label>Fecha pedido</label><input id="ped-fecha-in" type="date"></div>
+          <div class="field"><label>Fecha entrega estimada</label><input id="ped-fecha-est" type="date"></div>
+          <div class="field"><label>Estado</label>
+            <select id="ped-estado" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none">
+              <option>Recibido</option>
+              <option>En fabricación</option>
+              <option>Listo para retiro</option>
+              <option>Retirado</option>
+            </select>
+          </div>
+          <div class="field"><label>N° Pedido</label><input id="ped-folio" readonly style="background:var(--surface2);color:var(--text2)"></div>
+        </div>
+        <div id="ped-cli-pill" style="display:none;margin-top:4px"></div>
+      </div>
+    </div>
+
+    <!-- PASO 2 — ESPECIFICACIONES -->
+    <div style="border:1px solid var(--border);border-left:3px solid var(--accent2);border-radius:var(--radius);margin-bottom:8px;overflow:hidden">
+      <div onclick="toggleOTStep('ped-step2','ped-arr2')" style="padding:8px 14px;background:var(--surface2);display:flex;align-items:center;gap:8px;cursor:pointer">
+        <span style="width:20px;height:20px;border-radius:50%;background:var(--accent2);color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">2</span>
+        <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Especificaciones y trabajo</span>
+        <span style="font-size:10px;color:var(--text3);margin-left:4px">mecánico · descripción · materiales</span>
+        <span id="ped-arr2" style="margin-left:auto;color:var(--text3);font-size:16px;transition:transform .2s">▾</span>
+      </div>
+      <div id="ped-step2" style="padding:12px 14px">
+        <div class="field" style="margin-bottom:10px">
+          <label>Mecánico asignado <span style="font-weight:400;font-size:10px;color:var(--text3)">— uno o más</span></label>
+          <div id="ped-mec-pills" onclick="toggleMecPicker('ped')"
+            style="display:flex;gap:5px;flex-wrap:wrap;min-height:36px;padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);cursor:pointer;align-items:center">
+            <span style="font-size:12px;color:var(--text3)">Clic para seleccionar...</span>
+          </div>
+          <div id="ped-mec-picker" style="display:none;position:absolute;z-index:200;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow-md);padding:6px;margin-top:2px;min-width:240px;max-height:220px;overflow-y:auto"></div>
+          <input type="hidden" id="ped-mec-ids">
+        </div>
+        <div class="field" style="margin-bottom:10px">
+          <label>Descripción del pedido / especificaciones técnicas</label>
+          <textarea id="ped-desc" placeholder="Ej: Paquete resorte trasero FORD CARGO, 8 hojas, largo 1.450mm, ancho 70mm, con ojos centrados..." style="min-height:80px"></textarea>
+        </div>
+        <div class="sec-label" style="margin-bottom:6px">Materiales e ítems</div>
+        <div class="g4" style="margin-bottom:10px;align-items:end">
+          <div class="field ac-wrap">
+            <label>Producto / Material <span style="color:var(--text3);font-weight:400;font-size:9px">— busca o ingresa libre</span></label>
+            <input id="ped-prod-txt" placeholder="Ej: Hoja resorte, Abrazadera..." autocomplete="off"
+              oninput="acSearch('ped')" onkeydown="acKey(event,'ped')" onfocus="acSearch('ped')" onblur="setTimeout(()=>acHide('ped'),180)">
+            <div id="ped-ac-drop" class="ac-dropdown" style="display:none"></div>
+            <input type="hidden" id="ped-prod-id">
+          </div>
+          <div class="field"><label>Unidad</label>
+            <select id="ped-prod-uni" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none">
+              <option value="und">Unidad</option><option value="lt">Litro</option><option value="kg">Kg</option>
+              <option value="m">Metro</option><option value="caja">Caja</option><option value="par">Par</option><option value="set">Set</option><option value="hrs">Hora</option>
+            </select>
+          </div>
+          <div class="field"><label>Cantidad</label><input id="ped-qty" type="number" value="1" min="0.01" step="0.01"></div>
+          <div class="field"><label>P. Unit. ($) <small style="color:var(--accent2)">editable</small></label><input id="ped-pu" type="number" placeholder="0"></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+          <button class="btn btn-orange" onclick="addLineaPed()">+ Agregar ítem</button>
+        </div>
+        <div id="ped-lineas-wrap"></div>
+        <div id="ped-totales-wrap" style="margin-top:10px"></div>
+      </div>
+    </div>
+
+    <!-- PASO 3 — CIERRE -->
+    <div style="border:1px solid var(--border);border-left:3px solid var(--green);border-radius:var(--radius);margin-bottom:12px;overflow:hidden">
+      <div onclick="toggleOTStep('ped-step3','ped-arr3')" style="padding:8px 14px;background:var(--surface2);display:flex;align-items:center;gap:8px;cursor:pointer">
+        <span style="width:20px;height:20px;border-radius:50%;background:var(--green);color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">3</span>
+        <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Seña y documento</span>
+        <span style="font-size:10px;color:var(--text3);margin-left:4px">anticipo · descuento · factura</span>
+        <span id="ped-arr3" style="margin-left:auto;color:var(--text3);font-size:16px;transition:transform .2s">▾</span>
+      </div>
+      <div id="ped-step3" style="display:none;padding:12px 14px">
+        <div class="g3" style="margin-bottom:10px">
+          <div class="field">
+            <label>Seña / anticipo recibido ($)</label>
+            <input id="ped-sena" type="number" placeholder="0" min="0"
+              style="font-family:'JetBrains Mono',monospace">
+          </div>
+          <div class="field">
+            <label>Forma de pago</label>
+            <select id="ped-fpago" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none">
+              <option>Contado</option><option>Transferencia</option><option>Cheque</option><option>Crédito</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Descuento ($)</label>
+            <input id="ped-descuento" type="number" placeholder="0" min="0" oninput="recalcTotalesPed()">
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:10px"><label>Observaciones / notas adicionales</label>
+          <textarea id="ped-obs" placeholder="Indicaciones especiales, material del cliente, etc..."></textarea>
+        </div>
+        <!-- Documento tributario -->
+        <div style="background:var(--surface2);border-radius:var(--radius);padding:10px 14px;border:1px solid var(--border)">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:8px">🧾 Documento tributario</div>
+          <div class="g3">
+            <div class="field"><label>Tipo</label>
+              <select id="ped-doc-tipo" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none">
+                <option value="Sin Boleta/Factura">Sin Boleta / Factura</option>
+                <option value="Boleta electrónica">Boleta electrónica</option>
+                <option value="Factura electrónica">Factura electrónica</option>
+              </select>
+            </div>
+            <div class="field"><label>N° folio</label><input id="ped-doc-folio" placeholder="Ej: 000123"></div>
+            <div class="field"><label>Fecha emisión</label><input id="ped-doc-fecha" type="date"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="guardarPedido()">✓ Guardar pedido</button>
+      <button class="btn" onclick="limpiarPed()">↺ Limpiar</button>
+    </div>
+  </div>
+
+  <!-- LISTA -->
+  <div class="card">
+    <div class="card-title">
+      <div class="card-title-left">Pedidos de fabricación</div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button class="btn btn-xs" id="ped-ver-todas-btn" onclick="togglePedVerTodas()">Ver todos</button>
+      </div>
+    </div>
+    <div class="sbar" style="margin-bottom:8px">
+      <input id="s-ped" placeholder="Buscar N° pedido, cliente..." oninput="renderPedidos()">
+      <select id="s-ped-est" onchange="renderPedidos()" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:'Inter',sans-serif;background:var(--surface);color:var(--text);outline:none">
+        <option value="">Todos los estados</option>
+        <option>Recibido</option><option>En fabricación</option><option>Listo para retiro</option><option>Retirado</option>
+      </select>
+    </div>
+    <div id="lista-pedidos"></div>
   </div>
 </div>
 
@@ -2619,7 +2777,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
 // STATE
 // ══════════════════════════════════════════════════
 const CATS_DEFAULT=['Lubricantes','Filtros','Frenos','Suspensión','Electricidad','Neumáticos','Mano de obra','Refrigeración','Transmisión','Otros'];
-let DB={clientes:[],vehiculos:[],inventario:[],mecanicos:[],cotizaciones:[],ordenes:[],ventas:[],gastos:[],categorias:[],creditos:[],anticipos:[],notas:[],recordatorios:[],reservas:[],creditosMec:[],vacaciones:[],proveedores:[],compras:[],comisionesAjustadas:{},liquidaciones:[]};
+let DB={clientes:[],vehiculos:[],inventario:[],mecanicos:[],cotizaciones:[],ordenes:[],ventas:[],gastos:[],categorias:[],creditos:[],anticipos:[],notas:[],recordatorios:[],reservas:[],creditosMec:[],vacaciones:[],proveedores:[],compras:[],pedidos:[],comisionesAjustadas:{},liquidaciones:[]};
 let lines={cot:[],ot:[],v:[]};
 let excPend=[],excCols={};
 
@@ -2749,6 +2907,7 @@ const navTitles={
   mecanicos:['Mecánicos','Equipo de trabajo'],
   cotizaciones:['Cotizaciones','Presupuestos y propuestas'],
   ordenes:['Órdenes de Trabajo','Gestión de servicios en curso'],
+  pedidos:['Pedidos de Fabricación','Fabricación de paquetes y hojas a pedido'],
   ventas:['Ventas','Historial de órdenes facturadas'],
   informes:['Informes — Trazabilidad','Historial completo por cliente y vehículo'],
   anticipos:['Anticipos / Préstamos / Descuentos','Gestión de haberes y descuentos de trabajadores'],
@@ -2781,6 +2940,15 @@ function nav(id,btn){
     cotizaciones:()=>{poblarSelsCot();renderCots();},
     ordenes:()=>{poblarSelsOT();renderOTs();},
     ventas:()=>{poblarSelsV();setToday('v-fecha');setVFolio();renderVentas();},
+    pedidos:()=>{
+      if(!DB.pedidos)DB.pedidos=[];
+      setToday('ped-fecha-in');
+      const nums=(DB.pedidos||[]).map(p=>parseInt((p.folio||'').replace('PF-',''))||0);
+      if($('ped-folio'))$('ped-folio').value='PF-'+String((nums.length?Math.max(...nums):0)+1).padStart(4,'0');
+      if(!lines.ped)lines.ped=[];
+      renderLineas('ped');
+      renderPedidos();
+    },
     informes:()=>{renderInformeVentas();if($('inf-m-mes'))$('inf-m-mes').value=meses[new Date().getMonth()];},
     anticipos:()=>{
       if(!DB.creditosMec)DB.creditosMec=[];
@@ -2829,6 +2997,10 @@ function updateBadges(){
   const bcr=$('badge-cred');
   if(credPend>0){bcr.style.display='inline';bcr.textContent=credVenc>0?credVenc:credPend;bcr.style.background=credVenc>0?'var(--red)':'var(--accent2)';}
   else bcr.style.display='none';
+  // Pedidos activos
+  const pedActivos=(DB.pedidos||[]).filter(p=>p.estado!=='Retirado').length;
+  const bped=$('badge-ped');
+  if(bped){if(pedActivos>0){bped.style.display='inline';bped.textContent=pedActivos;}else bped.style.display='none';}
 }
 
 // ══════════════════════════════════════════════════
@@ -2999,23 +3171,42 @@ function autoP(ctx){
 let _acIdx=-1;
 
 function acSearch(ctx){
-  // Only OT uses autocomplete for now
+  // Pedidos has its own search
+  if(ctx==='ped'){
+    const q=($('ped-prod-txt')?.value||'').trim().toLowerCase();
+    const drop=$('ped-ac-drop');if(!drop)return;
+    if(!q){drop.style.display='none';return;}
+    const hits=DB.inventario.filter(p=>p.nombre.toLowerCase().includes(q)||(p.codigo||'').toLowerCase().includes(q)).slice(0,8);
+    let html=hits.map(p=>{
+      const stockInfo=p.categoria==='Mano de obra'?'servicio':`stock: ${p.stock} ${p.unidad}`;
+      return`<div class="ac-item" onmousedown="selProdPed('${p.id}','${p.nombre.replace(/'/g,"\\'")}','${p.precio||0}','${p.unidad||'und'}')">
+        <div><span class="ac-item-name">${p.nombre}</span>${p.codigo?`<span style="font-size:10px;color:var(--text3);margin-left:6px">${p.codigo}</span>`:''}</div>
+        <div class="ac-item-meta"><div>${fmt(p.precio)}</div><span class="ac-badge-inv">${stockInfo}</span></div>
+      </div>`;
+    }).join('');
+    const exactMatch=DB.inventario.find(p=>p.nombre.toLowerCase()===q);
+    if(!exactMatch){
+      const display=($('ped-prod-txt')?.value||'').trim();
+      html+=`<div class="ac-item ac-item-new" onmousedown="selProdPedLibre()">
+        <div><span class="ac-item-name" style="color:var(--accent2)">➕ Agregar "${display}" como ítem libre</span></div>
+        <div><span class="ac-badge-new">sin inventario</span></div>
+      </div>`;
+    }
+    if(!html){drop.style.display='none';return;}
+    drop.innerHTML=html;drop.style.display='block';
+    return;
+  }
+
+  // OT (default)
   const q=($('ot-prod-txt')?.value||'').trim().toLowerCase();
   const drop=$('ot-ac-drop');
   if(!drop)return;
-  // Clear selected product id if user is typing something new
   $('ot-prod-id').value='';
-
   if(!q){drop.style.display='none';return;}
-
-  // Filter inventory
   const matches=DB.inventario.filter(p=>
     p.nombre.toLowerCase().includes(q)||(p.codigo||'').toLowerCase().includes(q)
   ).slice(0,8);
-
   let html='';
-
-  // Inventory matches
   matches.forEach(p=>{
     const stockInfo=p.categoria==='Mano de obra'?'servicio':`stock: ${p.stock} ${p.unidad}`;
     html+=`<div class="ac-item" onmousedown="acSelect('${p.id.replace(/'/g,"\\'")}','ot')" data-id="${p.id}">
@@ -3030,8 +3221,6 @@ function acSearch(ctx){
       </div>
     </div>`;
   });
-
-  // "Add free" option — always show at bottom if text doesn't exactly match
   const exactMatch=DB.inventario.find(p=>p.nombre.toLowerCase()===q);
   if(!exactMatch){
     const display=$('ot-prod-txt').value.trim();
@@ -3040,7 +3229,6 @@ function acSearch(ctx){
       <div><span class="ac-badge-new">sin inventario</span></div>
     </div>`;
   }
-
   if(!html){drop.style.display='none';return;}
   drop.innerHTML=html;
   drop.style.display='block';
@@ -3066,12 +3254,27 @@ function acSelectLibre(ctx){
 }
 
 function acHide(ctx){
-  const drop=$('ot-ac-drop');
+  const drop=$(ctx==='ped'?'ped-ac-drop':'ot-ac-drop');
   if(drop)drop.style.display='none';
   _acIdx=-1;
 }
 
 function acKey(e,ctx){
+  if(e.key==='Escape'){acHide(ctx);return;}
+  // Arrow navigation only for OT for now
+}
+
+function selProdPedLibre(){
+  if($('ped-prod-id'))$('ped-prod-id').value='';
+  if($('ped-ac-drop'))$('ped-ac-drop').style.display='none';
+  if($('ped-pu'))$('ped-pu').focus();
+}
+
+function acKey(e,ctx){
+  // Handle escape for all contexts
+  if(e.key==='Escape'){acHide(ctx);return;}
+  // Arrow navigation only for OT
+  if(ctx!=='ot')return;
   const drop=$('ot-ac-drop');
   if(!drop||drop.style.display==='none')return;
   const items=drop.querySelectorAll('.ac-item');
@@ -5199,6 +5402,312 @@ function limpiarV(){
 // INFORMES — historial clientes y vehículos
 // ══════════════════════════════════════════════════
 // ── Informes: Ventas por período ──────────────────
+// ══════════════════════════════════════════════════
+// PEDIDOS DE FABRICACIÓN
+// ══════════════════════════════════════════════════
+let _pedVerTodas=false;
+
+function setPedFolio(){
+  if(!DB.pedidos)DB.pedidos=[];
+  const nums=DB.pedidos.map(p=>parseInt((p.folio||'').replace('PF-',''))||0);
+  if($('ped-folio'))$('ped-folio').value='PF-'+String((nums.length?Math.max(...nums):0)+1).padStart(4,'0');
+}
+
+function togglePedVerTodas(){
+  _pedVerTodas=!_pedVerTodas;
+  if($('ped-ver-todas-btn'))$('ped-ver-todas-btn').textContent=_pedVerTodas?'Solo activos':'Ver todos';
+  renderPedidos();
+}
+
+function acSearchCliPed(){
+  const q=($('ped-cli-txt')?.value||'').trim().toLowerCase();
+  const raw=($('ped-cli-txt')?.value||'').trim();
+  const drop=$('ped-cli-drop');if(!drop)return;
+  if(!q){drop.style.display='none';return;}
+  const hits=DB.clientes.filter(c=>c.nombre.toLowerCase().includes(q)||(c.rut||'').includes(q)).slice(0,6);
+  let html=hits.map(c=>`<div class="ac-item" onmousedown="selCliPed('${c.id}','${c.nombre.replace(/'/g,"\\'")}','${c.tel||''}')">${c.nombre}${c.rut?' · '+c.rut:''}</div>`).join('');
+  html+=`<div class="ac-item" onmousedown="crearClienteRapidoPed('${raw.replace(/'/g,"\\'")}')" style="color:var(--accent);font-weight:600">
+    ✚ Crear cliente: <em>${raw}</em>
+    <span style="float:right;font-size:10px;color:var(--text3);font-weight:400">registro rápido + vehículo</span>
+  </div>`;
+  html+=`<div class="ac-item" onmousedown="continuarSinRegistrarPed('${raw.replace(/'/g,"\\'")}')" style="color:var(--accent2);font-weight:600">
+    ⚡ Continuar sin registrar
+    <span style="float:right;font-size:10px;color:var(--text3);font-weight:400">cliente libre</span>
+  </div>`;
+  drop.innerHTML=html;
+  drop.style.display='block';
+}
+
+function crearClienteRapidoPed(nom){
+  if($('ped-cli-drop'))$('ped-cli-drop').style.display='none';
+  // Open the quick-create client modal if exists, pre-filled with name
+  if(typeof abrirModalNuevoCli==='function'){
+    abrirModalNuevoCli(nom,id=>{
+      const c=DB.clientes.find(x=>x.id===id);
+      if(c)selCliPed(c.id,c.nombre,c.tel||'');
+    });
+  } else {
+    // fallback: navigate to clientes
+    nav('clientes',null);
+    toast('Registra el cliente y vuelve al pedido','info');
+  }
+}
+
+function continuarSinRegistrarPed(nom){
+  if($('ped-cli-txt'))$('ped-cli-txt').value=nom;
+  if($('ped-cli-id'))$('ped-cli-id').value='';
+  if($('ped-cli-drop'))$('ped-cli-drop').style.display='none';
+}
+function acKeyCliPed(e){if(e.key==='Escape'&&$('ped-cli-drop'))$('ped-cli-drop').style.display='none';}
+function selCliPed(id,nom,tel){
+  if($('ped-cli-txt'))$('ped-cli-txt').value=nom;
+  if($('ped-cli-id'))$('ped-cli-id').value=id;
+  if($('ped-tel')&&tel&&!$('ped-tel').value)$('ped-tel').value=tel;
+  if($('ped-cli-drop'))$('ped-cli-drop').style.display='none';
+  const c=DB.clientes.find(x=>x.id===id);
+  const pill=$('ped-cli-pill');
+  if(pill&&c){pill.style.display='block';pill.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface2);border-radius:var(--radius);font-size:12px"><span>👤 <strong>${c.nombre}</strong>${c.rut?' · '+c.rut:''}</span><button onclick="desasignarCliPed()" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:13px">✕</button></div>`;}
+}
+function desasignarCliPed(){
+  if($('ped-cli-txt'))$('ped-cli-txt').value='';
+  if($('ped-cli-id'))$('ped-cli-id').value='';
+  if($('ped-tel'))$('ped-tel').value='';
+  const pill=$('ped-cli-pill');if(pill)pill.style.display='none';
+}
+function selProdPed(id,nom,pu,uni){
+  if($('ped-prod-txt'))$('ped-prod-txt').value=nom;
+  if($('ped-prod-id'))$('ped-prod-id').value=id;
+  if($('ped-pu'))$('ped-pu').value=pu;
+  if($('ped-prod-uni'))$('ped-prod-uni').value=uni;
+  if($('ped-ac-drop'))$('ped-ac-drop').style.display='none';
+}
+function selProdPedLibre(){
+  if($('ped-prod-id'))$('ped-prod-id').value='';
+  if($('ped-ac-drop'))$('ped-ac-drop').style.display='none';
+  if($('ped-pu'))$('ped-pu').focus();
+}
+
+function addLineaPed(){
+  const nom=($('ped-prod-txt')?.value||'').trim();
+  if(!nom){toast('Ingresa un producto o servicio','err');return;}
+  const qty=parseFloat($('ped-qty')?.value)||1;
+  const pu=parseFloat($('ped-pu')?.value)||0;
+  const uni=$('ped-prod-uni')?.value||'und';
+  const pid=$('ped-prod-id')?.value||null;
+  const sub=Math.round(qty*pu);
+  if(!lines.ped)lines.ped=[];
+  lines.ped.push({nombre:nom,qty,pu,unidad:uni,sub,dto:0,iva:false,pid,libre:!pid});
+  renderLineas('ped');
+  if($('ped-prod-txt'))$('ped-prod-txt').value='';
+  if($('ped-prod-id'))$('ped-prod-id').value='';
+  if($('ped-pu'))$('ped-pu').value='';
+  if($('ped-qty'))$('ped-qty').value=1;
+}
+
+function recalcTotalesPed(){
+  if(!lines.ped)return 0;
+  const subtotal=lines.ped.reduce((s,l)=>s+(l.sub||0),0);
+  const desc=parseFloat($('ped-descuento')?.value)||0;
+  return Math.max(0,subtotal-desc);
+}
+
+function guardarPedido(){
+  if(!DB.pedidos)DB.pedidos=[];
+  const cliNom=($('ped-cli-txt')?.value||'').trim();
+  if(!cliNom){toast('Ingresa el nombre del cliente','err');return;}
+  if(!(lines.ped&&lines.ped.length)){toast('Agrega al menos un ítem','err');return;}
+  const cid=$('ped-cli-id')?.value||null;
+  const c=cid?DB.clientes.find(x=>x.id===cid):null;
+  const subtotal=(lines.ped||[]).reduce((s,l)=>s+(l.sub||0),0);
+  const descuento=parseFloat($('ped-descuento')?.value)||0;
+  const total=Math.max(0,subtotal-descuento);
+  const sena=parseFloat($('ped-sena')?.value)||0;
+  const nums=DB.pedidos.map(p=>parseInt((p.folio||'').replace('PF-',''))||0);
+  const folio=$('ped-folio')?.value||'PF-'+String((nums.length?Math.max(...nums):0)+1).padStart(4,'0');
+  const mecs=getMecsFromPicker('ped');
+  DB.pedidos.unshift({
+    folio,fechaIn:$('ped-fecha-in')?.value||today(),fechaEst:$('ped-fecha-est')?.value||'',
+    clienteId:c?.id||null,clienteNombre:c?c.nombre:cliNom,
+    clienteRut:c?.rut||'',tel:$('ped-tel')?.value||c?.tel||'',
+    mecanicos:mecs.map(m=>({id:m.id,nombre:m.nombre})),
+    desc:$('ped-desc')?.value.trim()||'',
+    items:[...(lines.ped||[])],descuento,total,sena,
+    saldoPendiente:Math.max(0,total-sena),
+    fpago:$('ped-fpago')?.value||'Contado',
+    obs:$('ped-obs')?.value.trim()||'',
+    docTipo:$('ped-doc-tipo')?.value||'Sin Boleta/Factura',
+    docFolio:$('ped-doc-folio')?.value.trim()||'',
+    docFecha:$('ped-doc-fecha')?.value||'',
+    estado:$('ped-estado')?.value||'Recibido',
+    creado:new Date().toISOString()
+  });
+  save();limpiarPed();renderPedidos();updateBadges();
+  toast(`Pedido ${folio} guardado — ${fmt(total)}${sena>0?' · Seña: '+fmt(sena):''}`)
+}
+
+function limpiarPed(){
+  lines.ped=[];
+  ['ped-cli-txt','ped-tel','ped-fecha-in','ped-fecha-est','ped-desc',
+   'ped-obs','ped-sena','ped-descuento','ped-doc-folio','ped-doc-fecha',
+   'ped-prod-txt','ped-pu'].forEach(id=>{if($(id))$(id).value='';});
+  if($('ped-cli-id'))$('ped-cli-id').value='';
+  if($('ped-qty'))$('ped-qty').value=1;
+  if($('ped-estado'))$('ped-estado').value='Recibido';
+  if($('ped-fpago'))$('ped-fpago').value='Contado';
+  if($('ped-doc-tipo'))$('ped-doc-tipo').value='Sin Boleta/Factura';
+  const pill=$('ped-cli-pill');if(pill)pill.style.display='none';
+  if(_mecSel['ped'])_mecSel['ped']=new Set();
+  renderMecPills('ped');
+  renderLineas('ped');
+  setToday('ped-fecha-in');
+  setPedFolio();
+}
+
+function actualizarEstadoPed(folio,estado){
+  const p=(DB.pedidos||[]).find(x=>x.folio===folio);if(!p)return;
+  p.estado=estado;save();renderPedidos();updateBadges();
+  toast(`Pedido ${folio} → ${estado}`);
+}
+
+function eliminarPedido(folio){
+  const p=(DB.pedidos||[]).find(x=>x.folio===folio);if(!p)return;
+  if(!confirm(`⚠️ ¿Eliminar pedido ${folio}?\n\nCliente: ${p.clienteNombre}\nTotal: $${p.total.toLocaleString('es-CL')}\n\nEsta acción no se puede deshacer.`))return;
+  DB.pedidos=DB.pedidos.filter(x=>x.folio!==folio);
+  save();renderPedidos();updateBadges();toast(`Pedido ${folio} eliminado`);
+}
+
+function renderPedidos(){
+  if(!DB.pedidos)DB.pedidos=[];
+  const q=($('s-ped')?.value||'').toLowerCase();
+  const est=$('s-ped-est')?.value||'';
+  const hoy=today();
+  let lista=[...DB.pedidos];
+  if(!_pedVerTodas)lista=lista.filter(p=>p.estado!=='Retirado'||(DB.pedidos.filter(x=>x.estado!=='Retirado').length===0&&lista.length<=5));
+  if(q)lista=lista.filter(p=>p.folio.toLowerCase().includes(q)||p.clienteNombre.toLowerCase().includes(q)||(p.desc||'').toLowerCase().includes(q));
+  if(est)lista=lista.filter(p=>p.estado===est);
+  const activas=lista.filter(p=>p.estado!=='Retirado');
+  const retirados=lista.filter(p=>p.estado==='Retirado');
+  const el=$('lista-pedidos');if(!el)return;
+  if(!lista.length){el.innerHTML='<div class="empty"><div class="empty-icon">🏭</div>No hay pedidos registrados</div>';return;}
+  const borderPed=s=>s==='Retirado'?'var(--green)':s==='Listo para retiro'?'var(--teal)':s==='En fabricación'?'var(--accent)':'var(--border2)';
+  const statusPed=s=>s==='Retirado'?'s-entregado':s==='Listo para retiro'?'s-listo':s==='En fabricación'?'s-proceso':'s-pendiente';
+  function renderRow(p){
+    const venc=p.fechaEst&&p.fechaEst<hoy&&p.estado!=='Listo para retiro'&&p.estado!=='Retirado';
+    const retirado=p.estado==='Retirado';
+    const mecNoms=(p.mecanicos&&p.mecanicos.length)?p.mecanicos.map(m=>m.nombre).join(', '):'';
+    return`<div class="exp-row" style="border-left:3px solid ${venc?'var(--red)':borderPed(p.estado)};${retirado?'opacity:.75':''}">
+      <div class="exp-hdr" onclick="toggle('ped-${p.folio}')">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span class="folio-tag" style="background:var(--surface2);color:var(--text2)">${p.folio}</span>
+          <span style="font-weight:${retirado?500:700}">${p.clienteNombre}</span>
+          ${p.tel?`<span style="font-size:11px;color:var(--text3)">${p.tel}</span>`:''}
+          <span class="status ${venc?'s-vencido':statusPed(p.estado)}">${venc?'Vencido':p.estado}</span>
+          ${mecNoms?`<span style="font-size:10px;color:var(--text2);padding:2px 7px;background:var(--surface2);border-radius:10px">👷 ${mecNoms}</span>`:''}
+          ${p.sena>0?`<span style="font-size:10px;font-weight:600;color:var(--green);background:var(--green-light);padding:2px 7px;border-radius:10px">💵 Seña ${fmt(p.sena)}</span>`:''}
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-weight:700;font-size:15px;font-family:'JetBrains Mono',monospace">${fmt(p.total)}</div>
+          <div style="font-size:10px;color:var(--text2)">${p.fechaIn||''} ${p.fechaEst?'→ '+p.fechaEst:''}</div>
+        </div>
+      </div>
+      <div class="exp-body" id="ped-${p.folio}">
+        ${p.desc?`<div style="background:var(--surface2);border-radius:var(--radius);padding:8px 12px;margin-bottom:10px;font-size:12px">📋 <strong>Especificaciones:</strong> ${p.desc}</div>`:''}
+        ${p.items&&p.items.length?`<div class="tw" style="margin-bottom:10px"><table>
+          <thead><tr><th>Ítem</th><th>Cant.</th><th>P.Unit.</th><th class="tr">Subtotal</th></tr></thead>
+          <tbody>${p.items.map(it=>`<tr>
+            <td style="font-weight:500">${it.nombre}</td>
+            <td>${it.qty} ${it.unidad||'und'}</td>
+            <td style="font-family:'JetBrains Mono',monospace">${fmt(it.pu||0)}</td>
+            <td class="tr" style="font-family:'JetBrains Mono',monospace;font-weight:600">${fmt(it.sub||0)}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>`:''}
+        ${p.descuento>0?`<div style="display:flex;justify-content:flex-end;gap:16px;font-size:12px;margin-bottom:6px"><span style="color:var(--amber)">Descuento: -${fmt(p.descuento)}</span><span style="font-weight:700">Total: ${fmt(p.total)}</span></div>`:''}
+        ${p.sena>0?`<div style="display:flex;gap:12px;font-size:12px;margin-bottom:8px;padding:6px 10px;background:var(--green-light);border-radius:var(--radius)">
+          <span>💵 Seña recibida: <strong>${fmt(p.sena)}</strong></span>
+          <span>Saldo pendiente: <strong style="color:var(--red)">${fmt(Math.max(0,p.total-p.sena))}</strong></span>
+        </div>`:''}
+        ${p.obs?`<div style="font-size:12px;color:var(--text2);margin-bottom:8px">📝 ${p.obs}</div>`:''}
+        ${p.docTipo&&p.docTipo!=='Sin Boleta/Factura'?`<div style="background:var(--teal-light);border:1px solid var(--teal);border-radius:var(--radius);padding:6px 12px;font-size:12px;margin-bottom:8px">🧾 <strong>${p.docTipo}</strong>${p.docFolio?' · N°'+p.docFolio:''}</div>`:''}
+        <div class="row-acts" style="justify-content:flex-end">
+          <button class="btn btn-xs" onclick="event.stopPropagation();imprimirPedido('${p.folio}')">🖨 PDF</button>
+          ${p.tel?`<button class="btn btn-xs btn-green" onclick="event.stopPropagation();waPed('${p.folio}')">💬 WhatsApp</button>`:''}
+          <select style="padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:11px;font-family:'Inter',sans-serif;background:var(--surface);color:var(--text)" onchange="actualizarEstadoPed('${p.folio}',this.value)">
+            ${['Recibido','En fabricación','Listo para retiro','Retirado'].map(s=>`<option ${p.estado===s?'selected':''}>${s}</option>`).join('')}
+          </select>
+          <button class="btn btn-xs btn-red" onclick="event.stopPropagation();eliminarPedido('${p.folio}')">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  }
+  let html='';
+  if(activas.length){
+    html+=`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);padding:6px 2px;margin-bottom:4px">🏭 Activos (${activas.length})</div>`;
+    html+=activas.map(renderRow).join('');
+  }
+  if(retirados.length){
+    html+=`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);padding:8px 2px 4px;margin-top:${activas.length?8:0}px;${activas.length?'border-top:1px solid var(--border)':''}">✅ Retirados (${retirados.length})</div>`;
+    html+=retirados.map(renderRow).join('');
+  }
+  el.innerHTML=html;
+}
+
+function waPed(folio){
+  const p=(DB.pedidos||[]).find(x=>x.folio===folio);if(!p)return;
+  const tel=(p.tel||'').replace(/\D/g,'');
+  const msg=encodeURIComponent(`Hola ${p.clienteNombre}, le informamos que su pedido ${p.folio} está ${p.estado.toLowerCase()}.\n\nTotal: ${fmt(p.total)}${p.sena>0?'\nSaldo pendiente: '+fmt(Math.max(0,p.total-p.sena)):''}\n\n${CFG.nombre||'Resortes Puerto Montt'}`);
+  window.open(`https://wa.me/${tel.startsWith('56')?tel:'56'+tel}?text=${msg}`,'_blank');
+}
+
+function imprimirPedido(folio){
+  const p=(DB.pedidos||[]).find(x=>x.folio===folio);if(!p)return;
+  const fmtF=d=>{if(!d)return'';const[y,m,dd]=d.split('-');return`${dd}/${m}/${y}`;};
+  const html=docCSS()+`<div class="doc">
+    ${hdrHtml()}
+    <div class="doc-folio">
+      <div class="tipo">Pedido de Fabricación</div>
+      <div class="num">${p.folio}</div>
+      <div class="meta">Fecha: ${fmtF(p.fechaIn)}</div>
+      <div class="meta">Entrega estimada: ${fmtF(p.fechaEst)||'—'}</div>
+      <div style="margin-top:6px"><span class="badge-est">${p.estado}</span></div>
+    </div></div>
+    <div class="info-grid">
+      <div>
+        <div class="sec-hdr">Cliente</div>
+        <div class="info-row"><span class="info-lbl">Nombre:</span><span class="info-val">${p.clienteNombre}</span></div>
+        ${p.clienteRut?`<div class="info-row"><span class="info-lbl">RUT:</span><span class="info-val">${p.clienteRut}</span></div>`:''}
+        ${p.tel?`<div class="info-row"><span class="info-lbl">Teléfono:</span><span class="info-val">${p.tel}</span></div>`:''}
+      </div>
+      <div>
+        <div class="sec-hdr">Asignado a</div>
+        <div class="info-row"><span class="info-val">${p.mecanicos?.map(m=>m.nombre).join(', ')||'—'}</span></div>
+        <div class="info-row"><span class="info-lbl">Forma pago:</span><span class="info-val">${p.fpago||'Contado'}</span></div>
+      </div>
+    </div>
+    ${p.desc?`<div class="obs-box"><strong>Especificaciones:</strong> ${p.desc}</div>`:''}
+    <div class="sec-hdr">Materiales e ítems</div>
+    <table><thead><tr><th>#</th><th>Descripción</th><th>Cant.</th><th>Unidad</th><th class="tr">P.Unit.</th><th class="tr">Subtotal</th></tr></thead>
+    <tbody>${(p.items||[]).map((it,i)=>`<tr>
+      <td style="color:#aaa">${i+1}</td><td style="font-weight:500">${it.nombre}</td>
+      <td>${it.qty}</td><td>${it.unidad||'und'}</td>
+      <td class="tr" style="font-family:monospace">${fmt(it.pu||0)}</td>
+      <td class="tr" style="font-family:monospace;font-weight:600">${fmt(it.sub||0)}</td>
+    </tr>`).join('')}</tbody></table>
+    ${p.descuento>0?`<div style="display:flex;justify-content:flex-end;gap:12px;margin-top:6px;font-size:11px;color:#666"><span>Descuento: -${fmt(p.descuento)}</span></div>`:''}
+    <div class="total-box"><div><div class="lbl">Total pedido</div></div><div class="amt">${fmt(p.total)}</div></div>
+    ${p.sena>0?`<div style="display:flex;justify-content:flex-end;gap:20px;margin-top:8px;font-size:12px">
+      <span>Seña recibida: <strong style="color:green">${fmt(p.sena)}</strong></span>
+      <span>Saldo a pagar: <strong style="color:red">${fmt(Math.max(0,p.total-p.sena))}</strong></span>
+    </div>`:''}
+    ${p.obs?`<div class="obs-box"><strong>Observaciones:</strong> ${p.obs}</div>`:''}
+    <div class="firma-grid"><div class="firma-line">Firma del cliente</div><div class="firma-line">Firma / sello taller</div></div>
+    ${CFG.notaLegal?`<div class="footer">${CFG.notaLegal}</div>`:''}
+    <div class="footer">Documento generado el ${today()} — ${CFG.nombre||'Taller Mecánico'}</div>
+  </div>`;
+  abrirPrint(`Pedido ${folio}`,html);
+}
+
+// ══════════════════════════════════════════════════
+
 function renderInformeVentas(){
   const periodo=$('inf-v-periodo')?.value||'mes';
   const customWrap=$('inf-v-custom');
