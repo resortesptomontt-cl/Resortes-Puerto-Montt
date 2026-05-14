@@ -1308,6 +1308,97 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
 </div>
 
 <!-- ══ PEDIDOS DE FABRICACIÓN ══════════════════════════════════════════ -->
+
+<!-- Modal editar pedido -->
+<div id="modal-edit-ped" class="modal-overlay" style="display:none" onclick="if(event.target===this)cerrarEditPed()">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-hdr">
+      <h3>✏️ Editar pedido — <span id="edit-ped-folio-lbl"></span></h3>
+      <button class="btn btn-ghost btn-sm" onclick="cerrarEditPed()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="g3" style="margin-bottom:12px">
+        <div class="field" style="grid-column:1/-1">
+          <label>Cliente</label>
+          <input id="edit-ped-cli" placeholder="Nombre del cliente">
+          <input type="hidden" id="edit-ped-cli-id">
+        </div>
+        <div class="field"><label>Teléfono</label><input id="edit-ped-tel" placeholder="+56 9..."></div>
+        <div class="field"><label>Fecha pedido</label><input id="edit-ped-fecha-in" type="date"></div>
+        <div class="field"><label>Fecha entrega est.</label><input id="edit-ped-fecha-est" type="date"></div>
+        <div class="field">
+          <label>Mecánicos</label>
+          <div id="edit-ped-mec-pills" onclick="toggleMecPicker('edit-ped')"
+            style="display:flex;gap:5px;flex-wrap:wrap;min-height:36px;padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);cursor:pointer;align-items:center">
+            <span style="font-size:12px;color:var(--text3)">Clic para seleccionar...</span>
+          </div>
+          <div id="edit-ped-mec-picker" style="display:none;position:absolute;z-index:200;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow-md);padding:6px;margin-top:2px;min-width:240px;max-height:200px;overflow-y:auto"></div>
+          <input type="hidden" id="edit-ped-mec-ids">
+        </div>
+        <div class="field"><label>Estado</label>
+          <select id="edit-ped-estado" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none">
+            <option>Recibido</option><option>En fabricación</option><option>Listo para retiro</option><option>Retirado</option>
+          </select>
+        </div>
+        <div class="field"><label>Forma de pago</label>
+          <select id="edit-ped-fpago" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none">
+            <option>Contado</option><option>Transferencia</option><option>Cheque</option><option>Crédito</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:10px"><label>Especificaciones / descripción</label><textarea id="edit-ped-desc" style="min-height:70px"></textarea></div>
+      <div class="field" style="margin-bottom:12px"><label>Observaciones</label><textarea id="edit-ped-obs" style="min-height:50px"></textarea></div>
+      <hr style="margin-bottom:12px">
+      <div style="font-size:12px;font-weight:600;margin-bottom:8px">Ítems del pedido</div>
+      <div id="edit-ped-items"></div>
+      <hr style="margin:12px 0">
+      <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text2)">Agregar ítem</div>
+      <div class="g4" style="align-items:end;margin-bottom:8px">
+        <div class="field"><label>Descripción</label><input id="edit-ped-prod-txt" placeholder="Material o servicio..."></div>
+        <div class="field"><label>Unidad</label>
+          <select id="edit-ped-uni" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none">
+            <option value="und">Unidad</option><option value="lt">Litro</option><option value="kg">Kg</option>
+            <option value="m">Metro</option><option value="caja">Caja</option><option value="par">Par</option><option value="set">Set</option><option value="hrs">Hora</option>
+          </select>
+        </div>
+        <div class="field"><label>Cantidad</label><input id="edit-ped-qty" type="number" value="1" min="0.01" step="0.01"></div>
+        <div class="field"><label>P. Unit. ($)</label><input id="edit-ped-pu" type="number" placeholder="0"></div>
+      </div>
+      <button class="btn btn-sm btn-orange" onclick="addItemEditPed()">+ Agregar ítem</button>
+      <div style="display:flex;gap:10px;margin-top:10px;padding:8px 12px;background:var(--surface2);border-radius:var(--radius);flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:8px;flex:1">
+          <span style="font-size:12px;color:var(--text2)">🏷️ Descuento ($)</span>
+          <input id="edit-ped-descuento" type="number" min="0" placeholder="0"
+            style="width:110px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--text);outline:none;text-align:right"
+            oninput="renderEditPedItems()">
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex:1">
+          <span style="font-size:12px;color:var(--text2)">💵 Seña recibida ($)</span>
+          <input id="edit-ped-sena" type="number" min="0" placeholder="0"
+            style="width:110px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--text);outline:none;text-align:right">
+        </div>
+      </div>
+      <div id="edit-ped-total-row" style="margin-top:8px;text-align:right;font-size:13px;font-weight:600"></div>
+      <!-- Documento tributario -->
+      <hr style="margin:12px 0">
+      <div class="g3">
+        <div class="field"><label>Tipo documento</label>
+          <select id="edit-ped-doc-tipo" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none">
+            <option value="Sin Boleta/Factura">Sin Boleta / Factura</option>
+            <option value="Boleta electrónica">Boleta electrónica</option>
+            <option value="Factura electrónica">Factura electrónica</option>
+          </select>
+        </div>
+        <div class="field"><label>N° folio</label><input id="edit-ped-doc-folio" placeholder="Ej: 000123"></div>
+        <div class="field"><label>Fecha emisión</label><input id="edit-ped-doc-fecha" type="date"></div>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-primary" onclick="guardarEditPed()">✓ Guardar cambios</button>
+      <button class="btn" onclick="cerrarEditPed()">Cancelar</button>
+    </div>
+  </div>
+</div>
 <div id="sec-pedidos" class="section">
   <div class="card">
     <div class="card-title"><div class="card-title-left">Nuevo pedido de fabricación</div></div>
@@ -5803,6 +5894,7 @@ function renderPedidos(){
         <div class="row-acts" style="justify-content:flex-end">
           <button class="btn btn-xs" onclick="event.stopPropagation();imprimirPedido('${p.folio}')">🖨 PDF</button>
           ${p.tel?`<button class="btn btn-xs btn-green" onclick="event.stopPropagation();waPed('${p.folio}')">💬 WhatsApp</button>`:''}
+          <button class="btn btn-xs" onclick="event.stopPropagation();abrirEditPed('${p.folio}')">✏ Editar</button>
           <select style="padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:11px;font-family:'Inter',sans-serif;background:var(--surface);color:var(--text)" onchange="actualizarEstadoPed('${p.folio}',this.value)">
             ${['Recibido','En fabricación','Listo para retiro','Retirado'].map(s=>`<option ${p.estado===s?'selected':''}>${s}</option>`).join('')}
           </select>
@@ -5847,6 +5939,118 @@ function pedidoAVenta(folio){
   if(chequeWrap)chequeWrap.style.display='none';
   $('modal-fpago-ot').style.display='flex';
   document.body.style.overflow='hidden';
+}
+
+// ── Editar Pedido ──────────────────────────────────
+let _editPedFolio=null;
+
+function abrirEditPed(folio){
+  const p=(DB.pedidos||[]).find(x=>x.folio===folio);if(!p)return;
+  _editPedFolio=folio;
+  if($('edit-ped-folio-lbl'))$('edit-ped-folio-lbl').textContent=folio;
+  if($('edit-ped-cli'))$('edit-ped-cli').value=p.clienteNombre||'';
+  if($('edit-ped-cli-id'))$('edit-ped-cli-id').value=p.clienteId||'';
+  if($('edit-ped-tel'))$('edit-ped-tel').value=p.tel||'';
+  if($('edit-ped-fecha-in'))$('edit-ped-fecha-in').value=p.fechaIn||'';
+  if($('edit-ped-fecha-est'))$('edit-ped-fecha-est').value=p.fechaEst||'';
+  if($('edit-ped-estado'))$('edit-ped-estado').value=p.estado||'Recibido';
+  if($('edit-ped-fpago'))$('edit-ped-fpago').value=p.fpago||'Contado';
+  if($('edit-ped-desc'))$('edit-ped-desc').value=p.desc||'';
+  if($('edit-ped-obs'))$('edit-ped-obs').value=p.obs||'';
+  if($('edit-ped-descuento'))$('edit-ped-descuento').value=p.descuento||0;
+  if($('edit-ped-sena'))$('edit-ped-sena').value=p.sena||0;
+  if($('edit-ped-doc-tipo'))$('edit-ped-doc-tipo').value=p.docTipo||'Sin Boleta/Factura';
+  if($('edit-ped-doc-folio'))$('edit-ped-doc-folio').value=p.docFolio||'';
+  if($('edit-ped-doc-fecha'))$('edit-ped-doc-fecha').value=p.docFecha||'';
+  const mecIds=(p.mecanicos||[]).map(m=>m.id);
+  initMecPicker('edit-ped',mecIds);
+  renderEditPedItems();
+  $('modal-edit-ped').style.display='flex';
+  document.body.style.overflow='hidden';
+}
+
+function cerrarEditPed(){
+  $('modal-edit-ped').style.display='none';
+  document.body.style.overflow='';
+  _editPedFolio=null;
+}
+
+function renderEditPedItems(){
+  const p=(DB.pedidos||[]).find(x=>x.folio===_editPedFolio);if(!p)return;
+  const el=$('edit-ped-items');if(!el)return;
+  const descuento=parseFloat($('edit-ped-descuento')?.value)||0;
+  const sena=parseFloat($('edit-ped-sena')?.value)||0;
+  const subtotal=p.items.reduce((s,it)=>s+(it.sub||0),0);
+  const total=Math.max(0,subtotal-descuento);
+  const INP='padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;background:var(--bg);color:var(--text)';
+  el.innerHTML=p.items.length?`<div class="tw"><table>
+    <thead><tr><th>Descripción</th><th>Cant.</th><th>P.Unit.</th><th class="tr">Subtotal</th><th></th></tr></thead>
+    <tbody>${p.items.map((it,i)=>`<tr>
+      <td><input value="${(it.nombre||'').replace(/"/g,'&quot;')}" style="width:100%;${INP}" onchange="updateItemPed(${i},'nombre',this.value)"></td>
+      <td><input type="number" value="${it.qty||1}" min="0.01" style="width:60px;${INP};text-align:center" onchange="updateItemPed(${i},'qty',parseFloat(this.value)||1)"></td>
+      <td><input type="number" value="${it.pu||0}" min="0" style="width:80px;${INP};font-family:'JetBrains Mono',monospace;text-align:right" onchange="updateItemPed(${i},'pu',parseFloat(this.value)||0)"></td>
+      <td class="tr" style="font-family:'JetBrains Mono',monospace;font-weight:600">${fmt(it.sub||0)}</td>
+      <td><button style="background:none;border:none;cursor:pointer;color:var(--red);font-size:14px" onclick="deleteItemPed(${i})">✕</button></td>
+    </tr>`).join('')}</tbody>
+  </table></div>`:'<div style="font-size:12px;color:var(--text3);padding:8px 0">Sin ítems — agrega materiales abajo</div>';
+  const tr=$('edit-ped-total-row');
+  if(tr)tr.innerHTML=`<span style="color:var(--text2)">Subtotal: ${fmt(subtotal)}</span>${descuento>0?` · <span style="color:var(--amber)">-${fmt(descuento)}</span>`:''}
+    · <strong style="font-family:'JetBrains Mono',monospace;font-size:14px">Total: ${fmt(total)}</strong>
+    ${sena>0?` · <span style="color:var(--green)">Seña: ${fmt(sena)}</span> · <span style="color:var(--red)">Saldo: ${fmt(Math.max(0,total-sena))}</span>`:''}`;
+}
+
+function updateItemPed(idx,field,val){
+  const p=(DB.pedidos||[]).find(x=>x.folio===_editPedFolio);if(!p||!p.items[idx])return;
+  p.items[idx][field]=val;
+  p.items[idx].sub=Math.round((p.items[idx].qty||1)*(p.items[idx].pu||0));
+  renderEditPedItems();
+}
+
+function deleteItemPed(idx){
+  const p=(DB.pedidos||[]).find(x=>x.folio===_editPedFolio);if(!p)return;
+  if(!confirm('¿Eliminar este ítem?'))return;
+  p.items.splice(idx,1);
+  renderEditPedItems();
+}
+
+function addItemEditPed(){
+  const p=(DB.pedidos||[]).find(x=>x.folio===_editPedFolio);if(!p)return;
+  const nom=($('edit-ped-prod-txt')?.value||'').trim();
+  if(!nom){toast('Ingresa una descripción','err');return;}
+  const qty=parseFloat($('edit-ped-qty')?.value)||1;
+  const pu=parseFloat($('edit-ped-pu')?.value)||0;
+  const uni=$('edit-ped-uni')?.value||'und';
+  p.items.push({nombre:nom,qty,pu,unidad:uni,sub:Math.round(qty*pu),dto:0,iva:false,libre:true});
+  if($('edit-ped-prod-txt'))$('edit-ped-prod-txt').value='';
+  if($('edit-ped-pu'))$('edit-ped-pu').value='';
+  if($('edit-ped-qty'))$('edit-ped-qty').value=1;
+  renderEditPedItems();
+}
+
+function guardarEditPed(){
+  const p=(DB.pedidos||[]).find(x=>x.folio===_editPedFolio);if(!p)return;
+  p.clienteNombre=($('edit-ped-cli')?.value||'').trim()||p.clienteNombre;
+  p.clienteId=$('edit-ped-cli-id')?.value||p.clienteId||null;
+  p.tel=($('edit-ped-tel')?.value||'').trim();
+  p.fechaIn=$('edit-ped-fecha-in')?.value||p.fechaIn;
+  p.fechaEst=$('edit-ped-fecha-est')?.value||'';
+  p.estado=$('edit-ped-estado')?.value||p.estado;
+  p.fpago=$('edit-ped-fpago')?.value||'Contado';
+  p.desc=($('edit-ped-desc')?.value||'').trim();
+  p.obs=($('edit-ped-obs')?.value||'').trim();
+  p.descuento=parseFloat($('edit-ped-descuento')?.value)||0;
+  p.sena=parseFloat($('edit-ped-sena')?.value)||0;
+  p.docTipo=$('edit-ped-doc-tipo')?.value||'Sin Boleta/Factura';
+  p.docFolio=($('edit-ped-doc-folio')?.value||'').trim();
+  p.docFecha=$('edit-ped-doc-fecha')?.value||'';
+  const subtotal=p.items.reduce((s,it)=>s+(it.sub||0),0);
+  p.total=Math.max(0,subtotal-p.descuento);
+  p.saldoPendiente=Math.max(0,p.total-p.sena);
+  const mecs=getMecsFromPicker('edit-ped');
+  p.mecanicos=mecs.map(m=>({id:m.id,nombre:m.nombre}));
+  save();cerrarEditPed();renderPedidos();updateBadges();
+  showSaveConfirm(`✓ Pedido ${p.folio} actualizado`);
+  toast(`Pedido ${p.folio} actualizado`);
 }
 
 function waPed(folio){
