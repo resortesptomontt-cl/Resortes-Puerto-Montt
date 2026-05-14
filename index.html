@@ -5056,53 +5056,66 @@ function cerrarFpagoOT(){
   _fpagoOTFolio=null;
 }
 function confirmarFpagoOT(){
-  const ot=DB.ordenes.find(o=>o.folio===_fpagoOTFolio);
-  if(!ot){cerrarFpagoOT();return;}
+  const isPed=_fpagoOTFolio&&_fpagoOTFolio.startsWith('ped:');
+  const realFolio=isPed?_fpagoOTFolio.replace('ped:',''):_fpagoOTFolio;
+  const rec=isPed
+    ?(DB.pedidos||[]).find(x=>x.folio===realFolio)
+    :DB.ordenes.find(o=>o.folio===realFolio);
+  if(!rec){cerrarFpagoOT();return;}
   const fpago=$('fpago-ot-sel').value;
   const fecha=$('fpago-ot-fecha').value||today();
   const vcto=$('fpago-ot-vcto').value||'';
   const vtNums=DB.ventas.map(v=>parseInt((v.folio||'').replace('VT-',''))||0);
   const vFolio='VT-'+String((vtNums.length?Math.max(...vtNums):0)+1).padStart(4,'0');
-  // Cheque data
   const chequeNum=($('fpago-ot-cheque-num')?.value||'').trim();
   const chequeBanco=($('fpago-ot-cheque-banco')?.value||'').trim();
   const chequeFecha=$('fpago-ot-cheque-fecha')?.value||'';
   DB.ventas.unshift({folio:vFolio,fecha,
-    clienteId:ot.clienteId,clienteNombre:ot.clienteNombre,clienteRut:ot.clienteRut,tel:ot.tel,
-    vehiculoId:ot.vehiculoId,patente:ot.patente,marca:ot.marca,modelo:ot.modelo,
-    mecanico:ot.mecanico,items:[...ot.items],total:ot.total,descuento:0,fpago,
-    obs:ot.obs||ot.diag||'',otOrigen:ot.folio,cotOrigen:ot.cotizacionOrigen||'',
+    clienteId:rec.clienteId,clienteNombre:rec.clienteNombre,clienteRut:rec.clienteRut,tel:rec.tel,
+    vehiculoId:rec.vehiculoId||null,patente:rec.patente||'',marca:rec.marca||'',modelo:rec.modelo||'',
+    items:[...rec.items],total:rec.total,descuento:rec.descuento||0,fpago,
+    obs:rec.obs||rec.diag||rec.desc||'',
+    otOrigen:isPed?'':realFolio,
+    pedidoOrigen:isPed?realFolio:'',
+    cotOrigen:rec.cotizacionOrigen||'',
     chequeNum:fpago==='Cheque'?chequeNum:'',
     chequeBanco:fpago==='Cheque'?chequeBanco:'',
     chequeFecha:fpago==='Cheque'?chequeFecha:'',
     chequeEstado:fpago==='Cheque'?'Pendiente':'',
     creado:new Date().toISOString()});
-  ot.estado='Entregado';
-  ot.items.forEach(l=>{
-    if(l.libre)return;
-    const p=DB.inventario.find(x=>x.id===l.pid);
-    if(p&&p.categoria!=='Mano de obra')p.stock=Math.max(0,p.stock-l.qty);
-  });
+  // Update source status
+  if(isPed){rec.estado='Retirado';}
+  else{
+    rec.estado='Entregado';
+    rec.items.forEach(l=>{
+      if(l.libre)return;
+      const pr=DB.inventario.find(x=>x.id===l.pid);
+      if(pr&&pr.categoria!=='Mano de obra')pr.stock=Math.max(0,pr.stock-l.qty);
+    });
+  }
+  const origen=isPed?`(Pedido: ${realFolio})`:`(OT: ${realFolio})`;
   if(fpago==='Crédito'){
     DB.creditos.unshift({id:uid(),
-      clienteId:ot.clienteId,clienteNombre:ot.clienteNombre,clienteRut:ot.clienteRut,
-      monto:ot.total,saldo:ot.total,abonos:[],fecha,vcto,
-      desc:`Venta ${vFolio} (OT: ${ot.folio})`,ventaFolio:vFolio,
+      clienteId:rec.clienteId,clienteNombre:rec.clienteNombre,clienteRut:rec.clienteRut,
+      monto:rec.total,saldo:rec.total,abonos:[],fecha,vcto,
+      desc:`Venta ${vFolio} ${origen}`,ventaFolio:vFolio,
       estado:'Pendiente',creado:new Date().toISOString()});
-    toast(`Venta ${vFolio} en crédito — ${fmt(ot.total)} en cuentas por cobrar`,'warn');
+    toast(`Venta ${vFolio} en crédito — ${fmt(rec.total)} en cuentas por cobrar`,'warn');
   } else if(fpago==='Cheque'){
     DB.creditos.unshift({id:uid(),
-      clienteId:ot.clienteId,clienteNombre:ot.clienteNombre,clienteRut:ot.clienteRut,
-      monto:ot.total,saldo:ot.total,abonos:[],fecha,vcto:chequeFecha,
-      desc:`Cheque N°${chequeNum||'?'} — ${chequeBanco||'?'} (OT: ${ot.folio})`,
+      clienteId:rec.clienteId,clienteNombre:rec.clienteNombre,clienteRut:rec.clienteRut,
+      monto:rec.total,saldo:rec.total,abonos:[],fecha,vcto:chequeFecha,
+      desc:`Cheque N°${chequeNum||'?'} — ${chequeBanco||'?'} ${origen}`,
       ventaFolio:vFolio,tipo:'Cheque',
       chequeNum,chequeBanco,chequeFecha,chequeEstado:'Pendiente',
       estado:'Pendiente',creado:new Date().toISOString()});
-    toast(`Cheque N°${chequeNum} registrado — cobro el ${chequeFecha||'?'}`, 'warn');
+    toast(`Cheque N°${chequeNum} registrado — cobro el ${chequeFecha||'?'}`,'warn');
   } else {
-    toast(`Venta ${vFolio} registrada — ${fmt(ot.total)} (${fpago})`);
+    toast(`Venta ${vFolio} registrada — ${fmt(rec.total)} (${fpago})`);
   }
-  save();cerrarFpagoOT();renderOTs();renderDashboard();updateBadges();
+  save();cerrarFpagoOT();
+  if(isPed){renderPedidos();}else{renderOTs();}
+  renderDashboard();updateBadges();
 }
 
 // ══════════════════════════════════════════════════
@@ -5634,6 +5647,7 @@ function renderPedidos(){
           <select style="padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:11px;font-family:'Inter',sans-serif;background:var(--surface);color:var(--text)" onchange="actualizarEstadoPed('${p.folio}',this.value)">
             ${['Recibido','En fabricación','Listo para retiro','Retirado'].map(s=>`<option ${p.estado===s?'selected':''}>${s}</option>`).join('')}
           </select>
+          <button class="btn btn-xs btn-green" onclick="event.stopPropagation();pedidoAVenta('${p.folio}')">→ Registrar venta</button>
           <button class="btn btn-xs btn-red" onclick="event.stopPropagation();eliminarPedido('${p.folio}')">🗑</button>
         </div>
       </div>
@@ -5649,6 +5663,31 @@ function renderPedidos(){
     html+=retirados.map(renderRow).join('');
   }
   el.innerHTML=html;
+}
+
+function pedidoAVenta(folio){
+  const p=(DB.pedidos||[]).find(x=>x.folio===folio);if(!p)return;
+  // Check if already registered
+  const ventaExistente=DB.ventas.find(v=>v.pedidoOrigen===folio);
+  if(ventaExistente){
+    toast(`Ya tiene venta registrada: ${ventaExistente.folio}`,'warn');return;
+  }
+  _fpagoOTFolio='ped:'+folio; // prefix to distinguish from OTs
+  $('fpago-ot-info').innerHTML=`
+    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px">
+      <div><strong>${p.clienteNombre}</strong>${p.tel?` · ${p.tel}`:''}</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px">${fmt(p.total)}</div>
+    </div>
+    <div style="margin-top:4px;color:var(--text2)">${p.folio} · ${(p.items||[]).length} ítem${(p.items||[]).length!==1?'s':''}${p.sena>0?' · Seña: '+fmt(p.sena):''}${p.sena>0?' · Saldo: '+fmt(Math.max(0,p.total-p.sena)):''}</div>`;
+  $('fpago-ot-sel').value='Contado';
+  $('fpago-ot-fecha').value=today();
+  $('fpago-ot-vcto').value='';
+  $('fpago-ot-obs').value='';
+  $('fpago-ot-credito-wrap').style.display='none';
+  const chequeWrap=$('fpago-ot-cheque-wrap');
+  if(chequeWrap)chequeWrap.style.display='none';
+  $('modal-fpago-ot').style.display='flex';
+  document.body.style.overflow='hidden';
 }
 
 function waPed(folio){
