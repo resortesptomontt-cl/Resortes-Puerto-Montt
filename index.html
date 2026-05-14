@@ -563,6 +563,9 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
   <!-- Stats del mes -->
   <div class="stats" id="stats-bar" style="margin-bottom:14px"></div>
 
+  <!-- Panel de alertas -->
+  <div id="dash-alertas" style="display:none;margin-bottom:14px"></div>
+
   <!-- Fila 1: gráficos -->
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
     <div class="card">
@@ -834,14 +837,14 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
     </div>
 
     <!-- PASO 2 — ÍTEMS Y DESCUENTO -->
-    <div style="border:1px solid var(--border);border-left:3px solid var(--accent2);border-radius:var(--radius);margin-bottom:8px;overflow:hidden">
+    <div style="border:1px solid var(--border);border-left:3px solid var(--accent2);border-radius:var(--radius);margin-bottom:8px;overflow:visible">
       <div onclick="toggleOTStep('cot-step2','cot-arr2')" style="padding:8px 14px;background:var(--surface2);display:flex;align-items:center;gap:8px;cursor:pointer">
         <span style="width:20px;height:20px;border-radius:50%;background:var(--accent2);color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">2</span>
         <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Ítems y precios</span>
         <span style="font-size:10px;color:var(--text3);margin-left:4px">repuestos · mano de obra · descuento</span>
         <span id="cot-arr2" style="margin-left:auto;color:var(--text3);font-size:16px;transition:transform .2s">▾</span>
       </div>
-      <div id="cot-step2" style="padding:12px 14px">
+      <div id="cot-step2" style="padding:12px 14px;overflow:visible">
         <div class="g4" style="margin-bottom:10px;align-items:end">
           <div class="field ac-wrap">
             <label>Producto / Servicio <span style="color:var(--text3);font-weight:400;font-size:9px">— escribe para buscar o ingresar libre</span></label>
@@ -939,14 +942,14 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
     </div>
 
     <!-- PASO 2 — TRABAJO (colapsable) -->
-    <div style="border:1px solid var(--border);border-left:3px solid var(--accent2);border-radius:var(--radius);margin-bottom:8px;overflow:hidden">
+    <div style="border:1px solid var(--border);border-left:3px solid var(--accent2);border-radius:var(--radius);margin-bottom:8px;overflow:visible">
       <div onclick="toggleOTStep('ot-step2','ot-arr2')" style="padding:8px 14px;background:var(--surface2);display:flex;align-items:center;gap:8px;cursor:pointer">
         <span style="width:20px;height:20px;border-radius:50%;background:var(--accent2);color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">2</span>
         <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Diagnóstico y trabajo</span>
         <span style="font-size:10px;color:var(--text3);margin-left:4px">mecánicos · diagnóstico · repuestos</span>
         <span id="ot-arr2" style="margin-left:auto;color:var(--text3);font-size:16px;transition:transform .2s">▾</span>
       </div>
-      <div id="ot-step2" style="padding:12px 14px">
+      <div id="ot-step2" style="padding:12px 14px;overflow:visible">
         <div class="field" style="margin-bottom:10px">
           <label>Mecánicos asignados <span style="font-weight:400;font-size:10px;color:var(--text3)">— selecciona uno o más</span></label>
           <div id="ot-mec-pills" onclick="toggleMecPicker('ot')"
@@ -1028,6 +1031,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
     <div class="card-title">
       <div class="card-title-left">Órdenes de trabajo</div>
       <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)">
+        <button class="btn btn-xs" id="btn-ot-compact" onclick="toggleOTCompact()">▤ Compacto</button>
         <span id="ot-vista-label">Mes actual + pendientes</span>
         <button class="btn btn-xs" id="ot-ver-todas-btn" onclick="toggleOTVerTodas()">Ver todas</button>
       </div>
@@ -1105,13 +1109,13 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
     </div>
 
     <!-- PASO 2 — ÍTEMS -->
-    <div style="border:1px solid var(--border);border-left:3px solid var(--accent2);border-radius:var(--radius);margin-bottom:8px;overflow:hidden">
+    <div style="border:1px solid var(--border);border-left:3px solid var(--accent2);border-radius:var(--radius);margin-bottom:8px;overflow:visible">
       <div onclick="toggleOTStep('v-step2','v-arr2')" style="padding:8px 14px;background:var(--surface2);display:flex;align-items:center;gap:8px;cursor:pointer">
         <span style="width:20px;height:20px;border-radius:50%;background:var(--accent2);color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">2</span>
         <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Productos y servicios</span>
         <span id="v-arr2" style="margin-left:auto;color:var(--text3);font-size:16px;transition:transform .2s">▾</span>
       </div>
-      <div id="v-step2" style="padding:12px 14px">
+      <div id="v-step2" style="padding:12px 14px;overflow:visible">
         <div class="g4" style="margin-bottom:10px;align-items:end">
           <div class="field ac-wrap">
             <label>Producto / Servicio <span style="color:var(--text3);font-weight:400;font-size:9px">— busca o ingresa libre</span></label>
@@ -1341,14 +1345,14 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
     </div>
 
     <!-- PASO 2 — ESPECIFICACIONES -->
-    <div style="border:1px solid var(--border);border-left:3px solid var(--accent2);border-radius:var(--radius);margin-bottom:8px;overflow:hidden">
-      <div onclick="toggleOTStep('ped-step2','ped-arr2')" style="padding:8px 14px;background:var(--surface2);display:flex;align-items:center;gap:8px;cursor:pointer">
+    <div style="border:1px solid var(--border);border-left:3px solid var(--accent2);border-radius:var(--radius);margin-bottom:8px;overflow:visible">
+      <div onclick="toggleOTStep('ped-step2','ped-arr2')" style="padding:8px 14px;background:var(--surface2);display:flex;align-items:center;gap:8px;cursor:pointer;border-radius:var(--radius) var(--radius) 0 0">
         <span style="width:20px;height:20px;border-radius:50%;background:var(--accent2);color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">2</span>
         <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Especificaciones y trabajo</span>
         <span style="font-size:10px;color:var(--text3);margin-left:4px">mecánico · descripción · materiales</span>
         <span id="ped-arr2" style="margin-left:auto;color:var(--text3);font-size:16px;transition:transform .2s">▾</span>
       </div>
-      <div id="ped-step2" style="padding:12px 14px">
+      <div id="ped-step2" style="padding:12px 14px;overflow:visible">
         <div class="field" style="margin-bottom:10px">
           <label>Mecánico asignado <span style="font-weight:400;font-size:10px;color:var(--text3)">— uno o más</span></label>
           <div id="ped-mec-pills" onclick="toggleMecPicker('ped')"
@@ -1363,12 +1367,12 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
           <textarea id="ped-desc" placeholder="Ej: Paquete resorte trasero FORD CARGO, 8 hojas, largo 1.450mm, ancho 70mm, con ojos centrados..." style="min-height:80px"></textarea>
         </div>
         <div class="sec-label" style="margin-bottom:6px">Materiales e ítems</div>
-        <div class="g4" style="margin-bottom:10px;align-items:end">
+        <div class="g4" style="margin-bottom:10px;align-items:end;position:relative;z-index:10">
           <div class="field ac-wrap">
             <label>Producto / Material <span style="color:var(--text3);font-weight:400;font-size:9px">— busca o ingresa libre</span></label>
             <input id="ped-prod-txt" placeholder="Ej: Hoja resorte, Abrazadera..." autocomplete="off"
               oninput="acSearch('ped')" onkeydown="acKey(event,'ped')" onfocus="acSearch('ped')" onblur="setTimeout(()=>acHide('ped'),180)">
-            <div id="ped-ac-drop" class="ac-dropdown" style="display:none"></div>
+            <div id="ped-ac-drop" class="ac-dropdown" style="display:none;z-index:300"></div>
             <input type="hidden" id="ped-prod-id">
           </div>
           <div class="field"><label>Unidad</label>
@@ -1822,6 +1826,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
       <button class="btn btn-teal" onclick="exportarBackup()" id="btn-exportar-bk">⬇ Exportar backup completo</button>
       <label class="btn" style="cursor:pointer">⬆ Importar backup<input type="file" accept=".json" style="display:none" onchange="importarBackup(this)"></label>
+      <button class="btn" onclick="mostrarAtajos()">⌨ Atajos de teclado</button>
       <button class="btn btn-red btn-sm" onclick="borrarTodo()">🗑 Borrar todos los datos</button>
     </div>
     <div id="cfg-bk-api-nota" style="font-size:11px;color:var(--text3)">
@@ -2778,7 +2783,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
 // ══════════════════════════════════════════════════
 const CATS_DEFAULT=['Lubricantes','Filtros','Frenos','Suspensión','Electricidad','Neumáticos','Mano de obra','Refrigeración','Transmisión','Otros'];
 let DB={clientes:[],vehiculos:[],inventario:[],mecanicos:[],cotizaciones:[],ordenes:[],ventas:[],gastos:[],categorias:[],creditos:[],anticipos:[],notas:[],recordatorios:[],reservas:[],creditosMec:[],vacaciones:[],proveedores:[],compras:[],pedidos:[],comisionesAjustadas:{},liquidaciones:[]};
-let lines={cot:[],ot:[],v:[]};
+let lines={cot:[],ot:[],v:[],ped:[]};
 let excPend=[],excCols={};
 
 function load(){
@@ -3418,8 +3423,9 @@ function toggleIva(ctx, i){
 }
 
 function renderLineas(ctx){
-  const wid={cot:'cot-lineas-wrap',ot:'ot-lineas-wrap',v:'v-lineas-wrap'}[ctx];
+  const wid={cot:'cot-lineas-wrap',ot:'ot-lineas-wrap',v:'v-lineas-wrap',ped:'ped-lineas-wrap'}[ctx];
   const wrap=$(wid); if(!wrap)return;
+  if(!lines[ctx])lines[ctx]=[];
   if(!lines[ctx].length){
     wrap.innerHTML='<div class="empty" style="padding:16px"><div class="empty-icon">📋</div>Sin ítems</div>';
     renderTotalesWrap(ctx);return;
@@ -3494,6 +3500,7 @@ function setDto(ctx,i,val){
 }
 
 function calcTotales(ctx){
+  if(!lines[ctx])lines[ctx]=[];
   // sub ya considera descuento por ítem
   const subNeto = lines[ctx].reduce((s,l)=>{
     const dto=l.dto||0;
@@ -3512,10 +3519,10 @@ function calcTotales(ctx){
 }
 
 function renderTotalesWrap(ctx){
-  const wrapId={cot:'cot-totales-wrap',ot:'ot-totales-wrap',v:'v-totales-wrap'}[ctx];
-  const color={cot:'var(--purple)',ot:'var(--accent)',v:'var(--accent)'}[ctx];
-  const lbl  ={cot:'Total cotización',ot:'Total orden',v:'Total venta'}[ctx];
-  const tid  ={cot:'cot-total',ot:'ot-total',v:'v-total'}[ctx];
+  const wrapId={cot:'cot-totales-wrap',ot:'ot-totales-wrap',v:'v-totales-wrap',ped:'ped-totales-wrap'}[ctx];
+  const color={cot:'var(--purple)',ot:'var(--accent)',v:'var(--accent)',ped:'var(--accent)'}[ctx];
+  const lbl  ={cot:'Total cotización',ot:'Total orden',v:'Total venta',ped:'Total pedido'}[ctx];
+  const tid  ={cot:'cot-total',ot:'ot-total',v:'v-total',ped:'ped-total'}[ctx];
   const wrap=$(wrapId); if(!wrap)return;
   const {sub,subBruto,dtoTotal,ivaAmt,descGlobal,total}=calcTotales(ctx);
   const itemsConIva=lines[ctx].filter(l=>l.iva).length;
@@ -3626,6 +3633,77 @@ function renderDashboard(){
 
   // Gráfico
   renderMiniChart('chart-ingresos', ingresosXMes(), 'Ingresos');
+
+  // ── Panel de alertas (solo mes actual) ──────────────
+  if(esMesActual){
+    const alertas=[];
+    const hoy=today();
+    const en7=new Date();en7.setDate(en7.getDate()+7);
+    const en7str=en7.toISOString().slice(0,10);
+
+    // OTs sin movimiento >3 días (activas)
+    DB.ordenes.filter(o=>o.estado!=='Entregado').forEach(o=>{
+      const fecha=o.fechaIn||o.creado?.slice(0,10)||'';
+      if(!fecha)return;
+      const dias=Math.floor((new Date(hoy)-new Date(fecha))/(1000*60*60*24));
+      if(dias>=3)alertas.push({
+        tipo:'warn',icon:'⏰',
+        msg:`OT ${o.folio} — ${o.clienteNombre} lleva <strong>${dias} días</strong> en estado "${o.estado}"`,
+        action:`nav('ordenes',null);setTimeout(()=>{$('s-ot').value='${o.folio}';renderOTs();},300)`
+      });
+    });
+
+    // Cheques que vencen esta semana
+    DB.creditos.filter(c=>c.tipo==='Cheque'&&c.chequeEstado!=='Cobrado'&&c.chequeEstado!=='Rechazado'&&c.chequeFecha&&c.chequeFecha<=en7str).forEach(c=>{
+      const vence=c.chequeFecha<=hoy?'venció':'vence';
+      alertas.push({
+        tipo:c.chequeFecha<=hoy?'err':'warn',icon:'🏦',
+        msg:`Cheque de ${c.clienteNombre} ${vence} el <strong>${c.chequeFecha?.split('-').reverse().join('/')}</strong> — ${fmt(c.saldo)}`,
+        action:`nav('creditos',null)`
+      });
+    });
+
+    // Pedidos listos sin retirar
+    (DB.pedidos||[]).filter(p=>p.estado==='Listo para retiro').forEach(p=>{
+      const fecha=p.fechaEst||p.fechaIn||'';
+      const dias=fecha?Math.floor((new Date(hoy)-new Date(fecha))/(1000*60*60*24)):0;
+      alertas.push({
+        tipo:'info',icon:'🏭',
+        msg:`Pedido ${p.folio} de <strong>${p.clienteNombre}</strong> listo para retiro${dias>0?' hace '+dias+' día'+(dias!==1?'s':''):''}`,
+        action:`nav('pedidos',null);setTimeout(()=>{$('s-ped').value='${p.folio}';renderPedidos();},300)`
+      });
+    });
+
+    // Créditos vencidos
+    const credVenc=DB.creditos.filter(c=>c.tipo!=='Cheque'&&c.estado!=='Pagado'&&c.vcto&&c.vcto<hoy);
+    if(credVenc.length)alertas.push({
+      tipo:'err',icon:'💳',
+      msg:`<strong>${credVenc.length}</strong> crédito${credVenc.length!==1?'s':''} vencido${credVenc.length!==1?'s':''} — ${fmt(credVenc.reduce((s,c)=>s+c.saldo,0))} sin cobrar`,
+      action:`nav('creditos',null)`
+    });
+
+    const alertEl=$('dash-alertas');
+    if(alertEl){
+      if(alertas.length){
+        const colores={err:'var(--red-light)',warn:'var(--amber-light)',info:'var(--teal-light)'};
+        const bordes={err:'var(--red)',warn:'#c88a00',info:'var(--teal)'};
+        alertEl.style.display='block';
+        alertEl.innerHTML=`<div style="display:flex;flex-direction:column;gap:6px">
+          ${alertas.map(a=>`
+            <div onclick="${a.action}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:${colores[a.tipo]};border-left:3px solid ${bordes[a.tipo]};border-radius:var(--radius);cursor:pointer;font-size:12px;transition:opacity .15s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+              <span style="font-size:16px;flex-shrink:0">${a.icon}</span>
+              <span style="flex:1">${a.msg}</span>
+              <span style="font-size:11px;color:var(--text2);flex-shrink:0">Ver →</span>
+            </div>`).join('')}
+        </div>`;
+      } else {
+        alertEl.style.display='none';
+      }
+    }
+  } else {
+    const alertEl=$('dash-alertas');
+    if(alertEl)alertEl.style.display='none';
+  }
 
   // Ventas del mes
   const vCnt=$('dash-ventas-cnt');
@@ -4725,6 +4803,70 @@ function onOTVeh(){
   </div>`;
   if($('ot-km')&&!$('ot-km').value&&v.km)$('ot-km').value=v.km;
 }
+// ── Confirmación visual al guardar ──────────────────
+let _saveConfirmTimer=null;
+function showSaveConfirm(msg='✓ Guardado'){
+  let banner=$('save-confirm-banner');
+  if(!banner){
+    banner=document.createElement('div');
+    banner.id='save-confirm-banner';
+    banner.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:10px 24px;border-radius:var(--radius-lg);font-size:13px;font-weight:600;box-shadow:var(--shadow-md);z-index:9999;transition:opacity .3s;pointer-events:none';
+    document.body.appendChild(banner);
+  }
+  banner.textContent=msg;banner.style.opacity='1';
+  clearTimeout(_saveConfirmTimer);
+  _saveConfirmTimer=setTimeout(()=>{banner.style.opacity='0';},2200);
+}
+
+// ── Compact OT view ────────────────────────────────
+let _otCompact=false;
+function toggleOTCompact(){
+  _otCompact=!_otCompact;
+  const btn=$('btn-ot-compact');
+  if(btn)btn.textContent=_otCompact?'☰ Detalle':'▤ Compacto';
+  renderOTs();
+}
+
+// ── Atajos de teclado ─────────────────────────────
+document.addEventListener('keydown',e=>{
+  const tag=document.activeElement?.tagName;
+  if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
+  if(e.metaKey||e.altKey)return;
+  if(e.ctrlKey&&e.key==='k'){e.preventDefault();$('gsearch')?.focus();$('gsearch')?.select();return;}
+  if(e.ctrlKey)return;
+  switch(e.key){
+    case '/': e.preventDefault();$('gsearch')?.focus();$('gsearch')?.select();break;
+    case 'n': case 'N': e.preventDefault();nav('ordenes',null);setTimeout(()=>$('ot-cli-txt')?.focus(),300);break;
+    case 'p': case 'P': e.preventDefault();nav('pedidos',null);setTimeout(()=>$('ped-cli-txt')?.focus(),300);break;
+    case 'c': case 'C': e.preventDefault();nav('cotizaciones',null);setTimeout(()=>$('cot-cli-txt')?.focus(),300);break;
+    case 'd': case 'D': e.preventDefault();nav('dashboard',null);break;
+    case 'Escape':
+      document.querySelectorAll('.modal-overlay').forEach(m=>{if(m.style.display==='flex'||m.style.display==='block'){m.style.display='none';document.body.style.overflow='';}});
+      hideGlobalResults();
+      break;
+  }
+});
+
+function mostrarAtajos(){
+  const modal=document.createElement('div');
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.onclick=e=>{if(e.target===modal)modal.remove();};
+  modal.innerHTML=`<div style="background:var(--surface);border-radius:var(--radius-lg);padding:24px;width:420px;max-width:90vw;box-shadow:var(--shadow-md)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <span style="font-size:15px;font-weight:700">⌨ Atajos de teclado</span>
+      <button onclick="this.closest('[style]').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text2)">✕</button>
+    </div>
+    ${[['/',  'Búsqueda global'],['N','Nueva orden de trabajo'],['P','Nuevo pedido de fabricación'],
+       ['C','Nueva cotización'],['D','Ir al dashboard'],['Esc','Cerrar modal']
+      ].map(([k,v])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
+        <span>${v}</span>
+        <kbd style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:3px 10px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600">${k}</kbd>
+      </div>`).join('')}
+    <div style="margin-top:12px;font-size:11px;color:var(--text3)">Los atajos no funcionan mientras escribes en un campo de texto</div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
 function guardarOT(){
   const cliNombre=($('ot-cli-txt')?.value||'').trim();
   if(!cliNombre){toast('Ingresa el nombre del cliente','err');return;}
@@ -4914,8 +5056,26 @@ function renderOTs(){
     const rowBorder=venc?'border-left:3px solid var(--red)':entregado?'border-left:3px solid var(--green)':listo?'border-left:3px solid var(--teal)':enProceso?'border-left:3px solid var(--accent)':'border-left:3px solid var(--border)';
     const rowBg=entregado?'background:var(--green-light)':'';
     const opacity=entregado?'opacity:.75':'';
-    // Get mechanic names
     const mecNombres=(o.mecanicos&&o.mecanicos.length)?o.mecanicos.map(m=>m.nombre).join(', '):(o.mecanico||'');
+
+    // ── Vista compacta ──────────────────────────────
+    if(_otCompact){
+      return`<div style="${rowBorder};${rowBg};${opacity};display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap">
+        <span class="folio-tag" style="font-size:10px">${o.folio}</span>
+        <span style="font-weight:${entregado?400:600};font-size:12px;flex:1;min-width:120px">${o.clienteNombre}</span>
+        ${o.patente?`<span class="badge b-orange" style="font-size:10px">${o.patente}</span>`:''}
+        <span class="status ${venc?'s-vencido':statusClass(o.estado)}" style="font-size:10px">${venc?'Vencido':o.estado}</span>
+        ${mecNombres?`<span style="font-size:10px;color:var(--text3)">👷 ${mecNombres.split(',')[0]}${o.mecanicos?.length>1?'+'+( o.mecanicos.length-1)+'':''}</span>`:''}
+        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;min-width:80px;text-align:right">${fmt(o.total)}</span>
+        <div style="display:flex;gap:4px">
+          <select style="padding:3px 6px;border:1px solid var(--border);border-radius:var(--radius);font-size:10px;font-family:'Inter',sans-serif;background:var(--surface);color:var(--text)" onchange="actualizarEstadoOT('${o.folio}',this.value)">
+            ${['Recibido','En proceso','Listo','Entregado'].map(s=>`<option ${o.estado===s?'selected':''}>${s}</option>`).join('')}
+          </select>
+          <button class="btn btn-xs" onclick="abrirEditOT('${o.folio}')" title="Editar">✏</button>
+          <button class="btn btn-xs btn-green" onclick="otAVenta('${o.folio}')" title="Registrar venta">→</button>
+        </div>
+      </div>`;
+    }
     return`
     <div class="exp-row" style="${rowBorder}${rowBg?';'+rowBg:''}${opacity?';'+opacity:''}">
       <div class="exp-hdr" onclick="toggle('ot-${o.folio}')" style="${entregado?'background:var(--green-light)':''}">
@@ -5384,7 +5544,7 @@ function guardarVenta(){
       estado:'Pendiente',creado:new Date().toISOString()});
     toast(`Cheque N°${chequeNum} registrado — cobro el ${chequeFecha||'?'}`, 'warn');
   } else {
-    toast(`Venta ${folio} guardada — ${fmt(total)}`);
+    toast(`Venta ${folio} guardada — ${fmt(total)}`);showSaveConfirm(`✓ Venta ${folio} guardada`);
   }
   save();limpiarV();renderVentas();renderDashboard();updateBadges();
 }
@@ -6549,23 +6709,45 @@ function renderReportes(){
 // BÚSQUEDA GLOBAL
 // ══════════════════════════════════════════════════
 function globalSearch(q){
-  if(!q||q.length<2){$('gsearch-results').innerHTML='';return;}
+  const el=$('gsearch-results');if(!el)return;
+  if(!q||q.length<2){el.innerHTML='';el.style.display='none';return;}
   const ql=q.toLowerCase();
   const res=[];
-  DB.clientes.filter(c=>c.nombre.toLowerCase().includes(ql)||c.rut.toLowerCase().includes(ql)).slice(0,3).forEach(c=>res.push({tipo:'Cliente',label:c.nombre,sub:c.rut,action:`nav('clientes',null)`}));
-  DB.vehiculos.filter(v=>v.patente.toLowerCase().includes(ql)||v.clienteNombre.toLowerCase().includes(ql)).slice(0,3).forEach(v=>res.push({tipo:'Vehículo',label:v.patente,sub:`${v.marca} ${v.modelo} — ${v.clienteNombre}`,action:`nav('vehiculos',null)`}));
-  DB.ordenes.filter(o=>o.folio.toLowerCase().includes(ql)||o.clienteNombre.toLowerCase().includes(ql)).slice(0,3).forEach(o=>res.push({tipo:'OT',label:o.folio,sub:`${o.clienteNombre} — ${o.estado}`,action:`nav('ordenes',null)`}));
-  DB.ventas.filter(v=>v.folio.toLowerCase().includes(ql)||v.clienteNombre.toLowerCase().includes(ql)).slice(0,3).forEach(v=>res.push({tipo:'Venta',label:v.folio,sub:`${v.clienteNombre} — ${fmt(v.total)}`,action:`nav('ventas',null)`}));
-  DB.inventario.filter(p=>p.nombre.toLowerCase().includes(ql)||(p.codigo||'').toLowerCase().includes(ql)).slice(0,3).forEach(p=>res.push({tipo:'Producto',label:p.nombre,sub:fmt(p.precio),action:`nav('inventario',null)`}));
-  if(!res.length){$('gsearch-results').innerHTML='<div style="padding:12px;font-size:12px;color:var(--text2)">Sin resultados</div>';return;}
-  $('gsearch-results').innerHTML=res.map(r=>`
-    <div style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center" onclick="${r.action};$('gsearch').value='';hideGlobalResults()">
-      <span class="badge b-gray" style="flex-shrink:0">${r.tipo}</span>
-      <div><div style="font-size:12px;font-weight:500">${r.label}</div><div style="font-size:11px;color:var(--text2)">${r.sub}</div></div>
+  // Clientes
+  DB.clientes.filter(c=>(c.nombre||'').toLowerCase().includes(ql)||(c.rut||'').toLowerCase().includes(ql)).slice(0,3)
+    .forEach(c=>res.push({tipo:'Cliente',icon:'👤',label:c.nombre,sub:c.rut||'',action:`nav('clientes',null);setTimeout(()=>{const el=$('s-cli');if(el){el.value='${c.nombre.replace(/'/g,"\\'").slice(0,30)}';renderClientes();}},300)`}));
+  // Vehículos
+  DB.vehiculos.filter(v=>(v.patente||'').toLowerCase().includes(ql)||(v.clienteNombre||'').toLowerCase().includes(ql)).slice(0,3)
+    .forEach(v=>res.push({tipo:'Vehículo',icon:'🚗',label:v.patente,sub:`${v.marca||''} ${v.modelo||''} — ${v.clienteNombre||''}`,action:`nav('vehiculos',null);setTimeout(()=>{const el=$('s-veh');if(el){el.value='${v.patente}';renderVehiculos();}},300)`}));
+  // OTs
+  DB.ordenes.filter(o=>(o.folio||'').toLowerCase().includes(ql)||(o.clienteNombre||'').toLowerCase().includes(ql)||(o.patente||'').toLowerCase().includes(ql)).slice(0,3)
+    .forEach(o=>res.push({tipo:'OT',icon:'🔧',label:o.folio,sub:`${o.clienteNombre} — ${o.estado}`,action:`nav('ordenes',null);setTimeout(()=>{const el=$('s-ot');if(el){el.value='${o.folio}';renderOTs();}},300)`}));
+  // Pedidos
+  (DB.pedidos||[]).filter(p=>(p.folio||'').toLowerCase().includes(ql)||(p.clienteNombre||'').toLowerCase().includes(ql)||(p.desc||'').toLowerCase().includes(ql)).slice(0,3)
+    .forEach(p=>res.push({tipo:'Pedido',icon:'🏭',label:p.folio,sub:`${p.clienteNombre} — ${p.estado}`,action:`nav('pedidos',null);setTimeout(()=>{const el=$('s-ped');if(el){el.value='${p.folio}';renderPedidos();}},300)`}));
+  // Ventas
+  DB.ventas.filter(v=>(v.folio||'').toLowerCase().includes(ql)||(v.clienteNombre||'').toLowerCase().includes(ql)).slice(0,3)
+    .forEach(v=>res.push({tipo:'Venta',icon:'💰',label:v.folio,sub:`${v.clienteNombre} — ${fmt(v.total)}`,action:`nav('ventas',null);setTimeout(()=>{const el=$('sv');if(el){el.value='${v.folio}';renderVentas();}},300)`}));
+  // Inventario
+  DB.inventario.filter(p=>(p.nombre||'').toLowerCase().includes(ql)||(p.codigo||'').toLowerCase().includes(ql)).slice(0,2)
+    .forEach(p=>res.push({tipo:'Producto',icon:'📦',label:p.nombre,sub:`${p.codigo||''} · Stock: ${p.stock} · ${fmt(p.precio)}`,action:`nav('inventario',null);setTimeout(()=>{const el=$('s-inv');if(el){el.value='${p.nombre.replace(/'/g,"\\'").slice(0,30)}';renderInventario();}},300)`}));
+
+  if(!res.length){el.innerHTML='<div style="padding:12px;font-size:12px;color:var(--text2)">Sin resultados para "'+q+'"</div>';el.style.display='block';return;}
+  el.innerHTML=res.map((r,i)=>`
+    <div style="padding:9px 14px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;transition:background .1s"
+      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''"
+      onclick="${r.action};$('gsearch').value='';hideGlobalResults()">
+      <span style="font-size:16px;flex-shrink:0">${r.icon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600">${r.label}</div>
+        <div style="font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.sub}</div>
+      </div>
+      <span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;background:var(--surface2);color:var(--text2);flex-shrink:0">${r.tipo}</span>
     </div>`).join('');
+  el.style.display='block';
 }
-function showGlobalResults(){if($('gsearch').value.length>=2)$('gsearch-results').style.display='block';}
-function hideGlobalResults(){$('gsearch-results').style.display='none';}
+function showGlobalResults(){if(($('gsearch')?.value||'').length>=2){$('gsearch-results').style.display='block';}}
+function hideGlobalResults(){if($('gsearch-results'))$('gsearch-results').style.display='none';}
 
 // ══════════════════════════════════════════════════
 // EXPORT EXCEL
