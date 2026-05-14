@@ -7717,6 +7717,7 @@ function getBkData(){
     notas:DB.notas||[],recordatorios:DB.recordatorios||[],reservas:DB.reservas||[],
     creditosMec:DB.creditosMec||[],vacaciones:DB.vacaciones||[],
     proveedores:DB.proveedores||[],compras:DB.compras||[],
+    pedidos:DB.pedidos||[],
     comisionesAjustadas:DB.comisionesAjustadas||{},
     liquidaciones:DB.liquidaciones||[]
   },null,2);
@@ -7809,7 +7810,7 @@ function importarBackup(input){
       // Restaurar todas las colecciones
       ['clientes','vehiculos','inventario','mecanicos','cotizaciones','ordenes','ventas',
        'gastos','categorias','creditos','anticipos','notas','recordatorios','reservas',
-       'creditosMec','vacaciones','proveedores','compras','liquidaciones'
+       'creditosMec','vacaciones','proveedores','compras','pedidos','liquidaciones'
       ].forEach(k=>{if(Array.isArray(bk[k]))DB[k]=bk[k];});
       // Restaurar objetos no-array
       if(bk.comisionesAjustadas&&typeof bk.comisionesAjustadas==='object')
