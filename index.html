@@ -809,53 +809,86 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
 <div id="sec-cotizaciones" class="section">
   <div class="card">
     <div class="card-title"><div class="card-title-left">Nueva cotización</div></div>
-    <div class="g3" style="margin-bottom:10px">
-      <div class="field ac-wrap">
-        <label>Cliente <span style="color:var(--text3);font-weight:400;font-size:9px">— busca o ingresa libre</span></label>
-        <input id="cot-cli-txt" placeholder="Nombre del cliente..." autocomplete="off"
-          oninput="acSearchCliCot()" onkeydown="acKeyCliCot(event)" onfocus="acSearchCliCot()" onblur="setTimeout(()=>$('cot-cli-drop').style.display='none',180)">
-        <div id="cot-cli-drop" class="ac-dropdown" style="display:none"></div>
-        <input type="hidden" id="cot-cli-id">
-      </div>
-      <div class="field"><label>Vehículo</label><select id="cot-veh"><option value="">— Seleccionar —</option></select></div>
-      <div class="field"><label>Fecha</label><input id="cot-fecha" type="date"></div>
-    </div>
-    <div id="cot-pill" style="display:none;margin-bottom:10px"></div>
-    <hr>
-    <div class="g4" style="margin-bottom:10px;align-items:end">
-      <div class="field ac-wrap">
-        <label>Producto / Servicio <span style="color:var(--text3);font-weight:400;font-size:9px">— escribe para buscar o ingresar libre</span></label>
-        <input id="cot-prod-txt" placeholder="Ej: Aceite motor, Revisión frenos..." autocomplete="off"
-          oninput="acSearchCot()" onkeydown="acKeyCot(event)" onfocus="acSearchCot()" onblur="setTimeout(()=>acHideCot(),180)">
-        <div id="cot-ac-drop" class="ac-dropdown" style="display:none"></div>
-        <input type="hidden" id="cot-prod-id">
-      </div>
-      <div class="field"><label>Unidad</label>
-        <select id="cot-prod-uni" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none">
-          <option value="und">Unidad</option><option value="lt">Litro</option><option value="kg">Kg</option>
-          <option value="m">Metro</option><option value="caja">Caja</option><option value="par">Par</option>
-          <option value="set">Set</option><option value="hrs">Hora</option>
-        </select>
-      </div>
-      <div class="field"><label>Cantidad</label><input id="cot-qty" type="number" value="1" min="0.01" step="0.01"></div>
-      <div class="field"><label>P. Unit. ($) <small style="color:var(--accent2)">editable</small></label><input id="cot-pu" type="number" placeholder="0"></div>
-    </div>
-    <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
-      <button class="btn btn-orange" onclick="addLineaCot()">+ Agregar ítem</button>
-    </div>
-    <div id="cot-lineas-wrap"></div>
-    <div id="cot-totales-wrap" style="margin-top:10px"></div>
 
-    <!-- Descuento cotización -->
-    <div style="display:flex;align-items:center;gap:10px;margin-top:8px;padding:8px 12px;background:var(--surface2);border-radius:var(--radius)">
-      <span style="font-size:12px;color:var(--text2);flex:1">🏷️ Descuento ($)</span>
-      <input id="cot-descuento" type="number" min="0" placeholder="0" oninput="recalcTotalesCot()"
-        style="width:130px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--text);outline:none;text-align:right">
+    <!-- PASO 1 — CLIENTE Y FECHA -->
+    <div style="border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--radius);margin-bottom:8px;overflow:hidden">
+      <div style="padding:8px 14px;background:var(--surface2);display:flex;align-items:center;gap:8px">
+        <span style="width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">1</span>
+        <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Cliente y vehículo</span>
+      </div>
+      <div style="padding:12px 14px">
+        <div class="g3" style="margin-bottom:8px">
+          <div class="field ac-wrap">
+            <label>Cliente <span style="color:var(--text3);font-weight:400;font-size:9px">— busca o ingresa libre</span></label>
+            <input id="cot-cli-txt" placeholder="Nombre del cliente..." autocomplete="off"
+              oninput="acSearchCliCot()" onkeydown="acKeyCliCot(event)" onfocus="acSearchCliCot()" onblur="setTimeout(()=>$('cot-cli-drop').style.display='none',180)">
+            <div id="cot-cli-drop" class="ac-dropdown" style="display:none"></div>
+            <input type="hidden" id="cot-cli-id">
+          </div>
+          <div class="field"><label>Vehículo</label><select id="cot-veh"><option value="">— Seleccionar —</option></select></div>
+          <div class="field"><label>Fecha</label><input id="cot-fecha" type="date"></div>
+        </div>
+        <div id="cot-pill" style="display:none"></div>
+      </div>
     </div>
 
-    <hr>
-    <div class="field" style="margin-bottom:10px"><label>Notas / alcance del trabajo</label><textarea id="cot-obs" placeholder="Describe el trabajo, condiciones, garantías..."></textarea></div>
-    <div style="display:flex;gap:6px"><button class="btn btn-purple" onclick="guardarCot()">✓ Guardar cotización</button><button class="btn" onclick="limpiarCot()">↺ Limpiar</button></div>
+    <!-- PASO 2 — ÍTEMS Y DESCUENTO -->
+    <div style="border:1px solid var(--border);border-left:3px solid var(--accent2);border-radius:var(--radius);margin-bottom:8px;overflow:hidden">
+      <div onclick="toggleOTStep('cot-step2','cot-arr2')" style="padding:8px 14px;background:var(--surface2);display:flex;align-items:center;gap:8px;cursor:pointer">
+        <span style="width:20px;height:20px;border-radius:50%;background:var(--accent2);color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">2</span>
+        <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Ítems y precios</span>
+        <span style="font-size:10px;color:var(--text3);margin-left:4px">repuestos · mano de obra · descuento</span>
+        <span id="cot-arr2" style="margin-left:auto;color:var(--text3);font-size:16px;transition:transform .2s">▾</span>
+      </div>
+      <div id="cot-step2" style="padding:12px 14px">
+        <div class="g4" style="margin-bottom:10px;align-items:end">
+          <div class="field ac-wrap">
+            <label>Producto / Servicio <span style="color:var(--text3);font-weight:400;font-size:9px">— escribe para buscar o ingresar libre</span></label>
+            <input id="cot-prod-txt" placeholder="Ej: Aceite motor, Revisión frenos..." autocomplete="off"
+              oninput="acSearchCot()" onkeydown="acKeyCot(event)" onfocus="acSearchCot()" onblur="setTimeout(()=>acHideCot(),180)">
+            <div id="cot-ac-drop" class="ac-dropdown" style="display:none"></div>
+            <input type="hidden" id="cot-prod-id">
+          </div>
+          <div class="field"><label>Unidad</label>
+            <select id="cot-prod-uni" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none">
+              <option value="und">Unidad</option><option value="lt">Litro</option><option value="kg">Kg</option>
+              <option value="m">Metro</option><option value="caja">Caja</option><option value="par">Par</option>
+              <option value="set">Set</option><option value="hrs">Hora</option>
+            </select>
+          </div>
+          <div class="field"><label>Cantidad</label><input id="cot-qty" type="number" value="1" min="0.01" step="0.01"></div>
+          <div class="field"><label>P. Unit. ($) <small style="color:var(--accent2)">editable</small></label><input id="cot-pu" type="number" placeholder="0"></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+          <button class="btn btn-orange" onclick="addLineaCot()">+ Agregar ítem</button>
+        </div>
+        <div id="cot-lineas-wrap"></div>
+        <div id="cot-totales-wrap" style="margin-top:10px"></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:8px;padding:8px 12px;background:var(--surface2);border-radius:var(--radius)">
+          <span style="font-size:12px;color:var(--text2);flex:1">🏷️ Descuento ($)</span>
+          <input id="cot-descuento" type="number" min="0" placeholder="0" oninput="recalcTotalesCot()"
+            style="width:130px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--text);outline:none;text-align:right">
+        </div>
+      </div>
+    </div>
+
+    <!-- PASO 3 — NOTAS Y CIERRE -->
+    <div style="border:1px solid var(--border);border-left:3px solid var(--green);border-radius:var(--radius);margin-bottom:12px;overflow:hidden">
+      <div onclick="toggleOTStep('cot-step3','cot-arr3')" style="padding:8px 14px;background:var(--surface2);display:flex;align-items:center;gap:8px;cursor:pointer">
+        <span style="width:20px;height:20px;border-radius:50%;background:var(--green);color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">3</span>
+        <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Notas y condiciones</span>
+        <span style="font-size:10px;color:var(--text3);margin-left:4px">observaciones · garantías · alcance</span>
+        <span id="cot-arr3" style="margin-left:auto;color:var(--text3);font-size:16px;transition:transform .2s">▾</span>
+      </div>
+      <div id="cot-step3" style="display:none;padding:12px 14px">
+        <div class="field"><label>Notas / alcance del trabajo</label><textarea id="cot-obs" placeholder="Describe el trabajo, condiciones, garantías..."></textarea></div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-purple" onclick="guardarCot()">✓ Guardar cotización</button>
+      <button class="btn" onclick="limpiarCot()">↺ Limpiar</button>
+    </div>
   </div>
   <div class="card">
     <div class="card-title"><div class="card-title-left">Cotizaciones guardadas</div></div>
@@ -874,84 +907,117 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
 <div id="sec-ordenes" class="section">
   <div class="card">
     <div class="card-title"><div class="card-title-left">Nueva orden de trabajo</div></div>
-    <div class="g4" style="margin-bottom:10px">
-      <div class="field ac-wrap">
-        <label>Cliente <span style="color:var(--text3);font-weight:400;font-size:9px">— busca o ingresa libre</span></label>
-        <input id="ot-cli-txt" placeholder="Nombre del cliente..." autocomplete="off"
-          oninput="acSearchCliOT()" onkeydown="acKeyCliOT(event)" onfocus="acSearchCliOT()" onblur="setTimeout(()=>$('ot-cli-drop').style.display='none',180)">
-        <div id="ot-cli-drop" class="ac-dropdown" style="display:none"></div>
-        <input type="hidden" id="ot-cli-id">
+
+    <!-- PASO 1 — RECEPCIÓN (siempre visible) -->
+    <div style="border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--radius);margin-bottom:8px;overflow:hidden">
+      <div style="padding:8px 14px;background:var(--surface2);display:flex;align-items:center;gap:8px">
+        <span style="width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">1</span>
+        <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Recepción del vehículo</span>
+        <span style="font-size:10px;color:var(--text3);margin-left:4px">cliente · vehículo · fechas</span>
       </div>
-      <div class="field"><label>Vehículo *</label><select id="ot-veh" onchange="onOTVeh()"><option value="">— Seleccionar —</option></select></div>
-      <div class="field">
-        <label>Mecánicos asignados <span style="font-weight:400;font-size:10px;color:var(--text3)">— selecciona uno o más</span></label>
-        <div id="ot-mec-pills" onclick="toggleMecPicker('ot')"
-          style="display:flex;gap:5px;flex-wrap:wrap;min-height:36px;padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);cursor:pointer;align-items:center">
-          <span style="font-size:12px;color:var(--text3)">Clic para seleccionar...</span>
+      <div style="padding:12px 14px">
+        <div class="g4" style="margin-bottom:10px">
+          <div class="field ac-wrap">
+            <label>Cliente <span style="color:var(--text3);font-weight:400;font-size:9px">— busca o ingresa libre</span></label>
+            <input id="ot-cli-txt" placeholder="Nombre del cliente..." autocomplete="off"
+              oninput="acSearchCliOT()" onkeydown="acKeyCliOT(event)" onfocus="acSearchCliOT()" onblur="setTimeout(()=>$('ot-cli-drop').style.display='none',180)">
+            <div id="ot-cli-drop" class="ac-dropdown" style="display:none"></div>
+            <input type="hidden" id="ot-cli-id">
+          </div>
+          <div class="field"><label>Vehículo *</label><select id="ot-veh" onchange="onOTVeh()"><option value="">— Seleccionar —</option></select></div>
+          <div class="field"><label>Km ingreso</label><input id="ot-km" type="number" placeholder="km actuales"></div>
+          <div class="field"><label>Fecha ingreso</label><input id="ot-fecha-in" type="date"></div>
+          <div class="field"><label>Fecha estimada</label><input id="ot-fecha-est" type="date"></div>
+          <div class="field"><label>Estado</label>
+            <select id="ot-estado"><option>Recibido</option><option>En proceso</option><option>Listo</option><option>Entregado</option></select>
+          </div>
+          <div class="field"><label>N° Orden</label><input id="ot-folio" readonly style="background:var(--surface2);color:var(--text2)"></div>
         </div>
-        <div id="ot-mec-picker" style="display:none;position:absolute;z-index:200;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow-md);padding:6px;margin-top:2px;min-width:240px;max-height:220px;overflow-y:auto"></div>
-        <input type="hidden" id="ot-mec-ids">
+        <div id="ot-veh-pill" style="display:none;margin-top:4px"></div>
       </div>
-      <div class="field"><label>Fecha ingreso</label><input id="ot-fecha-in" type="date"></div>
-      <div class="field"><label>Fecha entrega estimada</label><input id="ot-fecha-est" type="date"></div>
-      <div class="field"><label>Kilometraje ingreso</label><input id="ot-km" type="number" placeholder="km actuales"></div>
-      <div class="field"><label>Estado</label>
-        <select id="ot-estado"><option>Recibido</option><option>En proceso</option><option>Listo</option><option>Entregado</option></select>
-      </div>
-      <div class="field"><label>N° Orden</label><input id="ot-folio" readonly style="background:var(--surface2);color:var(--text2)"></div>
     </div>
-    <div id="ot-veh-pill" style="display:none;margin-bottom:10px"></div>
-    <div class="field" style="margin-bottom:10px"><label>Diagnóstico / trabajo solicitado</label><textarea id="ot-diag" placeholder="Descripción del problema o trabajo a realizar..."></textarea></div>
-    <hr>
-    <div class="sec-label">Repuestos y mano de obra</div>
-    <div class="g4" style="margin-bottom:10px;align-items:end">
-      <div class="field ac-wrap">
-        <label>Producto / Servicio <span style="color:var(--text3);font-weight:400;font-size:9px">— escribe para buscar o ingresar libre</span></label>
-        <input id="ot-prod-txt" placeholder="Ej: Aceite motor, Cambio frenos..." autocomplete="off"
-          oninput="acSearch('ot')" onkeydown="acKey(event,'ot')" onfocus="acSearch('ot')" onblur="setTimeout(()=>acHide('ot'),180)">
-        <div id="ot-ac-drop" class="ac-dropdown" style="display:none"></div>
-        <input type="hidden" id="ot-prod-id">
+
+    <!-- PASO 2 — TRABAJO (colapsable) -->
+    <div style="border:1px solid var(--border);border-left:3px solid var(--accent2);border-radius:var(--radius);margin-bottom:8px;overflow:hidden">
+      <div onclick="toggleOTStep('ot-step2','ot-arr2')" style="padding:8px 14px;background:var(--surface2);display:flex;align-items:center;gap:8px;cursor:pointer">
+        <span style="width:20px;height:20px;border-radius:50%;background:var(--accent2);color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">2</span>
+        <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Diagnóstico y trabajo</span>
+        <span style="font-size:10px;color:var(--text3);margin-left:4px">mecánicos · diagnóstico · repuestos</span>
+        <span id="ot-arr2" style="margin-left:auto;color:var(--text3);font-size:16px;transition:transform .2s">▾</span>
       </div>
-      <div class="field"><label>Unidad</label>
-        <select id="ot-prod-uni" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none">
-          <option value="und">Unidad</option><option value="lt">Litro</option><option value="kg">Kg</option>
-          <option value="m">Metro</option><option value="caja">Caja</option><option value="par">Par</option>
-          <option value="set">Set</option><option value="hrs">Hora</option>
-        </select>
-      </div>
-      <div class="field"><label>Cantidad</label><input id="ot-qty" type="number" value="1" min="0.01" step="0.01"></div>
-      <div class="field"><label>P. Unit. ($) <small style="color:var(--accent2)">editable</small></label><input id="ot-pu" type="number" placeholder="0"></div>
-    </div>
-    <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
-      <button class="btn btn-orange" onclick="addLineaOT()">+ Agregar ítem</button>
-    </div>
-    <div id="ot-lineas-wrap"></div>
-    <div id="ot-totales-wrap" style="margin-top:10px"></div>
-    <hr>
-    <div class="field" style="margin-bottom:10px"><label>Trabajo realizado / observaciones</label><textarea id="ot-obs" placeholder="Descripción del trabajo realizado..."></textarea></div>
-    <!-- Factura / documento tributario -->
-    <div style="background:var(--surface2);border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;border:1px solid var(--border)">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:8px">🧾 Documento tributario <small style="font-weight:400;text-transform:none">(opcional)</small></div>
-      <div class="g4">
-        <div class="field"><label>Tipo documento</label>
-          <select id="ot-doc-tipo" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none">
-            <option value="Sin Boleta/Factura">Sin Boleta / Factura</option>
-            <option value="Boleta electrónica">Boleta electrónica</option>
-            <option value="Factura electrónica">Factura electrónica</option>
-          </select>
+      <div id="ot-step2" style="padding:12px 14px">
+        <div class="field" style="margin-bottom:10px">
+          <label>Mecánicos asignados <span style="font-weight:400;font-size:10px;color:var(--text3)">— selecciona uno o más</span></label>
+          <div id="ot-mec-pills" onclick="toggleMecPicker('ot')"
+            style="display:flex;gap:5px;flex-wrap:wrap;min-height:36px;padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);cursor:pointer;align-items:center">
+            <span style="font-size:12px;color:var(--text3)">Clic para seleccionar...</span>
+          </div>
+          <div id="ot-mec-picker" style="display:none;position:absolute;z-index:200;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow-md);padding:6px;margin-top:2px;min-width:240px;max-height:220px;overflow-y:auto"></div>
+          <input type="hidden" id="ot-mec-ids">
         </div>
-        <div class="field"><label>N° folio / documento</label><input id="ot-doc-folio" placeholder="Ej: 000123"></div>
-        <div class="field"><label>Fecha emisión</label><input id="ot-doc-fecha" type="date"></div>
-        <div class="field"><label>Monto facturado ($)</label><input id="ot-doc-monto" type="number" placeholder="Dejar vacío = igual a total OT" min="0"></div>
+        <div class="field" style="margin-bottom:10px"><label>Diagnóstico / trabajo solicitado</label><textarea id="ot-diag" placeholder="Descripción del problema o trabajo a realizar..."></textarea></div>
+        <div class="sec-label" style="margin-bottom:6px">Repuestos y mano de obra</div>
+        <div class="g4" style="margin-bottom:10px;align-items:end">
+          <div class="field ac-wrap">
+            <label>Producto / Servicio <span style="color:var(--text3);font-weight:400;font-size:9px">— escribe para buscar o ingresar libre</span></label>
+            <input id="ot-prod-txt" placeholder="Ej: Aceite motor, Cambio frenos..." autocomplete="off"
+              oninput="acSearch('ot')" onkeydown="acKey(event,'ot')" onfocus="acSearch('ot')" onblur="setTimeout(()=>acHide('ot'),180)">
+            <div id="ot-ac-drop" class="ac-dropdown" style="display:none"></div>
+            <input type="hidden" id="ot-prod-id">
+          </div>
+          <div class="field"><label>Unidad</label>
+            <select id="ot-prod-uni" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none">
+              <option value="und">Unidad</option><option value="lt">Litro</option><option value="kg">Kg</option>
+              <option value="m">Metro</option><option value="caja">Caja</option><option value="par">Par</option>
+              <option value="set">Set</option><option value="hrs">Hora</option>
+            </select>
+          </div>
+          <div class="field"><label>Cantidad</label><input id="ot-qty" type="number" value="1" min="0.01" step="0.01"></div>
+          <div class="field"><label>P. Unit. ($) <small style="color:var(--accent2)">editable</small></label><input id="ot-pu" type="number" placeholder="0"></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+          <button class="btn btn-orange" onclick="addLineaOT()">+ Agregar ítem</button>
+        </div>
+        <div id="ot-lineas-wrap"></div>
+        <div id="ot-totales-wrap" style="margin-top:10px"></div>
       </div>
     </div>
-    <div class="sec-label" style="margin-bottom:6px">📷 Fotos de evidencia <small style="color:var(--text3);font-weight:400">antes / durante / después de la reparación</small></div>
-    <div id="ot-imgs-preview" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"></div>
-    <label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border:1px dashed var(--border2);border-radius:var(--radius);font-size:12px;color:var(--text2);background:var(--bg);margin-bottom:12px">
-      📷 Agregar fotos
-      <input type="file" accept="image/*" multiple style="display:none" onchange="agregarImgsOT(this)">
-    </label>
-    <input type="hidden" id="ot-imgs-data">
+
+    <!-- PASO 3 — CIERRE (colapsable) -->
+    <div style="border:1px solid var(--border);border-left:3px solid var(--green);border-radius:var(--radius);margin-bottom:12px;overflow:hidden">
+      <div onclick="toggleOTStep('ot-step3','ot-arr3')" style="padding:8px 14px;background:var(--surface2);display:flex;align-items:center;gap:8px;cursor:pointer">
+        <span style="width:20px;height:20px;border-radius:50%;background:var(--green);color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">3</span>
+        <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Cierre y documentos</span>
+        <span style="font-size:10px;color:var(--text3);margin-left:4px">observaciones · factura · fotos</span>
+        <span id="ot-arr3" style="margin-left:auto;color:var(--text3);font-size:16px;transition:transform .2s">▾</span>
+      </div>
+      <div id="ot-step3" style="display:none;padding:12px 14px">
+        <div class="field" style="margin-bottom:10px"><label>Trabajo realizado / observaciones</label><textarea id="ot-obs" placeholder="Descripción del trabajo realizado..."></textarea></div>
+        <div style="background:var(--surface2);border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;border:1px solid var(--border)">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:8px">🧾 Documento tributario <small style="font-weight:400;text-transform:none">(opcional)</small></div>
+          <div class="g4">
+            <div class="field"><label>Tipo documento</label>
+              <select id="ot-doc-tipo" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none">
+                <option value="Sin Boleta/Factura">Sin Boleta / Factura</option>
+                <option value="Boleta electrónica">Boleta electrónica</option>
+                <option value="Factura electrónica">Factura electrónica</option>
+              </select>
+            </div>
+            <div class="field"><label>N° folio / documento</label><input id="ot-doc-folio" placeholder="Ej: 000123"></div>
+            <div class="field"><label>Fecha emisión</label><input id="ot-doc-fecha" type="date"></div>
+            <div class="field"><label>Monto facturado ($)</label><input id="ot-doc-monto" type="number" placeholder="Dejar vacío = igual a total OT" min="0"></div>
+          </div>
+        </div>
+        <div class="sec-label" style="margin-bottom:6px">📷 Fotos de evidencia <small style="color:var(--text3);font-weight:400">antes / durante / después de la reparación</small></div>
+        <div id="ot-imgs-preview" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"></div>
+        <label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border:1px dashed var(--border2);border-radius:var(--radius);font-size:12px;color:var(--text2);background:var(--bg);margin-bottom:12px">
+          📷 Agregar fotos
+          <input type="file" accept="image/*" multiple style="display:none" onchange="agregarImgsOT(this)">
+        </label>
+        <input type="hidden" id="ot-imgs-data">
+      </div>
+    </div>
+
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <button class="btn btn-primary" onclick="guardarOT()">✓ Guardar orden</button>
       <button class="btn" onclick="limpiarOT()">↺ Limpiar</button>
@@ -993,105 +1059,131 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
 <div id="sec-ventas" class="section">
   <div class="card">
     <div class="card-title"><div class="card-title-left">Nueva venta directa</div></div>
-    <div class="g4" style="margin-bottom:10px">
-      <div class="field ac-wrap">
-        <label>Cliente <span style="color:var(--text3);font-weight:400;font-size:9px">— busca o ingresa nombre libre</span></label>
-        <input id="v-cli-txt" placeholder="Nombre del cliente..." autocomplete="off"
-          oninput="acSearchVCli()" onkeydown="acKeyVCli(event)" onfocus="acSearchVCli()" onblur="setTimeout(()=>acHideVCli(),180)">
-        <div id="v-cli-drop" class="ac-dropdown" style="display:none"></div>
-        <input type="hidden" id="v-cli-id">
-      </div>
-      <div class="field"><label>Vehículo</label><select id="v-veh"><option value="">— Seleccionar —</option></select></div>
-      <div class="field"><label>Fecha</label><input id="v-fecha" type="date"></div>
-      <div class="field"><label>N° Orden</label><input id="v-folio" readonly style="background:var(--surface2);color:var(--text2)"></div>
-    </div>
-    <div id="v-pill" style="display:none;margin-bottom:10px"></div>
-    <hr>
-    <div class="g4" style="margin-bottom:10px;align-items:end">
-      <div class="field ac-wrap">
-        <label>Producto / Servicio <span style="color:var(--text3);font-weight:400;font-size:9px">— busca o ingresa libre</span></label>
-        <input id="v-prod-txt" placeholder="Ej: Aceite motor, Revisión..." autocomplete="off"
-          oninput="acSearchVProd()" onkeydown="acKeyVProd(event)" onfocus="acSearchVProd()" onblur="setTimeout(()=>acHideVProd(),180)">
-        <div id="v-prod-drop" class="ac-dropdown" style="display:none"></div>
-        <input type="hidden" id="v-prod-id">
-      </div>
-      <div class="field"><label>Unidad</label>
-        <select id="v-prod-uni" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none">
-          <option value="und">Unidad</option><option value="lt">Litro</option><option value="kg">Kg</option>
-          <option value="m">Metro</option><option value="caja">Caja</option><option value="par">Par</option>
-          <option value="set">Set</option><option value="hrs">Hora</option>
-        </select>
-      </div>
-      <div class="field"><label>Cantidad</label><input id="v-qty" type="number" value="1" min="0.01" step="0.01"></div>
-      <div class="field"><label>P. Unit. ($) <small style="color:var(--accent2)">editable</small></label><input id="v-pu" type="number" placeholder="0"></div>
-    </div>
-    <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
-      <button class="btn btn-orange" onclick="addLineaV()">+ Agregar ítem</button>
-    </div>
-    <div id="v-lineas-wrap"></div>
-    <div id="v-totales-wrap" style="margin-top:10px"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
-      <div class="field"><label>Descuento ($)</label><input id="v-desc" type="number" value="0" min="0" oninput="recalcLineas('v')"></div>
-      <div class="field"><label>Forma de pago</label>
-        <select id="v-fpago" onchange="toggleCreditoFecha('v')">
-          <option value="Contado">Contado</option>
-          <option value="Transferencia">Transferencia</option>
-          <option value="Débito">Débito</option>
-          <option value="Crédito">Crédito (cuenta corriente)</option>
-          <option value="Cheque">Cheque</option>
-          <option value="Otro">Otro</option>
-        </select>
-      </div>
-      <div class="field" id="v-fecha-vcto-wrap" style="display:none"><label>Fecha vencimiento crédito</label><input id="v-fecha-vcto" type="date"></div>
-    </div>
-    <!-- Campos cheque -->
-    <div id="v-cheque-wrap" style="display:none;background:var(--surface2);border-radius:var(--radius);padding:10px 14px;margin-bottom:10px;border:1px solid var(--border)">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:8px">🏦 Datos del cheque</div>
-      <div class="g3">
-        <div class="field"><label>N° de cheque</label><input id="v-cheque-num" placeholder="Ej: 0012345"></div>
-        <div class="field"><label>Banco emisor</label><input id="v-cheque-banco" placeholder="Ej: BancoEstado"></div>
-        <div class="field"><label>Fecha de cobro</label><input id="v-cheque-fecha" type="date"></div>
-      </div>
-    </div>
-    <hr>
-    <div class="field" style="margin-bottom:10px"><label>Observaciones</label><textarea id="v-obs" placeholder="Descripción del servicio..."></textarea></div>
 
-    <!-- Descuento venta -->
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:8px 12px;background:var(--surface2);border-radius:var(--radius)">
-      <span style="font-size:12px;color:var(--text2);flex:1">🏷️ Descuento ($)</span>
-      <input id="v-descuento" type="number" min="0" placeholder="0" oninput="recalcTotalesV()"
-        style="width:130px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--text);outline:none;text-align:right">
+    <!-- PASO 1 — CLIENTE -->
+    <div style="border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--radius);margin-bottom:8px;overflow:hidden">
+      <div style="padding:8px 14px;background:var(--surface2);display:flex;align-items:center;gap:8px">
+        <span style="width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">1</span>
+        <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Cliente y pago</span>
+      </div>
+      <div style="padding:12px 14px">
+        <div class="g4" style="margin-bottom:8px">
+          <div class="field ac-wrap">
+            <label>Cliente <span style="color:var(--text3);font-weight:400;font-size:9px">— busca o ingresa nombre libre</span></label>
+            <input id="v-cli-txt" placeholder="Nombre del cliente..." autocomplete="off"
+              oninput="acSearchVCli()" onkeydown="acKeyVCli(event)" onfocus="acSearchVCli()" onblur="setTimeout(()=>acHideVCli(),180)">
+            <div id="v-cli-drop" class="ac-dropdown" style="display:none"></div>
+            <input type="hidden" id="v-cli-id">
+          </div>
+          <div class="field"><label>Vehículo</label><select id="v-veh"><option value="">— Seleccionar —</option></select></div>
+          <div class="field"><label>Fecha</label><input id="v-fecha" type="date"></div>
+          <div class="field"><label>N° Venta</label><input id="v-folio" readonly style="background:var(--surface2);color:var(--text2)"></div>
+          <div class="field"><label>Forma de pago</label>
+            <select id="v-fpago" onchange="toggleCreditoFecha('v')">
+              <option value="Contado">Contado</option>
+              <option value="Transferencia">Transferencia</option>
+              <option value="Débito">Débito</option>
+              <option value="Crédito">Crédito (cuenta corriente)</option>
+              <option value="Cheque">Cheque</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </div>
+          <div class="field" id="v-fecha-vcto-wrap" style="display:none"><label>Fecha vencimiento crédito</label><input id="v-fecha-vcto" type="date"></div>
+        </div>
+        <div id="v-pill" style="display:none;margin-bottom:4px"></div>
+        <!-- Campos cheque -->
+        <div id="v-cheque-wrap" style="display:none;background:var(--surface2);border-radius:var(--radius);padding:10px 14px;border:1px solid var(--border)">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:8px">🏦 Datos del cheque</div>
+          <div class="g3">
+            <div class="field"><label>N° de cheque</label><input id="v-cheque-num" placeholder="Ej: 0012345"></div>
+            <div class="field"><label>Banco emisor</label><input id="v-cheque-banco" placeholder="Ej: BancoEstado"></div>
+            <div class="field"><label>Fecha de cobro</label><input id="v-cheque-fecha" type="date"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Documento tributario -->
-    <div style="background:var(--surface2);border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;border:1px solid var(--border)">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:8px">🧾 Documento tributario</div>
-      <div class="g2" style="margin-bottom:8px">
-        <div class="field"><label>Tipo documento</label>
-          <select id="v-doc-tipo" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none">
-            <option value="Sin Boleta/Factura">Sin Boleta / Factura</option>
-            <option value="Boleta electrónica">Boleta electrónica</option>
-            <option value="Factura electrónica">Factura electrónica</option>
-          </select>
-        </div>
-        <div class="field"><label>N° folio / documento</label><input id="v-doc-folio" placeholder="Ej: 000123"></div>
-        <div class="field"><label>Fecha emisión</label><input id="v-doc-fecha" type="date"></div>
-        <div class="field"><label>Monto facturado ($)</label><input id="v-doc-monto" type="number" placeholder="Vacío = total venta" min="0"></div>
+    <!-- PASO 2 — ÍTEMS -->
+    <div style="border:1px solid var(--border);border-left:3px solid var(--accent2);border-radius:var(--radius);margin-bottom:8px;overflow:hidden">
+      <div onclick="toggleOTStep('v-step2','v-arr2')" style="padding:8px 14px;background:var(--surface2);display:flex;align-items:center;gap:8px;cursor:pointer">
+        <span style="width:20px;height:20px;border-radius:50%;background:var(--accent2);color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">2</span>
+        <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Productos y servicios</span>
+        <span id="v-arr2" style="margin-left:auto;color:var(--text3);font-size:16px;transition:transform .2s">▾</span>
       </div>
-      <!-- Adjuntar documento -->
-      <div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">
-        <div style="font-size:11px;color:var(--text2);margin-bottom:6px">📎 Adjuntar documento (PDF o imagen)</div>
-        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-          <label class="btn btn-xs" style="cursor:pointer">
-            📎 Seleccionar archivo
-            <input type="file" accept=".pdf,image/*" style="display:none" onchange="adjuntarDocV(this)">
-          </label>
-          <span id="v-doc-adj-nom" style="font-size:11px;color:var(--text3)">Sin archivo</span>
-          <button id="v-doc-adj-clear" style="display:none;background:none;border:none;color:var(--red);cursor:pointer;font-size:12px" onclick="limpiarDocAdjV()">✕</button>
+      <div id="v-step2" style="padding:12px 14px">
+        <div class="g4" style="margin-bottom:10px;align-items:end">
+          <div class="field ac-wrap">
+            <label>Producto / Servicio <span style="color:var(--text3);font-weight:400;font-size:9px">— busca o ingresa libre</span></label>
+            <input id="v-prod-txt" placeholder="Ej: Aceite motor, Revisión..." autocomplete="off"
+              oninput="acSearchVProd()" onkeydown="acKeyVProd(event)" onfocus="acSearchVProd()" onblur="setTimeout(()=>acHideVProd(),180)">
+            <div id="v-prod-drop" class="ac-dropdown" style="display:none"></div>
+            <input type="hidden" id="v-prod-id">
+          </div>
+          <div class="field"><label>Unidad</label>
+            <select id="v-prod-uni" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none">
+              <option value="und">Unidad</option><option value="lt">Litro</option><option value="kg">Kg</option>
+              <option value="m">Metro</option><option value="caja">Caja</option><option value="par">Par</option>
+              <option value="set">Set</option><option value="hrs">Hora</option>
+            </select>
+          </div>
+          <div class="field"><label>Cantidad</label><input id="v-qty" type="number" value="1" min="0.01" step="0.01"></div>
+          <div class="field"><label>P. Unit. ($) <small style="color:var(--accent2)">editable</small></label><input id="v-pu" type="number" placeholder="0"></div>
         </div>
-        <input type="hidden" id="v-doc-adj-data">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+          <button class="btn btn-orange" onclick="addLineaV()">+ Agregar ítem</button>
+        </div>
+        <div id="v-lineas-wrap"></div>
+        <div id="v-totales-wrap" style="margin-top:10px"></div>
+        <!-- Descuento -->
+        <div style="display:flex;align-items:center;gap:10px;margin-top:8px;padding:8px 12px;background:var(--surface2);border-radius:var(--radius)">
+          <span style="font-size:12px;color:var(--text2);flex:1">🏷️ Descuento ($)</span>
+          <input id="v-descuento" type="number" min="0" placeholder="0" oninput="recalcTotalesV()"
+            style="width:130px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--text);outline:none;text-align:right">
+        </div>
       </div>
     </div>
+
+    <!-- PASO 3 — CIERRE -->
+    <div style="border:1px solid var(--border);border-left:3px solid var(--green);border-radius:var(--radius);margin-bottom:12px;overflow:hidden">
+      <div onclick="toggleOTStep('v-step3','v-arr3')" style="padding:8px 14px;background:var(--surface2);display:flex;align-items:center;gap:8px;cursor:pointer">
+        <span style="width:20px;height:20px;border-radius:50%;background:var(--green);color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">3</span>
+        <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)">Observaciones y documento</span>
+        <span style="font-size:10px;color:var(--text3);margin-left:4px">obs · factura · adjunto</span>
+        <span id="v-arr3" style="margin-left:auto;color:var(--text3);font-size:16px;transition:transform .2s">▾</span>
+      </div>
+      <div id="v-step3" style="display:none;padding:12px 14px">
+        <div class="field" style="margin-bottom:10px"><label>Observaciones</label><textarea id="v-obs" placeholder="Descripción del servicio..."></textarea></div>
+        <!-- Documento tributario -->
+        <div style="background:var(--surface2);border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;border:1px solid var(--border)">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:8px">🧾 Documento tributario</div>
+          <div class="g2" style="margin-bottom:8px">
+            <div class="field"><label>Tipo documento</label>
+              <select id="v-doc-tipo" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none">
+                <option value="Sin Boleta/Factura">Sin Boleta / Factura</option>
+                <option value="Boleta electrónica">Boleta electrónica</option>
+                <option value="Factura electrónica">Factura electrónica</option>
+              </select>
+            </div>
+            <div class="field"><label>N° folio / documento</label><input id="v-doc-folio" placeholder="Ej: 000123"></div>
+            <div class="field"><label>Fecha emisión</label><input id="v-doc-fecha" type="date"></div>
+            <div class="field"><label>Monto facturado ($)</label><input id="v-doc-monto" type="number" placeholder="Vacío = total venta" min="0"></div>
+          </div>
+          <div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">
+            <div style="font-size:11px;color:var(--text2);margin-bottom:6px">📎 Adjuntar documento (PDF o imagen)</div>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+              <label class="btn btn-xs" style="cursor:pointer">
+                📎 Seleccionar archivo
+                <input type="file" accept=".pdf,image/*" style="display:none" onchange="adjuntarDocV(this)">
+              </label>
+              <span id="v-doc-adj-nom" style="font-size:11px;color:var(--text3)">Sin archivo</span>
+              <button id="v-doc-adj-clear" style="display:none;background:none;border:none;color:var(--red);cursor:pointer;font-size:12px" onclick="limpiarDocAdjV()">✕</button>
+            </div>
+            <input type="hidden" id="v-doc-adj-data">
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <button class="btn btn-primary" onclick="guardarVenta()">✓ Confirmar venta</button>
       <button class="btn" onclick="limpiarV()">↺ Limpiar</button>
@@ -1112,12 +1204,67 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
 <!-- ══ INFORMES ══════════════════════════════════════════ -->
 <div id="sec-informes" class="section">
   <div class="tabs">
-    <button class="tab active" onclick="switchTab('inf','cliente',this)">📋 Historial por Cliente</button>
-    <button class="tab" onclick="switchTab('inf','vehiculo',this)">🚗 Historial por Vehículo</button>
+    <button class="tab active" onclick="switchTab('inf','ventas',this);renderInformeVentas()">📊 Ventas</button>
+    <button class="tab" onclick="switchTab('inf','mecanicos',this);renderInformeMecanicos()">👷 Por mecánico</button>
+    <button class="tab" onclick="switchTab('inf','cliente',this)">📋 Por cliente</button>
+    <button class="tab" onclick="switchTab('inf','vehiculo',this)">🚗 Por vehículo</button>
+  </div>
+
+  <!-- Tab ventas -->
+  <div id="inf-tab-ventas">
+    <div class="card" style="margin-bottom:10px">
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div class="field">
+          <label>Período</label>
+          <select id="inf-v-periodo" onchange="renderInformeVentas()" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none">
+            <option value="mes">Este mes</option>
+            <option value="mes_ant">Mes anterior</option>
+            <option value="trim">Últimos 3 meses</option>
+            <option value="anio">Este año</option>
+            <option value="custom">Rango personalizado</option>
+          </select>
+        </div>
+        <div id="inf-v-custom" style="display:none;display:flex;gap:6px">
+          <div class="field"><label>Desde</label><input id="inf-v-desde" type="date" oninput="renderInformeVentas()"></div>
+          <div class="field"><label>Hasta</label><input id="inf-v-hasta" type="date" oninput="renderInformeVentas()"></div>
+        </div>
+      </div>
+    </div>
+    <div id="inf-v-stats" class="stats" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px"></div>
+    <div class="card">
+      <div class="card-title"><div class="card-title-left">Ventas por forma de pago</div></div>
+      <div id="inf-v-fpago"></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="card-title-left">Top clientes del período</div></div>
+      <div id="inf-v-clientes"></div>
+    </div>
+  </div>
+
+  <!-- Tab mecánicos -->
+  <div id="inf-tab-mecanicos" style="display:none">
+    <div class="card" style="margin-bottom:10px">
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div class="field">
+          <label>Mes</label>
+          <select id="inf-m-mes" onchange="renderInformeMecanicos()" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none">
+            <option>Enero</option><option>Febrero</option><option>Marzo</option><option>Abril</option>
+            <option>Mayo</option><option>Junio</option><option>Julio</option><option>Agosto</option>
+            <option>Septiembre</option><option>Octubre</option><option>Noviembre</option><option>Diciembre</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Año</label>
+          <input id="inf-m-anio" type="number" value="2026" min="2024" max="2030" oninput="renderInformeMecanicos()"
+            style="width:80px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--text);outline:none">
+        </div>
+      </div>
+    </div>
+    <div id="inf-mec-result"></div>
   </div>
 
   <!-- Tab cliente -->
-  <div id="inf-tab-cliente">
+  <div id="inf-tab-cliente" style="display:none">
     <div class="card">
       <div class="card-title"><div class="card-title-left">Buscar cliente</div></div>
       <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
@@ -2634,7 +2781,7 @@ function nav(id,btn){
     cotizaciones:()=>{poblarSelsCot();renderCots();},
     ordenes:()=>{poblarSelsOT();renderOTs();},
     ventas:()=>{poblarSelsV();setToday('v-fecha');setVFolio();renderVentas();},
-    informes:()=>{},
+    informes:()=>{renderInformeVentas();if($('inf-m-mes'))$('inf-m-mes').value=meses[new Date().getMonth()];},
     anticipos:()=>{
       if(!DB.creditosMec)DB.creditosMec=[];
       aplicarCuotasCredito();
@@ -4207,11 +4354,11 @@ function cotAVenta(folio){
     clienteId:cot.clienteId,clienteNombre:cot.clienteNombre,clienteRut:cot.clienteRut,tel:cot.tel,
     vehiculoId:cot.vehiculoId,patente:cot.patente,marca:cot.marca,modelo:cot.modelo,
     mecanico:'',mecanicoId:'',km:0,diag:cot.obs||'',obs:'',
-    items:[...cot.items],total:cot.total,estado:'Recibido',
+    items:[...cot.items],descuento:cot.descuento||0,total:cot.total,estado:'Recibido',
     cotizacionOrigen:folio,creado:new Date().toISOString()});
   cot.estado='Convertida';cot.otFolio=vFolio;
   save();renderCots();updateBadges();
-  toast(`Orden ${vFolio} creada desde cotización ${folio}`);
+  toast(`Orden ${vFolio} creada desde cotización ${folio}${cot.descuento>0?' — descuento $'+cot.descuento.toLocaleString('es-CL')+' transferido':''}`);
 }
 function eliminarCot(folio){
   if(!confirm('¿Eliminar cotización?'))return;
@@ -4431,6 +4578,15 @@ function guardarOT(){
   }
   toast(`Orden ${folio} creada`);
 }
+function toggleOTStep(id, arrId){
+  const el=document.getElementById(id);
+  const arr=document.getElementById(arrId);
+  if(!el)return;
+  const open=el.style.display!=='none';
+  el.style.display=open?'none':'block';
+  if(arr)arr.style.transform=open?'rotate(-90deg)':'rotate(0deg)';
+}
+
 function limpiarOT(){
   lines.ot=[];
   if($('ot-cli-txt'))$('ot-cli-txt').value='';
@@ -4542,28 +4698,37 @@ function renderOTs(){
 
   const el=$('lista-ots');
   if(!lista.length){el.innerHTML='<div class="empty"><div class="empty-icon">🔧</div>'+(q||est?'Sin resultados para la búsqueda':'No hay órdenes para mostrar')+'</div>';return;}
-  el.innerHTML=lista.map(o=>{
+
+  // Split into active and delivered
+  const activas=lista.filter(o=>o.estado!=='Entregado');
+  const entregadas=lista.filter(o=>o.estado==='Entregado');
+
+  function renderRow(o){
     const venc=o.fechaEst&&o.fechaEst<hoy&&o.estado!=='Listo'&&o.estado!=='Entregado';
     const entregado=o.estado==='Entregado';
     const listo=o.estado==='Listo';
-    const rowBorder=venc?'border-left:3px solid var(--red)':entregado?'border-left:3px solid var(--green)':listo?'border-left:3px solid var(--teal)':'';
+    const enProceso=o.estado==='En proceso';
+    const rowBorder=venc?'border-left:3px solid var(--red)':entregado?'border-left:3px solid var(--green)':listo?'border-left:3px solid var(--teal)':enProceso?'border-left:3px solid var(--accent)':'border-left:3px solid var(--border)';
     const rowBg=entregado?'background:var(--green-light)':'';
+    const opacity=entregado?'opacity:.75':'';
+    // Get mechanic names
+    const mecNombres=(o.mecanicos&&o.mecanicos.length)?o.mecanicos.map(m=>m.nombre).join(', '):(o.mecanico||'');
     return`
-    <div class="exp-row" style="${rowBorder}${rowBg?';'+rowBg:''}">
+    <div class="exp-row" style="${rowBorder}${rowBg?';'+rowBg:''}${opacity?';'+opacity:''}">
       <div class="exp-hdr" onclick="toggle('ot-${o.folio}')" style="${entregado?'background:var(--green-light)':''}">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span class="folio-tag">${o.folio}</span>
-          <span style="font-weight:600">${o.clienteNombre}</span>
+          <span style="font-weight:${entregado?500:700}">${o.clienteNombre}</span>
           ${o.patente?`<span class="badge b-orange">${o.patente}</span>`:''}
-          ${o.marca?`<span style="font-size:11px;color:var(--text2)">${o.marca} ${o.modelo}</span>`:''}
+          ${o.marca?`<span style="font-size:11px;color:var(--text2)">${o.marca} ${o.modelo||''}</span>`:''}
           <span class="status ${venc?'s-vencido':statusClass(o.estado)}">${venc?'Vencido':o.estado}</span>
-          ${o.mecanico?`<span class="badge b-blue">${o.mecanico}</span>`:''}
+          ${mecNombres?`<span style="font-size:10px;color:var(--text2);padding:2px 7px;background:var(--surface2);border-radius:10px">👷 ${mecNombres}</span>`:''}
           ${o.cotizacionOrigen?`<span class="folio-cot" style="font-size:10px">desde ${o.cotizacionOrigen}</span>`:''}
-          ${o.docTipo?`<span style="font-size:10px;font-weight:600;color:var(--teal);background:var(--teal-light);padding:2px 7px;border-radius:10px">🧾 ${o.docTipo}${o.docFolio?' N°'+o.docFolio:''}</span>`:''}
+          ${o.docTipo&&o.docTipo!=='Sin Boleta/Factura'?`<span style="font-size:10px;font-weight:600;color:var(--teal);background:var(--teal-light);padding:2px 7px;border-radius:10px">🧾 ${o.docTipo}${o.docFolio?' N°'+o.docFolio:''}</span>`:''}
         </div>
         <div style="text-align:right;flex-shrink:0">
-          <div style="font-weight:700;font-size:15px;font-family:'JetBrains Mono',monospace">${fmt(o.total)}</div>
-          <div style="font-size:10px;color:var(--text2)">${o.fechaIn||''} ${o.fechaEst?'→ '+o.fechaEst:''} · ${o.km?fmtN(o.km)+' km':''}</div>
+          <div style="font-weight:700;font-size:15px;font-family:'JetBrains Mono',monospace;${entregado?'color:var(--green)':''}">${fmt(o.total)}</div>
+          <div style="font-size:10px;color:var(--text2)">${o.fechaIn||o.creado?.slice(0,10)||''}</div>
         </div>
       </div>
       <div class="exp-body" id="ot-${o.folio}">
@@ -4636,7 +4801,19 @@ function renderOTs(){
         </div>
       </div>
     </div>`;
-  }).join('');
+  }
+
+  // Build grouped output
+  let html='';
+  if(activas.length){
+    html+=`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);padding:6px 2px;margin-bottom:4px">⚡ Activas (${activas.length})</div>`;
+    html+=activas.map(o=>renderRow(o)).join('');
+  }
+  if(entregadas.length){
+    html+=`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);padding:8px 2px 4px;margin-top:${activas.length?8:0}px;border-top:${activas.length?'1px solid var(--border)':'none'}">✅ Entregadas (${entregadas.length})</div>`;
+    html+=entregadas.map(o=>renderRow(o)).join('');
+  }
+  el.innerHTML=html;
 }
 // ── Modal forma de pago OT → Venta ────────────────
 let _fpagoOTFolio=null;
@@ -5021,6 +5198,132 @@ function limpiarV(){
 // ══════════════════════════════════════════════════
 // INFORMES — historial clientes y vehículos
 // ══════════════════════════════════════════════════
+// ── Informes: Ventas por período ──────────────────
+function renderInformeVentas(){
+  const periodo=$('inf-v-periodo')?.value||'mes';
+  const customWrap=$('inf-v-custom');
+  if(customWrap)customWrap.style.display=periodo==='custom'?'flex':'none';
+
+  const hoy=today();
+  const d=new Date();
+  let desde='',hasta=hoy;
+
+  if(periodo==='mes'){
+    desde=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`;
+  } else if(periodo==='mes_ant'){
+    const ma=new Date(d.getFullYear(),d.getMonth()-1,1);
+    const maf=new Date(d.getFullYear(),d.getMonth(),0);
+    desde=ma.toISOString().slice(0,10);
+    hasta=maf.toISOString().slice(0,10);
+  } else if(periodo==='trim'){
+    const t=new Date(d); t.setMonth(t.getMonth()-3);
+    desde=t.toISOString().slice(0,10);
+  } else if(periodo==='anio'){
+    desde=`${d.getFullYear()}-01-01`;
+  } else {
+    desde=$('inf-v-desde')?.value||'';
+    hasta=$('inf-v-hasta')?.value||hoy;
+  }
+
+  const ventas=DB.ventas.filter(v=>(!desde||v.fecha>=desde)&&(!hasta||v.fecha<=hasta));
+  const totalIng=ventas.reduce((s,v)=>s+v.total,0);
+  const totalDto=ventas.reduce((s,v)=>s+(v.descuento||0),0);
+  const otsCount=DB.ordenes.filter(o=>(!desde||o.fechaIn>=desde)&&(!hasta||o.fechaIn<=hasta)).length;
+  const ticketProm=ventas.length?Math.round(totalIng/ventas.length):0;
+
+  const stats=$('inf-v-stats');
+  if(stats)stats.innerHTML=`
+    <div class="stat"><div class="stat-lbl">Total ingresos</div><div class="stat-val" style="color:var(--green)">${fmt(totalIng)}</div><div class="stat-sub">${ventas.length} venta${ventas.length!==1?'s':''}</div></div>
+    <div class="stat"><div class="stat-lbl">Ticket promedio</div><div class="stat-val">${fmt(ticketProm)}</div><div class="stat-sub">por venta</div></div>
+    <div class="stat"><div class="stat-lbl">Descuentos otorgados</div><div class="stat-val" style="color:var(--amber)">${fmt(totalDto)}</div><div class="stat-sub">total período</div></div>
+    <div class="stat"><div class="stat-lbl">OTs en período</div><div class="stat-val">${otsCount}</div><div class="stat-sub">órdenes de trabajo</div></div>`;
+
+  // Forma de pago
+  const byFp={};
+  ventas.forEach(v=>{const fp=v.fpago||'Contado';if(!byFp[fp])byFp[fp]=0;byFp[fp]+=v.total;});
+  const fpEl=$('inf-v-fpago');
+  if(fpEl){
+    const sorted=Object.entries(byFp).sort((a,b)=>b[1]-a[1]);
+    const max=sorted[0]?.[1]||1;
+    fpEl.innerHTML=sorted.map(([fp,tot])=>`
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <span style="width:120px;font-size:12px;flex-shrink:0">${fp}</span>
+        <div style="flex:1;background:var(--surface2);border-radius:4px;height:20px;overflow:hidden">
+          <div style="height:100%;width:${Math.round(tot/max*100)}%;background:var(--accent);border-radius:4px;transition:width .3s"></div>
+        </div>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;min-width:90px;text-align:right">${fmt(tot)}</span>
+      </div>`).join('')||'<div class="empty">Sin ventas en el período</div>';
+  }
+
+  // Top clientes
+  const byCli={};
+  ventas.forEach(v=>{const k=v.clienteNombre||'—';if(!byCli[k])byCli[k]={total:0,count:0};byCli[k].total+=v.total;byCli[k].count++;});
+  const cliEl=$('inf-v-clientes');
+  if(cliEl){
+    const sorted=Object.entries(byCli).sort((a,b)=>b[1].total-a[1].total).slice(0,10);
+    cliEl.innerHTML=`<div class="tw"><table><thead><tr><th>#</th><th>Cliente</th><th class="tr">Ventas</th><th class="tr">Total</th></tr></thead><tbody>
+      ${sorted.map(([nom,d],i)=>`<tr><td style="color:var(--text3)">${i+1}</td><td style="font-weight:500">${nom}</td>
+        <td class="tr">${d.count}</td>
+        <td class="tr" style="font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--green)">${fmt(d.total)}</td></tr>`).join('')}
+    </tbody></table></div>`||'<div class="empty">Sin ventas</div>';
+  }
+}
+
+// ── Informes: Rendimiento por mecánico ──────────────────
+function renderInformeMecanicos(){
+  const mes=$('inf-m-mes')?.value||meses[new Date().getMonth()];
+  const anio=parseInt($('inf-m-anio')?.value)||new Date().getFullYear();
+
+  const otsMes=DB.ordenes.filter(o=>{
+    const [oy,om]=((o.fechaIn||o.creado||'').slice(0,7)).split('-');
+    return meses[parseInt(om)-1]===mes&&parseInt(oy)===anio;
+  });
+
+  const mecData={};
+  DB.mecanicos.filter(m=>m.estado==='Activo').forEach(m=>{mecData[m.id]={nombre:m.nombre,ots:[],total:0};});
+
+  otsMes.forEach(o=>{
+    const ids=(o.mecanicos&&o.mecanicos.length)?o.mecanicos.map(m=>m.id):
+      (o.mecanicoId?o.mecanicoId.split(',').filter(Boolean):[]);
+    ids.forEach(id=>{
+      if(!mecData[id])return;
+      mecData[id].ots.push(o);
+      mecData[id].total+=Math.round(o.total/(ids.length||1));
+    });
+  });
+
+  const sorted=Object.values(mecData).sort((a,b)=>b.total-a.total);
+  const el=$('inf-mec-result');
+  if(!el)return;
+  if(!sorted.length){el.innerHTML='<div class="empty">Sin mecánicos activos</div>';return;}
+
+  el.innerHTML=sorted.map(m=>{
+    const comision=Math.round(m.total*0.05);
+    return`<div class="card" style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-weight:700;font-size:15px">${m.nombre}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">${m.ots.length} OT${m.ots.length!==1?'s':''} en ${mes} ${anio}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:12px;color:var(--text2)">Facturado</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:18px;color:var(--green)">${fmt(m.total)}</div>
+          <div style="font-size:11px;color:var(--text2)">Comisión estimada (5%): <strong>${fmt(comision)}</strong></div>
+        </div>
+      </div>
+      ${m.ots.length?`<div class="tw" style="margin-top:10px"><table><thead><tr><th>OT</th><th>Cliente</th><th>Estado</th><th class="tr">Monto OT</th></tr></thead>
+      <tbody>${m.ots.slice(0,8).map(o=>`<tr>
+        <td><span class="folio-tag">${o.folio}</span></td>
+        <td style="font-size:12px">${o.clienteNombre}</td>
+        <td><span class="status ${statusClass(o.estado)}" style="font-size:10px">${o.estado}</span></td>
+        <td class="tr" style="font-family:'JetBrains Mono',monospace;font-weight:600">${fmt(o.total)}</td>
+      </tr>`).join('')}
+      ${m.ots.length>8?`<tr><td colspan="4" style="text-align:center;color:var(--text3);font-size:11px">... y ${m.ots.length-8} más</td></tr>`:''}
+      </tbody></table></div>`:'<div style="font-size:12px;color:var(--text3);padding:8px 0">Sin OTs este período</div>'}
+    </div>`;
+  }).join('');
+}
+
 function acSearchInfCli(){
   const q=($('inf-cli-txt')?.value||'').trim().toLowerCase();
   const drop=$('inf-cli-drop');if(!drop)return;
@@ -7314,13 +7617,17 @@ function buildDocCot(c,v){
   ${(()=>{
     const neto=c.items.reduce((s,it)=>s+it.sub,0);
     const iva=c.items.reduce((s,it)=>s+(it.iva?Math.round(it.sub*0.19):0),0);
-    if(iva>0)return`<div style="display:flex;justify-content:flex-end;gap:16px;margin-top:8px;font-size:11px;color:#666">
-      <span>Neto: <strong style="font-family:monospace">${fmt(neto)}</strong></span>
-      <span style="color:#2a5a2a">IVA: <strong style="font-family:monospace">+${fmt(iva)}</strong></span>
-    </div>`;
-    return'';
+    const desc=c.descuento||0;
+    let html='';
+    if(iva>0||desc>0){
+      html+='<div style="display:flex;justify-content:flex-end;gap:16px;margin-top:8px;font-size:11px;color:#666">';
+      if(iva>0) html+=`<span>Neto: <strong style="font-family:monospace">${fmt(neto)}</strong></span><span style="color:#2a5a2a">IVA: <strong style="font-family:monospace">+${fmt(iva)}</strong></span>`;
+      if(desc>0) html+=`<span style="color:#cc6600">Descuento: <strong style="font-family:monospace">-${fmt(desc)}</strong></span>`;
+      html+='</div>';
+    }
+    return html;
   })()}
-  <div class="total-box" style="background:#5a2a7a"><div><div class="lbl">Total cotización${c.items.some(i=>i.iva)?' (IVA incluido)':''}</div></div><div class="amt">${fmt(c.total)}</div></div>
+  <div class="total-box" style="background:#5a2a7a"><div><div class="lbl">Total cotización${c.items.some(i=>i.iva)?' (IVA incluido)':''}${c.descuento>0?' — descuento aplicado':''}</div></div><div class="amt">${fmt(c.total)}</div></div>
   ${c.obs?`<div class="obs-box"><strong>Notas:</strong> ${c.obs}</div>`:''}
   ${bancoHtml()}
   ${CFG.pieCot?`<div class="pie-txt">${CFG.pieCot}</div>`:''}
