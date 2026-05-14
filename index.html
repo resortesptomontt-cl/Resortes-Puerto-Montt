@@ -5755,7 +5755,6 @@ function renderPedidos(){
   const est=$('s-ped-est')?.value||'';
   const hoy=today();
   let lista=[...DB.pedidos];
-  if(!_pedVerTodas)lista=lista.filter(p=>p.estado!=='Retirado'||(DB.pedidos.filter(x=>x.estado!=='Retirado').length===0&&lista.length<=5));
   if(q)lista=lista.filter(p=>p.folio.toLowerCase().includes(q)||p.clienteNombre.toLowerCase().includes(q)||(p.desc||'').toLowerCase().includes(q));
   if(est)lista=lista.filter(p=>p.estado===est);
   const activas=lista.filter(p=>p.estado!=='Retirado');
