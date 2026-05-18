@@ -5397,6 +5397,8 @@ function renderOTs(){
     const rowBg=entregado?'background:var(--green-light)':'';
     const opacity=entregado?'opacity:.75':'';
     const mecNombres=(o.mecanicos&&o.mecanicos.length)?o.mecanicos.map(m=>m.nombre).join(', '):(o.mecanico||'');
+    const _cli=o.clienteId?DB.clientes.find(c=>c.id===o.clienteId):null;
+    const tel=(_cli?.contactoTel||o.contactoTel)||(_cli?.tel||o.tel)||'';
 
     // ── Vista compacta ──────────────────────────────
     if(_otCompact){
@@ -5404,7 +5406,7 @@ function renderOTs(){
         <span class="folio-tag" style="font-size:10px">${o.folio}</span>
         <span style="font-weight:${entregado?400:600};font-size:12px;flex:1;min-width:120px">${o.clienteNombre}</span>
         ${o.patente?`<span class="badge b-orange" style="font-size:10px">${o.patente}</span>`:''}
-        ${o.tel?`<span style="font-size:10px;color:var(--text3)">📞 ${o.tel}</span>`:''}
+        ${tel?`<span style="font-size:10px;color:var(--text3)">📞 ${tel}</span>`:''}
         <span class="status ${venc?'s-vencido':statusClass(o.estado)}" style="font-size:10px">${venc?'Vencido':o.estado}</span>
         ${mecNombres?`<span style="font-size:10px;color:var(--text3)">👷 ${mecNombres.split(',')[0]}${o.mecanicos?.length>1?'+'+( o.mecanicos.length-1)+'':''}</span>`:''}
         <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;min-width:80px;text-align:right">${fmt(o.total)}</span>
@@ -5425,7 +5427,14 @@ function renderOTs(){
           <span style="font-weight:${entregado?500:700}">${o.clienteNombre}</span>
           ${o.patente?`<span class="badge b-orange">${o.patente}</span>`:''}
           ${o.marca?`<span style="font-size:11px;color:var(--text2)">${o.marca} ${o.modelo||''}</span>`:''}
-          ${o.tel?`<span style="font-size:11px;color:var(--text3)">📞 ${o.tel}</span>`:''}
+          ${(()=>{
+            const telEncargado=_cli?.contactoTel||o.contactoTel||'';
+            const telEmpresa=_cli?.tel||o.tel||'';
+            if(telEncargado&&telEmpresa&&telEncargado!==telEmpresa)
+              return`<span style="font-size:11px;color:var(--text3)">📞 ${telEncargado} · ${telEmpresa}</span>`;
+            const t=telEncargado||telEmpresa;
+            return t?`<span style="font-size:11px;color:var(--text3)">📞 ${t}</span>`:'';
+          })()}
           <span class="status ${venc?'s-vencido':statusClass(o.estado)}">${venc?'Vencido':o.estado}</span>
           ${mecNombres?`<span style="font-size:10px;color:var(--text2);padding:2px 7px;background:var(--surface2);border-radius:10px">👷 ${mecNombres}</span>`:''}
           ${o.cotizacionOrigen?`<span class="folio-cot" style="font-size:10px">desde ${o.cotizacionOrigen}</span>`:''}
