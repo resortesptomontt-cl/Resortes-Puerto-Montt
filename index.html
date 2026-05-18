@@ -500,8 +500,8 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
     <button class="nav-item" title="Mecánicos" onclick="nav('mecanicos',this)"><span class="ni">👷</span><span>Mecánicos</span></button>
 
     <div class="nav-group">Operaciones</div>
-    <button class="nav-item" title="Lista de Precios" onclick="nav('lista-precios',this)"><span class="ni">💲</span><span>Lista de Precios</span></button>
-    <button class="nav-item" title="Cotizaciones" id="nav-cot" onclick="nav('cotizaciones',this)"><span class="ni">📝</span><span>Cotizaciones</span><span class="nav-badge" id="badge-cot" style="display:none">0</span></button>
+    <button class="nav-item" title="Cotización Rápida" onclick="nav('lista-precios',this)"><span class="ni">💲</span><span>Cotización Rápida</span></button>
+    <button class="nav-item" title="Cotización Formal" id="nav-cot" onclick="nav('cotizaciones',this)"><span class="ni">📝</span><span>Cotización Formal</span><span class="nav-badge" id="badge-cot" style="display:none">0</span></button>
     <button class="nav-item" title="Órdenes de Trabajo" onclick="nav('ordenes',this)"><span class="ni">🔧</span><span>Órdenes de Trabajo</span></button>
     <button class="nav-item" title="Pedidos de Fabricación" onclick="nav('pedidos',this)"><span class="ni">🏭</span><span>Pedidos Fabricación</span><span class="nav-badge" id="badge-ped" style="display:none">0</span></button>
     <button class="nav-item" title="Ventas" onclick="nav('ventas',this)"><span class="ni">🧾</span><span>Ventas</span></button>
@@ -1068,7 +1068,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
   <div id="lp-paso1">
     <div class="card" style="margin-bottom:10px">
       <div class="card-title">
-        <div class="card-title-left">💲 Lista de Precios Rápida</div>
+        <div class="card-title-left">💲 Cotización Rápida</div>
         <span style="font-size:11px;color:var(--text2)">Arma la lista, luego convierte en OT, Cotización o Venta</span>
       </div>
 
@@ -3177,10 +3177,10 @@ const navTitles={
   vehiculos:['Vehículos','Gestión de vehículos por propietario'],
   inventario:['Inventario','Productos, repuestos y servicios'],
   mecanicos:['Mecánicos','Equipo de trabajo'],
-  cotizaciones:['Cotizaciones','Presupuestos y propuestas'],
+  cotizaciones:['Cotización Formal','Presupuestos y propuestas formales'],
   ordenes:['Órdenes de Trabajo','Gestión de servicios en curso'],
   pedidos:['Pedidos de Fabricación','Fabricación de paquetes y hojas a pedido'],
-  'lista-precios':['Lista de Precios Rápida','Arma listas, cotizaciones, ventas y órdenes al instante'],
+  'lista-precios':['Cotización Rápida','Arma listas y conviértelas en OT, Cotización Formal o Venta al instante'],
   informes:['Informes — Trazabilidad','Historial completo por cliente y vehículo'],
   anticipos:['Anticipos / Préstamos / Descuentos','Gestión de haberes y descuentos de trabajadores'],
   creditos:['Cuentas por Cobrar','Gestión de créditos y deudas de clientes'],
