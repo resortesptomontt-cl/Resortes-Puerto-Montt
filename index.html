@@ -5404,6 +5404,7 @@ function renderOTs(){
         <span class="folio-tag" style="font-size:10px">${o.folio}</span>
         <span style="font-weight:${entregado?400:600};font-size:12px;flex:1;min-width:120px">${o.clienteNombre}</span>
         ${o.patente?`<span class="badge b-orange" style="font-size:10px">${o.patente}</span>`:''}
+        ${o.tel?`<span style="font-size:10px;color:var(--text3)">📞 ${o.tel}</span>`:''}
         <span class="status ${venc?'s-vencido':statusClass(o.estado)}" style="font-size:10px">${venc?'Vencido':o.estado}</span>
         ${mecNombres?`<span style="font-size:10px;color:var(--text3)">👷 ${mecNombres.split(',')[0]}${o.mecanicos?.length>1?'+'+( o.mecanicos.length-1)+'':''}</span>`:''}
         <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;min-width:80px;text-align:right">${fmt(o.total)}</span>
@@ -5424,6 +5425,7 @@ function renderOTs(){
           <span style="font-weight:${entregado?500:700}">${o.clienteNombre}</span>
           ${o.patente?`<span class="badge b-orange">${o.patente}</span>`:''}
           ${o.marca?`<span style="font-size:11px;color:var(--text2)">${o.marca} ${o.modelo||''}</span>`:''}
+          ${o.tel?`<span style="font-size:11px;color:var(--text3)">📞 ${o.tel}</span>`:''}
           <span class="status ${venc?'s-vencido':statusClass(o.estado)}">${venc?'Vencido':o.estado}</span>
           ${mecNombres?`<span style="font-size:10px;color:var(--text2);padding:2px 7px;background:var(--surface2);border-radius:10px">👷 ${mecNombres}</span>`:''}
           ${o.cotizacionOrigen?`<span class="folio-cot" style="font-size:10px">desde ${o.cotizacionOrigen}</span>`:''}
