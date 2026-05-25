@@ -1141,99 +1141,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
     </div>
   </div>
 
-  <!-- PASO 2: Formulario de conversión -->
-  <div id="lp-paso2" style="display:none">
-    <div class="card">
-      <div class="card-title">
-        <div class="card-title-left" id="lp-p2-titulo">Nueva orden</div>
-        <button class="btn btn-xs" onclick="lpVolverPaso1()">← Volver</button>
-      </div>
 
-      <!-- Resumen ítems -->
-      <div style="background:var(--surface2);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px">
-        <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:6px">Ítems a transferir</div>
-        <div id="lp-p2-items" style="font-size:12px;color:var(--text2)"></div>
-        <div style="margin-top:8px;font-weight:700;font-size:14px;font-family:'JetBrains Mono',monospace" id="lp-p2-total"></div>
-      </div>
-
-      <!-- Form OT -->
-      <div id="lp-form-ot" style="display:none">
-        <div class="g4" style="margin-bottom:10px">
-          <div class="field ac-wrap">
-            <label>Cliente <span style="color:var(--text3);font-weight:400;font-size:9px">— busca o ingresa</span></label>
-            <input id="lp-ot-cli" placeholder="Nombre del cliente..." autocomplete="off"
-              oninput="acSearchLpCli()" onblur="setTimeout(()=>$('lp-ot-cli-drop').style.display='none',180)">
-            <div id="lp-ot-cli-drop" class="ac-dropdown" style="display:none"></div>
-            <input type="hidden" id="lp-ot-cli-id">
-          </div>
-          <div class="field"><label>Vehículo / Patente *</label>
-            <input id="lp-ot-pat" placeholder="Ej: BCDF12" style="text-transform:uppercase"></div>
-          <div class="field"><label>Km ingreso</label>
-            <input id="lp-ot-km" type="number" placeholder="km actuales"></div>
-          <div class="field"><label>Fecha entrega est.</label>
-            <input id="lp-ot-fecha-est" type="date"></div>
-          <div class="field">
-            <label>Mecánico asignado</label>
-            <div id="lp-ot-mec-pills" onclick="toggleMecPicker('lp-ot')"
-              style="display:flex;gap:5px;flex-wrap:wrap;min-height:36px;padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);cursor:pointer;align-items:center">
-              <span style="font-size:12px;color:var(--text3)">Clic para seleccionar...</span>
-            </div>
-            <div id="lp-ot-mec-picker" style="display:none;position:absolute;z-index:200;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow-md);padding:6px;margin-top:2px;min-width:240px;max-height:220px;overflow-y:auto"></div>
-            <input type="hidden" id="lp-ot-mec-ids">
-          </div>
-          <div class="field" style="grid-column:span 3"><label>Diagnóstico / trabajo a realizar</label>
-            <textarea id="lp-ot-diag" placeholder="Descripción del trabajo..." style="min-height:60px"></textarea>
-          </div>
-        </div>
-        <div style="display:flex;gap:6px">
-          <button class="btn btn-primary" onclick="lpGuardarOT()">✓ Crear orden de trabajo</button>
-          <button class="btn" onclick="lpVolverPaso1()">Cancelar</button>
-        </div>
-      </div>
-
-      <!-- Form Venta -->
-      <div id="lp-form-venta" style="display:none">
-        <div class="g3" style="margin-bottom:10px">
-          <div class="field ac-wrap">
-            <label>Cliente <span style="color:var(--text3);font-weight:400;font-size:9px">— opcional</span></label>
-            <input id="lp-v-cli" placeholder="Nombre o buscar cliente..." autocomplete="off"
-              oninput="acSearchLpCli('v')" onblur="setTimeout(()=>$('lp-v-cli-drop').style.display='none',180)">
-            <div id="lp-v-cli-drop" class="ac-dropdown" style="display:none"></div>
-            <input type="hidden" id="lp-v-cli-id">
-          </div>
-          <div class="field"><label>Forma de pago</label>
-            <select id="lp-v-fpago" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none">
-              <option>Contado</option><option>Transferencia</option><option>Débito</option><option>Crédito</option><option>Cheque</option>
-            </select>
-          </div>
-          <div class="field"><label>Fecha</label><input id="lp-v-fecha" type="date"></div>
-        </div>
-        <div style="display:flex;gap:6px">
-          <button class="btn btn-primary" onclick="lpGuardarVenta()">✓ Confirmar venta</button>
-          <button class="btn" onclick="lpVolverPaso1()">Cancelar</button>
-        </div>
-      </div>
-
-      <!-- Form Cotización -->
-      <div id="lp-form-cot" style="display:none">
-        <div class="g3" style="margin-bottom:10px">
-          <div class="field ac-wrap">
-            <label>Cliente *</label>
-            <input id="lp-c-cli" placeholder="Nombre del cliente..." autocomplete="off"
-              oninput="acSearchLpCli('c')" onblur="setTimeout(()=>$('lp-c-cli-drop').style.display='none',180)">
-            <div id="lp-c-cli-drop" class="ac-dropdown" style="display:none"></div>
-            <input type="hidden" id="lp-c-cli-id">
-          </div>
-          <div class="field"><label>Vehículo (opcional)</label><input id="lp-c-pat" placeholder="Patente..."></div>
-          <div class="field"><label>Fecha</label><input id="lp-c-fecha" type="date"></div>
-        </div>
-        <div style="display:flex;gap:6px">
-          <button class="btn btn-purple" onclick="lpGuardarCot()">✓ Crear cotización</button>
-          <button class="btn" onclick="lpVolverPaso1()">Cancelar</button>
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
 
 <!-- ══ VENTAS ══════════════════════════════════════════ -->
@@ -5386,7 +5294,8 @@ function renderOTs(){
 
   // Split into active and delivered
   const activas=lista.filter(o=>o.estado!=='Entregado');
-  const entregadas=lista.filter(o=>o.estado==='Entregado');
+  const entregadas=lista.filter(o=>o.estado==='Entregado')
+    .sort((a,b)=>(b.creado||b.fechaIn||'').localeCompare(a.creado||a.fechaIn||''));
 
   function renderRow(o){
     const venc=o.fechaEst&&o.fechaEst<hoy&&o.estado!=='Listo'&&o.estado!=='Entregado';
@@ -6481,24 +6390,82 @@ function lpActualizarResumen(){
 
 function lpConvertir(dest){
   if(!_lpItems.length){toast('Agrega al menos un ítem','err');return;}
-  _lpDest=dest;
-  $('lp-paso1').style.display='none';
-  $('lp-paso2').style.display='block';
-  const titulos={ot:'🔧 Nueva orden de trabajo',venta:'💰 Venta directa',cot:'📝 Nueva cotización'};
-  if($('lp-p2-titulo'))$('lp-p2-titulo').textContent=titulos[dest];
   const desc=parseFloat($('lp-descuento')?.value)||0;
+  const lineas=_lpItems2Lines();
   const subtotal=_lpItems.reduce((s,it)=>s+it.precio*it.qty,0);
   const total=Math.max(0,subtotal-desc);
-  const itemsEl=$('lp-p2-items');
-  if(itemsEl)itemsEl.innerHTML=_lpItems.map(it=>`<div style="padding:3px 0;font-size:12px">
-    ${it.libre?`<span style="font-size:10px;background:var(--amber-light);color:var(--amber);padding:1px 5px;border-radius:8px;margin-right:4px">libre</span>`:''}
-    ${it.qty}× ${it.nombre} — ${fmt(it.precio*it.qty)}</div>`).join('');
-  if($('lp-p2-total'))$('lp-p2-total').innerHTML=desc>0
-    ?`Total: ${fmt(total)} <span style="font-size:11px;font-weight:400;color:var(--amber)">(-${fmt(desc)} descuento)</span>`
-    :`Total: ${fmt(total)}`;
-  ['lp-form-ot','lp-form-venta','lp-form-cot'].forEach(f=>{const el=$(f);if(el)el.style.display='none';});
-  const formId={ot:'lp-form-ot',venta:'lp-form-venta',cot:'lp-form-cot'}[dest];
-  if($(formId))$(formId).style.display='block';
+  const n=_lpItems.length;
+  const banner=`📋 Ítems importados desde Cotización Rápida — ${n} ítem${n!==1?'s':''} · ${fmt(total)}${desc>0?' (incl. descuento)':''}`;
+
+  if(dest==='ot'){
+    // Load items into OT form and navigate
+    lines.ot=lineas;
+    window._lpBanner=banner;
+    window._lpDescuento=desc;
+    nav('ordenes',null);
+    setTimeout(()=>{
+      renderLineas('ot');
+      // Show banner in OT form
+      let b=$('lp-import-banner-ot');
+      if(!b){
+        b=document.createElement('div');
+        b.id='lp-import-banner-ot';
+        const card=document.querySelector('#sec-ordenes .card');
+        if(card)card.insertBefore(b,card.firstChild);
+      }
+      b.style.cssText='background:var(--teal-light);border:1px solid var(--teal);border-radius:var(--radius);padding:9px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;font-size:12px;';
+      b.innerHTML=`<span>🔄 ${banner}</span><button onclick="document.getElementById('lp-import-banner-ot').remove()" style="background:none;border:none;cursor:pointer;color:var(--teal);font-size:16px">✕</button>`;
+      // Focus on client field
+      setTimeout(()=>$('ot-cli-txt')?.focus(),100);
+    },300);
+
+  } else if(dest==='cot'){
+    // Load items into Cotización Formal form and navigate
+    lines.cot=lineas;
+    window._lpBanner=banner;
+    window._lpDescuento=desc;
+    nav('cotizaciones',null);
+    setTimeout(()=>{
+      renderLineas('cot');
+      if($('cot-descuento'))$('cot-descuento').value=desc||'';
+      recalcTotalesCot();
+      let b=$('lp-import-banner-cot');
+      if(!b){
+        b=document.createElement('div');
+        b.id='lp-import-banner-cot';
+        const card=document.querySelector('#sec-cotizaciones .card');
+        if(card)card.insertBefore(b,card.firstChild);
+      }
+      b.style.cssText='background:var(--teal-light);border:1px solid var(--teal);border-radius:var(--radius);padding:9px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;font-size:12px;';
+      b.innerHTML=`<span>🔄 ${banner}</span><button onclick="document.getElementById('lp-import-banner-cot').remove()" style="background:none;border:none;cursor:pointer;color:var(--teal);font-size:16px">✕</button>`;
+      setTimeout(()=>$('cot-cli-txt')?.focus(),100);
+    },300);
+
+  } else if(dest==='venta'){
+    // Load items into Ventas form and navigate
+    lines.v=lineas;
+    window._lpBanner=banner;
+    window._lpDescuento=desc;
+    nav('ventas',null);
+    setTimeout(()=>{
+      renderLineas('v');
+      if($('v-descuento'))$('v-descuento').value=desc||'';
+      recalcTotalesV();
+      let b=$('lp-import-banner-v');
+      if(!b){
+        b=document.createElement('div');
+        b.id='lp-import-banner-v';
+        const card=document.querySelector('#sec-ventas .card');
+        if(card)card.insertBefore(b,card.firstChild);
+      }
+      b.style.cssText='background:var(--teal-light);border:1px solid var(--teal);border-radius:var(--radius);padding:9px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;font-size:12px;';
+      b.innerHTML=`<span>🔄 ${banner}</span><button onclick="document.getElementById('lp-import-banner-v').remove()" style="background:none;border:none;cursor:pointer;color:var(--teal);font-size:16px">✕</button>`;
+      setTimeout(()=>$('v-cli-txt')?.focus(),100);
+    },300);
+  }
+
+  // Clear LP after transfer
+  lpLimpiar();
 }
 
 function lpVolverPaso1(){
@@ -6515,75 +6482,6 @@ function lpLimpiar(){
 
 function _lpItems2Lines(){
   return _lpItems.map(it=>({nombre:it.nombre,qty:it.qty,pu:it.precio,unidad:it.unidad||'und',sub:Math.round(it.precio*it.qty),dto:0,iva:false,pid:it.pid||null,libre:it.libre}));
-}
-
-function lpGuardarOT(){
-  const cliNom=($('lp-ot-cli')?.value||'').trim();
-  if(!cliNom){toast('Ingresa el nombre del cliente','err');return;}
-  const cid=$('lp-ot-cli-id')?.value||null;
-  const c=cid?DB.clientes.find(x=>x.id===cid):null;
-  const desc=parseFloat($('lp-descuento')?.value)||0;
-  const total=Math.max(0,_lpItems.reduce((s,it)=>s+it.precio*it.qty,0)-desc);
-  const nums=DB.ordenes.map(o=>parseInt((o.folio||'').replace('OT-',''))||0);
-  const folio='OT-'+String((nums.length?Math.max(...nums):0)+1).padStart(4,'0');
-  const mecs=getMecsFromPicker('lp-ot');
-  DB.ordenes.unshift({folio,fechaIn:today(),fechaEst:$('lp-ot-fecha-est')?.value||'',
-    clienteId:c?.id||null,clienteNombre:c?c.nombre:cliNom,clienteRut:c?.rut||'',tel:c?.tel||'',
-    vehiculoId:null,patente:($('lp-ot-pat')?.value||'').toUpperCase().trim(),marca:'',modelo:'',
-    km:parseFloat($('lp-ot-km')?.value)||0,
-    mecanicos:mecs.map(m=>({id:m.id,nombre:m.nombre})),
-    diag:($('lp-ot-diag')?.value||'').trim(),obs:'',
-    items:_lpItems2Lines(),descuento:desc,total,estado:'Recibido',
-    creado:new Date().toISOString()});
-  save();lpLimpiar();lpVolverPaso1();updateBadges();renderDashboard();
-  showSaveConfirm(`✓ Orden ${folio} creada`);
-  toast(`Orden ${folio} creada — ${fmt(total)}`);
-  nav('ordenes',null);
-}
-
-function lpGuardarVenta(){
-  const cliNom=($('lp-v-cli')?.value||'Sin nombre').trim();
-  const cid=$('lp-v-cli-id')?.value||null;
-  const c=cid?DB.clientes.find(x=>x.id===cid):null;
-  const desc=parseFloat($('lp-descuento')?.value)||0;
-  const total=Math.max(0,_lpItems.reduce((s,it)=>s+it.precio*it.qty,0)-desc);
-  const nums=DB.ventas.map(v=>parseInt((v.folio||'').replace('VT-',''))||0);
-  const folio='VT-'+String((nums.length?Math.max(...nums):0)+1).padStart(4,'0');
-  const fpago=$('lp-v-fpago')?.value||'Contado';
-  DB.ventas.unshift({folio,fecha:$('lp-v-fecha')?.value||today(),
-    clienteId:c?.id||null,clienteNombre:c?c.nombre:cliNom,clienteRut:c?.rut||'',tel:c?.tel||'',
-    vehiculoId:null,patente:'',marca:'',modelo:'',
-    items:_lpItems2Lines(),descuento:desc,total,fpago,obs:'',
-    docTipo:'Sin Boleta/Factura',creado:new Date().toISOString()});
-  if(fpago==='Crédito'){
-    DB.creditos.unshift({id:uid(),clienteId:c?.id||null,clienteNombre:c?c.nombre:cliNom,clienteRut:c?.rut||'',
-      monto:total,saldo:total,abonos:[],fecha:today(),vcto:'',
-      desc:`Venta ${folio}`,ventaFolio:folio,estado:'Pendiente',creado:new Date().toISOString()});
-    toast(`Venta ${folio} en crédito — ${fmt(total)}`,'warn');
-  } else {toast(`Venta ${folio} registrada — ${fmt(total)}`);}
-  save();lpLimpiar();lpVolverPaso1();updateBadges();renderDashboard();
-  showSaveConfirm(`✓ Venta ${folio} registrada`);
-  nav('ventas',null);
-}
-
-function lpGuardarCot(){
-  const cliNom=($('lp-c-cli')?.value||'').trim();
-  if(!cliNom){toast('Ingresa el nombre del cliente','err');return;}
-  const cid=$('lp-c-cli-id')?.value||null;
-  const c=cid?DB.clientes.find(x=>x.id===cid):null;
-  const desc=parseFloat($('lp-descuento')?.value)||0;
-  const total=Math.max(0,_lpItems.reduce((s,it)=>s+it.precio*it.qty,0)-desc);
-  const nums=DB.cotizaciones.map(x=>parseInt((x.folio||'').replace('COT-',''))||0);
-  const folio='COT-'+String((nums.length?Math.max(...nums):0)+1).padStart(4,'0');
-  DB.cotizaciones.unshift({folio,fecha:$('lp-c-fecha')?.value||today(),
-    clienteId:c?.id||null,clienteNombre:c?c.nombre:cliNom,clienteRut:c?.rut||'',tel:c?.tel||'',
-    vehiculoId:null,patente:($('lp-c-pat')?.value||'').toUpperCase().trim(),marca:'',modelo:'',
-    items:_lpItems2Lines(),descuento:desc,total,obs:'',estado:'Pendiente',
-    creado:new Date().toISOString()});
-  save();lpLimpiar();lpVolverPaso1();updateBadges();
-  showSaveConfirm(`✓ Cotización ${folio} creada`);
-  toast(`Cotización ${folio} creada — ${fmt(total)}`);
-  nav('cotizaciones',null);
 }
 
 function lpImprimir(){
