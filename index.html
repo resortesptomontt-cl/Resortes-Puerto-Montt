@@ -6787,9 +6787,11 @@ function renderInformeVeh(){
 function renderTablaOTs(lista){
   if(!lista.length)return'<div class="empty" style="padding:16px">Sin órdenes</div>';
   const hoy=today();
-  return`<div class="tw"><table><thead><tr><th>N° Orden</th><th>Fecha</th><th>Estado</th><th>Mecánico</th><th>Trabajo</th><th>Km</th><th class="tr">Total</th></tr></thead><tbody>`+
+  return`<div class="tw"><table><thead><tr><th>N° Orden</th><th>Fecha</th><th>Estado</th><th>Patente</th><th>Mecánico</th><th>Trabajo</th><th style="color:var(--green)">N° Factura</th><th>Km</th><th class="tr">Total</th></tr></thead><tbody>`+
     lista.map(o=>{
       const venc=o.fechaEst&&o.fechaEst<hoy&&o.estado!=='Listo'&&o.estado!=='Entregado';
+      const mecNom=(o.mecanicos&&o.mecanicos.length)?o.mecanicos.map(m=>m.nombre).join(' / '):(o.mecanico||'—');
+      const factNum=o.docFolio?`N° ${o.docFolio}`:(o.docTipo&&o.docTipo!=='Sin Boleta/Factura'?o.docTipo.replace('electrónica','e.'):'');
       return`<tr>
         <td style="white-space:nowrap">
           <span class="folio-tag">${o.folio}</span>
@@ -6797,8 +6799,10 @@ function renderTablaOTs(lista){
         </td>
         <td>${o.fechaIn||'—'}</td>
         <td><span class="status ${venc?'s-vencido':statusClass(o.estado)}">${venc?'Vencido':o.estado}</span></td>
-        <td>${o.mecanico||'—'}</td>
-        <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.diag||o.obs||'—'}</td>
+        <td>${o.patente?`<span class="badge b-orange">${o.patente}</span>`:'—'}</td>
+        <td style="max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${mecNom}</td>
+        <td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.diag||o.obs||'—'}</td>
+        <td style="font-weight:600;color:${factNum?'var(--green)':'var(--text3)'};white-space:nowrap">${factNum||'—'}</td>
         <td style="font-family:'JetBrains Mono',monospace">${o.km?fmtN(o.km)+' km':'—'}</td>
         <td class="tr" style="font-family:'JetBrains Mono',monospace;font-weight:600">${fmt(o.total)}</td>
       </tr>`;
