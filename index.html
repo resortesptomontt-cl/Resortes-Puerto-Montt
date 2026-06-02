@@ -1624,7 +1624,8 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
   <div class="card">
     <div class="card-title">
       <div class="card-title-left">Pedidos de fabricación</div>
-      <div style="display:flex;align-items:center;gap:6px">
+      <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)">
+        <span id="ped-vista-label">Mes actual + pendientes</span>
         <button class="btn btn-xs" id="ped-ver-todas-btn" onclick="togglePedVerTodas()">Ver todos</button>
       </div>
     </div>
@@ -5849,6 +5850,7 @@ function setPedFolio(){
 function togglePedVerTodas(){
   _pedVerTodas=!_pedVerTodas;
   if($('ped-ver-todas-btn'))$('ped-ver-todas-btn').textContent=_pedVerTodas?'Solo activos':'Ver todos';
+  if($('ped-vista-label'))$('ped-vista-label').textContent=_pedVerTodas?'Todos los pedidos':'Mes actual + pendientes';
   renderPedidos();
 }
 
@@ -6014,9 +6016,28 @@ function renderPedidos(){
   const q=($('s-ped')?.value||'').toLowerCase();
   const est=$('s-ped-est')?.value||'';
   const hoy=today();
+  const mesActual=hoy.slice(0,7); // YYYY-MM
+
   let lista=[...DB.pedidos];
+
+  // Apply search and state filters
   if(q)lista=lista.filter(p=>p.folio.toLowerCase().includes(q)||p.clienteNombre.toLowerCase().includes(q)||(p.desc||'').toLowerCase().includes(q));
   if(est)lista=lista.filter(p=>p.estado===est);
+
+  // Filter: mes actual + pendientes de meses anteriores (unless ver todas)
+  if(!_pedVerTodas&&!q&&!est){
+    lista=lista.filter(p=>{
+      const fechaMes=(p.fechaIn||p.creado||'').slice(0,7);
+      const esMesActual=fechaMes===mesActual;
+      const esPendiente=p.estado!=='Retirado';
+      return esMesActual||(esPendiente&&fechaMes<mesActual);
+    });
+  }
+
+  // Update toggle button label
+  const btn=$('ped-ver-todas-btn');
+  if(btn)btn.textContent=_pedVerTodas?'Solo activos':'Ver todos';
+
   const activas=lista.filter(p=>p.estado!=='Retirado');
   const retirados=lista.filter(p=>p.estado==='Retirado');
   const el=$('lista-pedidos');if(!el)return;
