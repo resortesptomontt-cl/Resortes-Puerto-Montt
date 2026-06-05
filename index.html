@@ -158,6 +158,7 @@ tbody tr:hover td{background:var(--bg)}
 .s-proceso{background:#FAF0E8;color:#B85C1A}
 .s-listo{background:#E8F5ED;color:#2A5C3A}
 .s-entregado{background:#F0EDE8;color:#6B6760}
+.s-oc{background:#FDF0D8;color:#9A6200;font-weight:600}
 .s-vencido{background:#F5E8E8;color:#8B1A1A}
 .s-pendiente{background:#FDF3E0;color:#7A4F10}
 .s-aceptada{background:#E8F5ED;color:#2A5C3A}
@@ -934,7 +935,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
           <div class="field"><label>Fecha ingreso</label><input id="ot-fecha-in" type="date"></div>
           <div class="field"><label>Fecha estimada</label><input id="ot-fecha-est" type="date"></div>
           <div class="field"><label>Estado</label>
-            <select id="ot-estado"><option>Recibido</option><option>En proceso</option><option>Listo</option><option>Entregado</option></select>
+            <select id="ot-estado"><option>Recibido</option><option>En proceso</option><option>Listo</option><option>Entregado s/OC</option><option>Entregado</option></select>
           </div>
           <div class="field"><label>N° Orden</label><input id="ot-folio" readonly style="background:var(--surface2);color:var(--text2)"></div>
         </div>
@@ -1041,7 +1042,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
       <input id="s-ot" placeholder="Buscar N° orden, cliente, patente, mecánico..." oninput="renderOTs()">
       <select id="s-ot-est" onchange="renderOTs()" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:'Inter',sans-serif;background:var(--surface);color:var(--text);outline:none">
         <option value="">Todos los estados</option>
-        <option>Recibido</option><option>En proceso</option><option>Listo</option><option>Entregado</option><option>Vencido</option>
+        <option>Recibido</option><option>En proceso</option><option>Listo</option><option>Entregado s/OC</option><option>Entregado</option><option>Vencido</option>
       </select>
     </div>
     <!-- Filtro de mes/año para historial -->
@@ -2756,7 +2757,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
         <div class="field"><label>Fecha entrega est.</label><input id="edit-ot-fecha-est" type="date"></div>
         <div class="field"><label>Km ingreso</label><input id="edit-ot-km" type="number" placeholder="0"></div>
         <div class="field"><label>Estado</label>
-          <select id="edit-ot-estado"><option>Recibido</option><option>En proceso</option><option>Listo</option><option>Entregado</option></select>
+          <select id="edit-ot-estado"><option>Recibido</option><option>En proceso</option><option>Listo</option><option>Entregado s/OC</option><option>Entregado</option></select>
         </div>
       </div>
       <div class="field" style="margin-bottom:10px"><label>Diagnóstico</label><textarea id="edit-ot-diag" style="min-height:50px"></textarea></div>
@@ -2884,6 +2885,12 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
         </div>
         <div style="background:var(--teal-light);border:1px solid var(--teal);border-radius:var(--radius);padding:8px 12px;font-size:11px;color:var(--teal);margin-top:8px">
           🏦 El cheque quedará registrado como pendiente de cobro hasta su fecha.
+      <div id="fpago-ot-oc-wrap" style="display:none;margin-bottom:10px">
+        <div style="background:var(--amber-light);border-left:3px solid var(--amber);padding:8px 12px;margin-bottom:8px;font-size:12px;color:var(--amber)">
+          📋 OT entregada pendiente de OC — ingresa el N° de orden de compra para trazabilidad
+        </div>
+        <div class="field"><label>N° Orden de Compra (OC)</label><input id="fpago-ot-oc" placeholder="Ej: OC-2026-1234"></div>
+      </div>
         </div>
       </div>
     </div>
@@ -3056,7 +3063,7 @@ function toast(msg,type='ok'){
 function setToday(id){const el=$(id);if(el&&!el.value)el.value=today();}
 
 function statusClass(s){
-  const m={Recibido:'s-recibido','En proceso':'s-proceso',Listo:'s-listo',Entregado:'s-entregado',Vencido:'s-vencido',
+  const m={Recibido:'s-recibido','En proceso':'s-proceso',Listo:'s-listo',Entregado:'s-entregado','Entregado s/OC':'s-oc',Vencido:'s-vencido',
     Pendiente:'s-pendiente',Aceptada:'s-aceptada',Rechazada:'s-rechazada',Convertida:'s-convertida'};
   return m[s]||'s-pendiente';
 }
@@ -3817,6 +3824,14 @@ function renderDashboard(){
     const hoy=today();
     const en7=new Date();en7.setDate(en7.getDate()+7);
     const en7str=en7.toISOString().slice(0,10);
+
+    // OTs Entregado s/OC pendientes de facturar
+    const ocPendientes=DB.ordenes.filter(o=>o.estado==='Entregado s/OC');
+    if(ocPendientes.length)alertas.push({
+      tipo:'warn',icon:'📋',
+      msg:`<strong>${ocPendientes.length}</strong> trabajo${ocPendientes.length!==1?'s':''} entregado${ocPendientes.length!==1?'s':''} pendiente${ocPendientes.length!==1?'s':''} de OC para facturar — ${fmt(ocPendientes.reduce((s,o)=>s+o.total,0))}`,
+      action:`nav('ordenes',null);setTimeout(()=>{const el=$('s-ot-est');if(el){el.value='Entregado s/OC';renderOTs();}},300)`
+    });
 
     // OTs sin movimiento >3 días (activas)
     DB.ordenes.filter(o=>o.estado!=='Entregado').forEach(o=>{
@@ -5301,10 +5316,11 @@ function renderOTs(){
   function renderRow(o){
     const venc=o.fechaEst&&o.fechaEst<hoy&&o.estado!=='Listo'&&o.estado!=='Entregado';
     const entregado=o.estado==='Entregado';
+    const esOC=o.estado==='Entregado s/OC';
     const listo=o.estado==='Listo';
     const enProceso=o.estado==='En proceso';
-    const rowBorder=venc?'border-left:3px solid var(--red)':entregado?'border-left:3px solid var(--green)':listo?'border-left:3px solid var(--teal)':enProceso?'border-left:3px solid var(--accent)':'border-left:3px solid var(--border)';
-    const rowBg=entregado?'background:var(--green-light)':'';
+    const rowBorder=venc?'border-left:3px solid var(--red)':esOC?'border-left:3px solid var(--amber)':entregado?'border-left:3px solid var(--green)':listo?'border-left:3px solid var(--teal)':enProceso?'border-left:3px solid var(--accent)':'border-left:3px solid var(--border)';
+    const rowBg=esOC?'background:var(--amber-light)':entregado?'background:var(--green-light)':'';
     const opacity=entregado?'opacity:.75':'';
     const mecNombres=(o.mecanicos&&o.mecanicos.length)?o.mecanicos.map(m=>m.nombre).join(', '):(o.mecanico||'');
     const _cli=o.clienteId?DB.clientes.find(c=>c.id===o.clienteId):null;
@@ -5322,7 +5338,7 @@ function renderOTs(){
         <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;min-width:80px;text-align:right">${fmt(o.total)}</span>
         <div style="display:flex;gap:4px">
           <select style="padding:3px 6px;border:1px solid var(--border);border-radius:var(--radius);font-size:10px;font-family:'Inter',sans-serif;background:var(--surface);color:var(--text)" onchange="actualizarEstadoOT('${o.folio}',this.value)">
-            ${['Recibido','En proceso','Listo','Entregado'].map(s=>`<option ${o.estado===s?'selected':''}>${s}</option>`).join('')}
+            ${['Recibido','En proceso','Listo','Entregado s/OC','Entregado'].map(s=>`<option ${o.estado===s?'selected':''}>${s}</option>`).join('')}
           </select>
           <button class="btn btn-xs" onclick="abrirEditOT('${o.folio}')" title="Editar">✏</button>
           <button class="btn btn-xs btn-green" onclick="otAVenta('${o.folio}')" title="Registrar venta">→</button>
@@ -5418,9 +5434,11 @@ function renderOTs(){
             🧾 ${o.docTipo?o.docTipo.replace('electrónica','e.').replace('Boleta','Bol.').replace('Factura','Fact.'):'Doc.'}
           </button>
           <select style="padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:11px;font-family:'Inter',sans-serif;background:var(--surface);color:var(--text)" onchange="actualizarEstadoOT('${o.folio}',this.value)">
-            ${['Recibido','En proceso','Listo','Entregado'].map(s=>`<option ${o.estado===s?'selected':''}>${s}</option>`).join('')}
+            ${['Recibido','En proceso','Listo','Entregado s/OC','Entregado'].map(s=>`<option ${o.estado===s?'selected':''}>${s}</option>`).join('')}
           </select>
-          <button class="btn btn-xs btn-green" onclick="event.stopPropagation();otAVenta('${o.folio}')">→ Registrar venta</button>
+          ${esOC
+            ?`<button class="btn btn-xs" style="background:var(--amber);color:#fff;border-color:var(--amber)" onclick="event.stopPropagation();otAVenta('${o.folio}')">📋 OC recibida → Facturar</button>`
+            :`<button class="btn btn-xs btn-green" onclick="event.stopPropagation();otAVenta('${o.folio}')">→ Registrar venta</button>`}
           <button class="btn btn-xs btn-red" onclick="event.stopPropagation();eliminarOT('${o.folio}')">🗑 Eliminar</button>
         </div>
       </div>
@@ -5444,24 +5462,27 @@ let _fpagoOTFolio=null;
 function otAVenta(folio){
   const ot=DB.ordenes.find(o=>o.folio===folio);
   if(!ot)return;
-  // Check duplicate
   const ventaExistente=DB.ventas.find(v=>v.otOrigen===folio);
-  if(ventaExistente){
-    abrirVentaDup(ventaExistente);
-    return;
-  }
+  if(ventaExistente){abrirVentaDup(ventaExistente);return;}
+  const esOC=ot.estado==='Entregado s/OC';
   _fpagoOTFolio=folio;
   $('fpago-ot-info').innerHTML=`
     <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px">
       <div><strong>${ot.clienteNombre}</strong>${ot.patente?` · <span class="badge b-orange">${ot.patente}</span>`:''}</div>
       <div style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px">${fmt(ot.total)}</div>
     </div>
-    <div style="margin-top:4px;color:var(--text2)">${ot.folio} · ${ot.items.length} ítem${ot.items.length!==1?'s':''}</div>`;
-  $('fpago-ot-sel').value='Contado';
+    <div style="margin-top:4px;color:var(--text2)">${ot.folio} · ${ot.items.length} ítem${ot.items.length!==1?'s':''}${esOC?' · <span style="color:var(--amber);font-weight:600">Pendiente de OC</span>':''}</div>`;
+  // Preselect Crédito for s/OC
+  $('fpago-ot-sel').value=esOC?'Crédito':'Contado';
   $('fpago-ot-fecha').value=today();
   $('fpago-ot-vcto').value='';
   $('fpago-ot-obs').value='';
-  $('fpago-ot-credito-wrap').style.display='none';
+  if($('fpago-ot-oc'))$('fpago-ot-oc').value='';
+  $('fpago-ot-credito-wrap').style.display=esOC?'block':'none';
+  const ocWrap=$('fpago-ot-oc-wrap');
+  if(ocWrap)ocWrap.style.display=esOC?'block':'none';
+  const chequeWrap=$('fpago-ot-cheque-wrap');
+  if(chequeWrap)chequeWrap.style.display='none';
   $('modal-fpago-ot').style.display='flex';
   document.body.style.overflow='hidden';
 }
@@ -5470,6 +5491,7 @@ function onFpagoOTChange(){
   $('fpago-ot-credito-wrap').style.display=val==='Crédito'?'block':'none';
   const chequeWrap=$('fpago-ot-cheque-wrap');
   if(chequeWrap)chequeWrap.style.display=val==='Cheque'?'block':'none';
+  // Keep OC wrap visible if it was shown (don't hide on fpago change)
 }
 function cerrarFpagoOT(){
   $('modal-fpago-ot').style.display='none';
@@ -5488,6 +5510,7 @@ function confirmarFpagoOT(){
   const vcto=$('fpago-ot-vcto').value||'';
   const vtNums=DB.ventas.map(v=>parseInt((v.folio||'').replace('VT-',''))||0);
   const vFolio='VT-'+String((vtNums.length?Math.max(...vtNums):0)+1).padStart(4,'0');
+  const numOC=($('fpago-ot-oc')?.value||'').trim();
   const chequeNum=($('fpago-ot-cheque-num')?.value||'').trim();
   const chequeBanco=($('fpago-ot-cheque-banco')?.value||'').trim();
   const chequeFecha=$('fpago-ot-cheque-fecha')?.value||'';
@@ -5499,6 +5522,7 @@ function confirmarFpagoOT(){
     otOrigen:isPed?'':realFolio,
     pedidoOrigen:isPed?realFolio:'',
     cotOrigen:rec.cotizacionOrigen||'',
+    numOC,
     chequeNum:fpago==='Cheque'?chequeNum:'',
     chequeBanco:fpago==='Cheque'?chequeBanco:'',
     chequeFecha:fpago==='Cheque'?chequeFecha:'',
@@ -5519,7 +5543,7 @@ function confirmarFpagoOT(){
     DB.creditos.unshift({id:uid(),
       clienteId:rec.clienteId,clienteNombre:rec.clienteNombre,clienteRut:rec.clienteRut,
       monto:rec.total,saldo:rec.total,abonos:[],fecha,vcto,
-      desc:`Venta ${vFolio} ${origen}`,ventaFolio:vFolio,
+      desc:`Venta ${vFolio} ${origen}${numOC?' · OC: '+numOC:''}`,ventaFolio:vFolio,
       estado:'Pendiente',creado:new Date().toISOString()});
     toast(`Venta ${vFolio} en crédito — ${fmt(rec.total)} en cuentas por cobrar`,'warn');
   } else if(fpago==='Cheque'){
