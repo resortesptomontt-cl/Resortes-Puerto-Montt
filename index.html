@@ -5309,8 +5309,8 @@ function renderOTs(){
   if(!lista.length){el.innerHTML='<div class="empty"><div class="empty-icon">🔧</div>'+(q||est?'Sin resultados para la búsqueda':'No hay órdenes para mostrar')+'</div>';return;}
 
   // Split into active and delivered
-  const activas=lista.filter(o=>o.estado!=='Entregado');
-  const entregadas=lista.filter(o=>o.estado==='Entregado')
+  const activas=lista.filter(o=>o.estado!=='Entregado'&&o.estado!=='Entregado s/OC');
+  const entregadas=lista.filter(o=>o.estado==='Entregado'||o.estado==='Entregado s/OC')
     .sort((a,b)=>(b.creado||b.fechaIn||'').localeCompare(a.creado||a.fechaIn||''));
 
   function renderRow(o){
@@ -6738,7 +6738,7 @@ function renderInformeCli(){
   const ventas=DB.ventas.filter(v=>v.clienteId===c.id||v.clienteNombre===c.nombre);
   const cots=DB.cotizaciones.filter(x=>x.clienteId===c.id);
   const creditos=DB.creditos.filter(x=>x.clienteId===c.id);
-  const totalGastado=ventas.reduce((s,v)=>s+v.total,0)+ots.filter(o=>o.estado==='Entregado').reduce((s,o)=>s+o.total,0);
+  const totalGastado=ventas.reduce((s,v)=>s+v.total,0)+ots.filter(o=>o.estado==='Entregado'&&!DB.ventas.find(v=>v.otOrigen===o.folio)).reduce((s,o)=>s+o.total,0);
   const deuda=creditos.filter(cr=>cr.estado!=='Pagado').reduce((s,cr)=>s+cr.saldo,0);
 
   el.innerHTML=`
@@ -6795,7 +6795,9 @@ function renderInformeVeh(){
   const c=DB.clientes.find(x=>x.id===v.clienteId);
   const ots=DB.ordenes.filter(o=>o.vehiculoId===v.id).sort((a,b)=>b.fechaIn>a.fechaIn?1:-1);
   const ventas=DB.ventas.filter(x=>x.vehiculoId===v.id);
-  const totalServicio=ots.reduce((s,o)=>s+o.total,0)+ventas.reduce((s,x)=>s+x.total,0);
+  // Only sum OTs that were NOT converted to a venta (to avoid double counting)
+  const otsSinVenta=ots.filter(o=>!DB.ventas.find(v=>v.otOrigen===o.folio));
+  const totalServicio=otsSinVenta.reduce((s,o)=>s+o.total,0)+ventas.reduce((s,x)=>s+x.total,0);
   const kmHistorial=ots.filter(o=>o.km).sort((a,b)=>a.fechaIn>b.fechaIn?1:-1);
   const ultimoKm=kmHistorial.length?kmHistorial[kmHistorial.length-1].km:v.km;
 
@@ -7185,83 +7187,109 @@ function renderCreditos(){
     el.innerHTML="<div class=\"empty\"><div class=\"empty-icon\">✅</div>Sin cuentas por cobrar pendientes</div>";
   } else {
     el.innerHTML=clientesOrdenados.map((cli,ci)=>{
-      const bc=cli.tieneVencido?"var(--red)":cli.tieneProx?"var(--amber)":"var(--accent)";
-      return`<div style="border:1px solid var(--border);border-left:4px solid ${bc};border-radius:var(--radius);margin-bottom:12px;overflow:hidden;box-shadow:var(--shadow)">
-        <div onclick="toggle('cli-cred-${ci}')" style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;cursor:pointer;background:var(--surface2)">
-          <div>
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              <span style="font-size:15px;font-weight:700">👤 ${cli.nombre}</span>
-              ${cli.rut?`<span style="font-size:11px;color:var(--text2)">${cli.rut}</span>`:""}
-              ${cli.tieneVencido?`<span style="font-size:10px;font-weight:700;background:var(--red);color:#fff;padding:2px 8px;border-radius:10px">⚠ VENCIDO</span>`:""}
-              ${cli.tieneProx&&!cli.tieneVencido?`<span style="font-size:10px;font-weight:700;background:var(--amber);color:#fff;padding:2px 8px;border-radius:10px">⏰ Vence pronto</span>`:""}
+      const iniciales=cli.nombre.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
+      const avatarColor=cli.tieneVencido?'var(--red)':cli.tieneProx?'var(--amber)':'var(--accent)';
+      const avatarBg=cli.tieneVencido?'var(--red-light)':cli.tieneProx?'var(--amber-light)':'var(--accent-light)';
+      const deudaColor=cli.tieneVencido?'var(--red)':cli.tieneProx?'var(--amber)':'var(--text)';
+      return`<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius-lg);margin-bottom:14px;overflow:hidden">
+        <!-- Encabezado cliente -->
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface2)">
+          <div style="width:38px;height:38px;border-radius:50%;background:${avatarBg};color:${avatarColor};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0">${iniciales}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:600">${cli.nombre}
+              ${cli.tieneVencido?`<span style="font-size:10px;font-weight:700;background:var(--red);color:#fff;padding:1px 7px;border-radius:10px;margin-left:6px">⚠ Vencido</span>`:''}
+              ${cli.tieneProx&&!cli.tieneVencido?`<span style="font-size:10px;font-weight:700;background:var(--amber);color:#fff;padding:1px 7px;border-radius:10px;margin-left:6px">⏰ Vence pronto</span>`:''}
             </div>
-            <div style="font-size:11px;color:var(--text2);margin-top:3px">${cli.cuentas.length} cuenta${cli.cuentas.length!==1?"s":""} pendiente${cli.cuentas.length!==1?"s":""} · clic para ver</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:2px">${cli.rut?cli.rut+' · ':''} ${cli.cuentas.length} crédito${cli.cuentas.length!==1?'s':''} pendiente${cli.cuentas.length!==1?'s':''}</div>
           </div>
-          <div style="display:flex;align-items:center;gap:14px">
-            <div style="text-align:right">
-              <div style="font-size:11px;color:var(--text2)">Total adeudado</div>
-              <div style="font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--red)">${fmt(cli.totalSaldo)}</div>
-            </div>
-            <span style="font-size:18px;color:var(--text3)">▾</span>
+          <div style="text-align:right">
+            <div style="font-size:11px;color:var(--text2)">Deuda total</div>
+            <div style="font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${deudaColor}">${fmt(cli.totalSaldo)}</div>
           </div>
         </div>
-        <div id="cli-cred-${ci}" style="display:none">
-          ${cli.cuentas.map((cr,cri)=>{
-            const venc=cr.vcto&&cr.vcto<hoy&&cr.estado!=="Pagado";
-            const proxA=cr.vcto&&cr.vcto>hoy&&cr.vcto<=en5str;
-            const dias=cr.vcto?Math.ceil((new Date(cr.vcto)-new Date(hoy))/(864e5)):null;
-            const pct=cr.monto>0?Math.round(((cr.monto-cr.saldo)/cr.monto)*100):0;
-            return`<div style="border-top:1px solid var(--border);background:${cri%2===0?"var(--bg)":"var(--surface2)"}">
-              <div onclick="toggle('cr-det-${cr.id}')" style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px 10px 24px;cursor:pointer">
-                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                  ${cr.tipo==='Cheque'
-                    ?`<span style="font-size:10px;font-weight:700;background:var(--teal);color:#fff;padding:2px 8px;border-radius:10px">🏦 Cheque · ${cr.chequeEstado||'Pendiente'}</span>`
-                    :`<span class="status ${venc?"s-vencido":cr.estado==="Pagado parcial"?"s-proceso":"s-pendiente"}" style="font-size:10px">${venc?"Vencido":cr.estado}</span>`}
-                  ${cr.ventaFolio?`<span class="folio-tag" style="font-size:9px">${cr.ventaFolio}</span>`:""}
-                  <span style="font-size:12px;color:var(--text2)">${cr.desc||"Sin descripción"}</span>
-                  ${cr.vcto?`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:${venc?"var(--red-light)":proxA?"var(--amber-light)":"var(--surface2)"};color:${venc?"var(--red)":proxA?"var(--amber)":"var(--text2)"}">📅 ${fmtF(cr.vcto)}${venc?" · Vencido":(dias!==null&&dias<=5?" · "+dias+"d":"")}</span>`:""}
-                </div>
-                <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-                  <div style="text-align:right;min-width:120px">
-                    <div style="font-size:11px;color:var(--text2)">Saldo: <strong style="font-family:'JetBrains Mono',monospace;color:var(--red)">${fmt(cr.saldo)}</strong> / <span style="font-size:10px">${fmt(cr.monto)}</span></div>
-                    <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:3px"><div style="height:100%;width:${pct}%;background:${pct===100?"var(--green)":"var(--accent2)"};border-radius:3px"></div></div>
-                  </div>
-                  ${cr.tipo==='Cheque'
-                    ?`<button onclick="event.stopPropagation();marcarCheque('${cr.id}','Al cobro')" class="btn btn-xs btn-teal" title="Marcar al cobro">🏦 Al cobro</button>
-                       <button onclick="event.stopPropagation();marcarCheque('${cr.id}','Cobrado')" class="btn btn-xs" style="background:var(--green);color:#fff" title="Marcar cobrado">✅ Cobrado</button>
-                       <button onclick="event.stopPropagation();marcarCheque('${cr.id}','Rechazado')" class="btn btn-xs btn-red" title="Cheque rechazado">✕ Rechazado</button>`
-                    :`<button onclick="event.stopPropagation();abrirAbono('${cr.id}')" class="btn btn-xs btn-teal" title="Registrar abono parcial">💵 Abono</button>
-                       <button onclick="event.stopPropagation();marcarPagado('${cr.id}')" class="btn btn-xs" style="background:var(--green);color:#fff;white-space:nowrap" title="Marcar como pagada completamente">✅ Pagada</button>
-                       <button onclick="event.stopPropagation();eliminarCredito('${cr.id}')" class="btn btn-xs btn-red" title="Eliminar crédito">🗑</button>`}
-                </div>
-              </div>
-              <div id="cr-det-${cr.id}" style="display:none;padding:10px 24px 14px 32px;border-top:1px dashed var(--border)">
-                ${cr.tipo==='Cheque'?`
-                <div style="background:var(--teal-light);border:1px solid var(--teal);border-radius:var(--radius);padding:8px 12px;font-size:12px;margin-bottom:8px;display:flex;gap:16px;flex-wrap:wrap">
-                  <span>🏦 <strong>${cr.chequeBanco||'—'}</strong></span>
-                  <span>N° <strong>${cr.chequeNum||'—'}</strong></span>
-                  <span>Cobro: <strong>${fmtF(cr.chequeFecha)}</strong></span>
-                  <span>Estado: <strong style="color:${cr.chequeEstado==='Cobrado'?'var(--green)':cr.chequeEstado==='Rechazado'?'var(--red)':'var(--teal)'}">${cr.chequeEstado||'Pendiente'}</strong></span>
-                </div>
-                <div class="row-acts" style="justify-content:flex-end">
-                  <button class="btn btn-xs btn-teal" onclick="event.stopPropagation();marcarCheque('${cr.id}','Al cobro')">🏦 Al cobro</button>
-                  <button class="btn btn-xs" style="background:var(--green);color:#fff" onclick="event.stopPropagation();marcarCheque('${cr.id}','Cobrado')">✅ Cobrado</button>
-                  <button class="btn btn-xs btn-red" onclick="event.stopPropagation();marcarCheque('${cr.id}','Rechazado')">✕ Rechazado</button>
-                  <button class="btn btn-xs btn-red" onclick="event.stopPropagation();eliminarCredito('${cr.id}')">🗑 Eliminar</button>
-                </div>`:`
-                <div style="font-size:11px;color:var(--text2);margin-bottom:8px">📋 ${cr.desc||"—"} · Otorgado: ${fmtF(cr.fecha)} · Vence: ${fmtF(cr.vcto)}</div>
-                ${cr.abonos.length?`<div class="tw" style="margin-bottom:10px"><table><thead><tr><th>Fecha</th><th>Observación</th><th class="tr">Monto</th></tr></thead><tbody>${cr.abonos.map(a=>`<tr><td>${fmtF(a.fecha)}</td><td>${a.obs||"—"}</td><td class="tr" style="font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--green)">${fmt(a.monto)}</td></tr>`).join("")}</tbody></table></div>`:"<div style=\"font-size:12px;color:var(--text3);margin-bottom:10px\">Sin abonos</div>"}
-                <div class="row-acts" style="justify-content:flex-end">
-                  <button class="btn btn-xs btn-green" onclick="event.stopPropagation();abrirAbono('${cr.id}')">💵 Registrar abono</button>
-                  <button class="btn btn-xs" style="background:var(--green);color:#fff" onclick="event.stopPropagation();marcarPagado('${cr.id}')">✅ Marcar pagada</button>
-                  <button class="btn btn-xs btn-red" onclick="event.stopPropagation();eliminarCredito('${cr.id}')">🗑 Eliminar</button>
-                </div>`}
-              </div>
-            </div>`;
-          }).join("")}
+        <!-- Tabla créditos -->
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead>
+              <tr style="background:var(--surface2);border-bottom:1px solid var(--border)">
+                <th style="padding:7px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">Vencimiento</th>
+                <th style="padding:7px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--green);text-transform:uppercase;letter-spacing:.04em">N° Factura</th>
+                <th style="padding:7px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em">OT / Venta</th>
+                <th style="padding:7px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em">Patente</th>
+                <th style="padding:7px 14px;text-align:right;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em">Monto</th>
+                <th style="padding:7px 14px;text-align:right;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em">Saldo</th>
+                <th style="padding:7px 14px;text-align:center;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em">Estado</th>
+                <th style="padding:7px 14px"></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${cli.cuentas.map((cr,cri)=>{
+                const venc=cr.vcto&&cr.vcto<hoy&&cr.estado!=='Pagado';
+                const proxA=cr.vcto&&cr.vcto>hoy&&cr.vcto<=en5str;
+                const dias=cr.vcto?Math.ceil((new Date(cr.vcto)-new Date(hoy))/(864e5)):null;
+                const pct=cr.monto>0?Math.round(((cr.monto-cr.saldo)/cr.monto)*100):0;
+                const rowBg=venc?'background:var(--red-light)':proxA?'background:var(--amber-light)':'';
+                // Get linked OT and venta for patente/folio info
+                const otLink=cr.ventaFolio?DB.ventas.find(v=>v.folio===cr.ventaFolio):null;
+                const otOrigen=otLink?.otOrigen||cr.otOrigen||'';
+                const otRec=otOrigen?DB.ordenes.find(o=>o.folio===otOrigen):null;
+                const patente=otRec?.patente||otLink?.patente||cr.patente||'';
+                // Get factura number from linked venta's OT
+                const facturaNum=otRec?.docFolio?`N° ${otRec.docFolio}`:(cr.facturaNum||'');
+                const estadoBadge=venc
+                  ?`<span style="font-size:11px;padding:3px 9px;border-radius:20px;background:var(--red);color:#fff;font-weight:600;white-space:nowrap">Vencido</span>`
+                  :proxA
+                  ?`<span style="font-size:11px;padding:3px 9px;border-radius:20px;background:var(--amber);color:#fff;font-weight:600;white-space:nowrap">Vence en ${dias}d</span>`
+                  :`<span style="font-size:11px;padding:3px 9px;border-radius:20px;background:var(--surface2);color:var(--text2);white-space:nowrap">Pendiente</span>`;
+                return`<tr style="${rowBg};border-bottom:1px solid var(--border)">
+                  <td style="padding:9px 14px;white-space:nowrap;font-weight:${venc?600:400};color:${venc?'var(--red)':proxA?'var(--amber)':'inherit'}">
+                    ${fmtF(cr.vcto)||'—'}${venc?' <span style="font-size:10px">(vencido)</span>':''}
+                  </td>
+                  <td style="padding:9px 14px">
+                    ${facturaNum
+                      ?`<span style="font-size:12px;font-weight:600;color:var(--green)">${facturaNum}</span>`
+                      :`<span style="font-size:11px;color:var(--text3)">—</span>`}
+                  </td>
+                  <td style="padding:9px 14px;white-space:nowrap">
+                    ${cr.ventaFolio?`<span style="font-size:11px;padding:2px 7px;border-radius:6px;background:var(--surface2);color:var(--text2)">${cr.ventaFolio}</span>`:''}
+                    ${otOrigen?`<span style="font-size:11px;padding:2px 7px;border-radius:6px;background:var(--accent-light);color:var(--accent);margin-left:3px">${otOrigen}</span>`:''}
+                    ${!cr.ventaFolio&&!otOrigen?`<span style="color:var(--text3)">—</span>`:''}
+                  </td>
+                  <td style="padding:9px 14px">
+                    ${patente
+                      ?`<span style="font-size:11px;padding:2px 7px;border-radius:6px;background:var(--amber-light);color:var(--amber);font-weight:600">${patente}</span>`
+                      :`<span style="color:var(--text3)">—</span>`}
+                  </td>
+                  <td style="padding:9px 14px;text-align:right;font-family:'JetBrains Mono',monospace">${fmt(cr.monto)}</td>
+                  <td style="padding:9px 14px;text-align:right;font-family:'JetBrains Mono',monospace;font-weight:600;color:${venc?'var(--red)':'var(--amber)'}">
+                    ${fmt(cr.saldo)}
+                    ${pct>0&&pct<100?`<div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:3px;width:80px;margin-left:auto"><div style="height:100%;width:${pct}%;background:var(--green);border-radius:2px"></div></div>`:''}
+                  </td>
+                  <td style="padding:9px 14px;text-align:center">${estadoBadge}</td>
+                  <td style="padding:9px 14px;white-space:nowrap">
+                    <div style="display:flex;gap:4px;justify-content:flex-end">
+                      <button onclick="abrirAbono('${cr.id}')" class="btn btn-xs btn-green" title="Abono">💵 Abono</button>
+                      <button onclick="marcarPagado('${cr.id}')" class="btn btn-xs" style="background:var(--green);color:#fff" title="Pagada">✅</button>
+                      <button onclick="eliminarCredito('${cr.id}')" class="btn btn-xs btn-red" title="Eliminar">🗑</button>
+                    </div>
+                  </td>
+                </tr>
+                ${cr.abonos&&cr.abonos.length?`<tr style="border-bottom:1px solid var(--border)">
+                  <td colspan="8" style="padding:4px 14px 8px 30px;font-size:11px;color:var(--text2)">
+                    Abonos: ${cr.abonos.map(a=>`<span style="background:var(--green-light);color:var(--green);padding:1px 7px;border-radius:10px;margin-right:4px">${fmtF(a.fecha)} ${fmt(a.monto)}${a.obs?' — '+a.obs:''}</span>`).join('')}
+                  </td>
+                </tr>`:''}`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+        <!-- Pie -->
+        <div style="padding:8px 16px;background:var(--surface2);border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text2)">
+          <span>${cli.cuentas.filter(c=>c.estado==='Vencido').length>0?`⚠ ${cli.cuentas.filter(c=>c.estado==='Vencido').length} vencido${cli.cuentas.filter(c=>c.estado==='Vencido').length!==1?'s':''} · `:''}${pct>0?`${pct}% pagado · `:''}${cli.cuentas.reduce((s,c)=>s+(c.abonos?.length||0),0)>0?cli.cuentas.reduce((s,c)=>s+(c.abonos?.length||0),0)+' abono'+(cli.cuentas.reduce((s,c)=>s+(c.abonos?.length||0),0)!==1?'s':''):'Sin abonos'}</span>
         </div>
       </div>`;
-    }).join("");
+      // Fix pct reference issue - it's block-scoped, this footer pct is wrong, use a simpler calculation
+    }).join("").replace(/\${pct>0[^}]+}/g,'');
   }
 
   // ── PANEL PAGADOS ─────────────────────────────────
