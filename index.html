@@ -64,8 +64,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .logo-title{font-size:13px;font-weight:600;color:#fff;letter-spacing:.02em}
 .logo-sub{font-size:10px;color:rgba(255,255,255,.4);margin-top:1px}
 .sidebar-nav{padding:8px 6px;flex:1}
-.nav-group{font-size:9px;font-weight:700;color:rgba(255,255,255,.28);text-transform:uppercase;letter-spacing:.1em;padding:10px 10px 3px}
-.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius);cursor:pointer;color:rgba(255,255,255,.55);font-size:12.5px;font-weight:500;margin-bottom:2px;transition:all .12s;border:none;background:none;width:100%;text-align:left;letter-spacing:-0.01em}
+.nav-group{font-size:9px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.1em;padding:14px 12px 5px;margin-top:4px;border-top:1px solid rgba(255,255,255,.08)}
+.nav-group:first-of-type{border-top:none;margin-top:0;padding-top:8px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--radius);cursor:pointer;color:rgba(255,255,255,.6);font-size:13px;font-weight:500;margin-bottom:2px;transition:all .12s;border:none;background:none;width:100%;text-align:left;letter-spacing:-0.01em}
 .nav-item:hover{background:rgba(255,255,255,.08);color:rgba(255,255,255,.9)}
 .nav-item.active{background:rgba(255,255,255,.14);color:#fff}
 .nav-item .ni{font-size:14px;width:18px;text-align:center;flex-shrink:0}
@@ -80,7 +81,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .content{padding:24px 28px}
 .section{display:none}.section.active{display:block}
 /* CARDS */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px;margin-bottom:16px;box-shadow:var(--shadow)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:26px;margin-bottom:18px;box-shadow:var(--shadow)}
 .card-title{font-size:12.5px;font-weight:600;color:var(--text);margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:8px;letter-spacing:-0.01em}
 .card-title-left{display:flex;align-items:center;gap:8px}
 .card-title-left::before{content:'';display:inline-block;width:3px;height:13px;background:var(--accent2);border-radius:2px}
@@ -3067,6 +3068,12 @@ function statusClass(s){
     Pendiente:'s-pendiente',Aceptada:'s-aceptada',Rechazada:'s-rechazada',Convertida:'s-convertida'};
   return m[s]||'s-pendiente';
 }
+function statusLabel(s){
+  const icons={Recibido:'📥',  'En proceso':'⚙️', 'En fabricación':'⚙️', Listo:'✅', 'Listo para retiro':'✅',
+    'Entregado s/OC':'📋', Entregado:'🏁', Retirado:'🏁', Vencido:'⚠️',
+    Pendiente:'🕐', Aceptada:'👍', Rechazada:'❌', Convertida:'🔄'};
+  return (icons[s]||'')+' '+s;
+}
 
 function toggleDark(){
   document.body.classList.toggle('dark');
@@ -3995,7 +4002,7 @@ function renderDashboard(){
       return`<tr style="${o.estado==='Entregado'?'background:var(--green-light)':''}">
         <td><span class="folio-tag">${o.folio}</span></td>
         <td style="font-weight:500">${o.clienteNombre}${o.patente?` <span class="badge b-orange" style="font-size:9px">${o.patente}</span>`:''}</td>
-        <td><span class="status ${venc?'s-vencido':statusClass(o.estado)}" style="font-size:10px">${venc?'Vencido':o.estado}</span></td>
+        <td><span class="status ${venc?'s-vencido':statusClass(o.estado)}" style="font-size:10px">${venc?'⚠️ Vencido':statusLabel(o.estado)}</span></td>
         <td style="${venc?'color:var(--red);font-weight:600':''}font-size:11px">${o.fechaEst||'—'}</td>
       </tr>`;
     }).join('')+'</tbody></table></div>':
@@ -5074,12 +5081,24 @@ function showSaveConfirm(msg='✓ Guardado'){
   if(!banner){
     banner=document.createElement('div');
     banner.id='save-confirm-banner';
-    banner.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:10px 24px;border-radius:var(--radius-lg);font-size:13px;font-weight:600;box-shadow:var(--shadow-md);z-index:9999;transition:opacity .3s;pointer-events:none';
+    banner.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--green);color:#fff;padding:11px 28px;border-radius:var(--radius-lg);font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.2);z-index:9999;transition:transform .35s cubic-bezier(.34,1.56,.64,1),opacity .3s;opacity:0;pointer-events:none;white-space:nowrap';
     document.body.appendChild(banner);
   }
-  banner.textContent=msg;banner.style.opacity='1';
+  banner.textContent=msg;
+  // Trigger slide-up
+  requestAnimationFrame(()=>{
+    banner.style.transform='translateX(-50%) translateY(60px)';
+    banner.style.opacity='0';
+    requestAnimationFrame(()=>{
+      banner.style.transform='translateX(-50%) translateY(0)';
+      banner.style.opacity='1';
+    });
+  });
   clearTimeout(_saveConfirmTimer);
-  _saveConfirmTimer=setTimeout(()=>{banner.style.opacity='0';},2200);
+  _saveConfirmTimer=setTimeout(()=>{
+    banner.style.transform='translateX(-50%) translateY(60px)';
+    banner.style.opacity='0';
+  },2400);
 }
 
 // ── Compact OT view ────────────────────────────────
@@ -5244,6 +5263,17 @@ function toggleOTVerTodas(){
   renderOTs();
 }
 
+function mkAvatar(nombre, size=28){
+  const ini=(nombre||'?').split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase()||'?';
+  const colors=[
+    ['#e8f0fe','#1a2744'],['#fde8e8','#7a1a1a'],['#e8f5ee','#1a3a2a'],
+    ['#fdf0d8','#9a6200'],['#e8e4f8','#3d2b8a'],['#e4f4f8','#0d4a5a']
+  ];
+  const ci=ini.charCodeAt(0)%colors.length;
+  const [bg,fg]=colors[ci];
+  return`<div style="width:${size}px;height:${size}px;border-radius:50%;background:${bg};color:${fg};display:flex;align-items:center;justify-content:center;font-size:${Math.round(size*0.38)}px;font-weight:600;flex-shrink:0">${ini}</div>`;
+}
+
 function renderOTs(){
   const q=($('s-ot')?.value||'').toLowerCase();
   const est=$('s-ot-est')?.value||'';
@@ -5308,7 +5338,13 @@ function renderOTs(){
   const el=$('lista-ots');
   if(!lista.length){el.innerHTML='<div class="empty"><div class="empty-icon">🔧</div>'+(q||est?'Sin resultados para la búsqueda':'No hay órdenes para mostrar')+'</div>';return;}
 
-  // Split into active and delivered
+  // Auto compact mode when > 15 OTs
+  if(!_otCompact && lista.length > 15){
+    _otCompact = true;
+    const btn=$('btn-ot-compact');
+    if(btn)btn.textContent='☰ Detalle';
+    toast('Vista compacta activada automáticamente ('+lista.length+' órdenes)','info');
+  }
   const activas=lista.filter(o=>o.estado!=='Entregado'&&o.estado!=='Entregado s/OC');
   const entregadas=lista.filter(o=>o.estado==='Entregado'||o.estado==='Entregado s/OC')
     .sort((a,b)=>(b.creado||b.fechaIn||'').localeCompare(a.creado||a.fechaIn||''));
@@ -5333,7 +5369,7 @@ function renderOTs(){
         <span style="font-weight:${entregado?400:600};font-size:12px;flex:1;min-width:120px">${o.clienteNombre}</span>
         ${o.patente?`<span class="badge b-orange" style="font-size:10px">${o.patente}</span>`:''}
         ${tel?`<span style="font-size:10px;color:var(--text3)">📞 ${tel}</span>`:''}
-        <span class="status ${venc?'s-vencido':statusClass(o.estado)}" style="font-size:10px">${venc?'Vencido':o.estado}</span>
+        <span class="status ${venc?'s-vencido':statusClass(o.estado)}" style="font-size:10px">${venc?'⚠️ Vencido':statusLabel(o.estado)}</span>
         ${mecNombres?`<span style="font-size:10px;color:var(--text3)">👷 ${mecNombres.split(',')[0]}${o.mecanicos?.length>1?'+'+( o.mecanicos.length-1)+'':''}</span>`:''}
         <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;min-width:80px;text-align:right">${fmt(o.total)}</span>
         <div style="display:flex;gap:4px">
@@ -5350,7 +5386,8 @@ function renderOTs(){
       <div class="exp-hdr" onclick="toggle('ot-${o.folio}')" style="${entregado?'background:var(--green-light)':''}">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span class="folio-tag">${o.folio}</span>
-          <span style="font-weight:${entregado?500:700}">${o.clienteNombre}</span>
+          ${mkAvatar(o.clienteNombre)}
+          <span style="font-size:14px;font-weight:${entregado?500:600}">${o.clienteNombre}</span>
           ${o.patente?`<span class="badge b-orange">${o.patente}</span>`:''}
           ${o.marca?`<span style="font-size:11px;color:var(--text2)">${o.marca} ${o.modelo||''}</span>`:''}
           ${(()=>{
@@ -5361,13 +5398,13 @@ function renderOTs(){
             const t=telEncargado||telEmpresa;
             return t?`<span style="font-size:11px;color:var(--text3)">📞 ${t}</span>`:'';
           })()}
-          <span class="status ${venc?'s-vencido':statusClass(o.estado)}">${venc?'Vencido':o.estado}</span>
+          <span class="status ${venc?'s-vencido':statusClass(o.estado)}">${venc?'⚠️ Vencido':statusLabel(o.estado)}</span>
           ${mecNombres?`<span style="font-size:10px;color:var(--text2);padding:2px 7px;background:var(--surface2);border-radius:10px">👷 ${mecNombres}</span>`:''}
           ${o.cotizacionOrigen?`<span class="folio-cot" style="font-size:10px">desde ${o.cotizacionOrigen}</span>`:''}
           ${o.docTipo&&o.docTipo!=='Sin Boleta/Factura'?`<span style="font-size:10px;font-weight:600;color:var(--teal);background:var(--teal-light);padding:2px 7px;border-radius:10px">🧾 ${o.docTipo}${o.docFolio?' N°'+o.docFolio:''}</span>`:''}
         </div>
         <div style="text-align:right;flex-shrink:0">
-          <div style="font-weight:700;font-size:15px;font-family:'JetBrains Mono',monospace;${entregado?'color:var(--green)':''}">${fmt(o.total)}</div>
+          <div style="font-weight:700;font-size:18px;font-family:'JetBrains Mono',monospace;color:${entregado?'var(--green)':'var(--green)'}">${fmt(o.total)}</div>
           <div style="font-size:10px;color:var(--text2)">${o.fechaIn||o.creado?.slice(0,10)||''}</div>
         </div>
       </div>
@@ -5428,18 +5465,18 @@ function renderOTs(){
           </div>`:''}
         <div class="row-acts" style="justify-content:flex-end">
           <button class="btn btn-xs" onclick="event.stopPropagation();imprimirOT('${o.folio}')">🖨 PDF</button>
-          ${(o.tel||o.clienteNombre)?`<button class="btn btn-xs btn-green" onclick="event.stopPropagation();waOT('${o.folio}')" title="Enviar por WhatsApp">💬 WhatsApp</button>`:''}
+          ${(o.tel||o.clienteNombre)?`<button class="btn btn-xs btn-green" onclick="event.stopPropagation();waOT('${o.folio}')" title="WhatsApp">💬</button>`:''}
           <button class="btn btn-xs" onclick="event.stopPropagation();abrirEditOT('${o.folio}')">✏ Editar</button>
-          <button class="btn btn-xs ${o.docTipo?'btn-teal':'btn-ghost'}" onclick="event.stopPropagation();abrirDocOT('${o.folio}')" title="${o.docTipo?'Documento: '+o.docTipo+(o.docFolio?' N°'+o.docFolio:''):'Asignar documento tributario'}">
+          <button class="btn btn-xs ${o.docTipo?'btn-teal':'btn-ghost'}" onclick="event.stopPropagation();abrirDocOT('${o.folio}')" title="${o.docTipo?'Doc: '+o.docTipo:'Asignar documento'}">
             🧾 ${o.docTipo?o.docTipo.replace('electrónica','e.').replace('Boleta','Bol.').replace('Factura','Fact.'):'Doc.'}
           </button>
           <select style="padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:11px;font-family:'Inter',sans-serif;background:var(--surface);color:var(--text)" onchange="actualizarEstadoOT('${o.folio}',this.value)">
             ${['Recibido','En proceso','Listo','Entregado s/OC','Entregado'].map(s=>`<option ${o.estado===s?'selected':''}>${s}</option>`).join('')}
           </select>
           ${esOC
-            ?`<button class="btn btn-xs" style="background:var(--amber);color:#fff;border-color:var(--amber)" onclick="event.stopPropagation();otAVenta('${o.folio}')">📋 OC recibida → Facturar</button>`
-            :`<button class="btn btn-xs btn-green" onclick="event.stopPropagation();otAVenta('${o.folio}')">→ Registrar venta</button>`}
-          <button class="btn btn-xs btn-red" onclick="event.stopPropagation();eliminarOT('${o.folio}')">🗑 Eliminar</button>
+            ?`<button class="btn btn-xs" style="background:var(--amber);color:#fff;border-color:var(--amber);font-weight:600" onclick="event.stopPropagation();otAVenta('${o.folio}')">📋 OC recibida → Facturar</button>`
+            :`<button class="btn btn-xs btn-primary" style="font-weight:600" onclick="event.stopPropagation();otAVenta('${o.folio}')">→ Registrar venta</button>`}
+          <button class="btn btn-xs" style="color:var(--text3);border-color:var(--border)" onclick="event.stopPropagation();eliminarOT('${o.folio}')" title="Eliminar">🗑</button>
         </div>
       </div>
     </div>`;
@@ -6076,14 +6113,15 @@ function renderPedidos(){
       <div class="exp-hdr" onclick="toggle('ped-${p.folio}')">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span class="folio-tag" style="background:var(--surface2);color:var(--text2)">${p.folio}</span>
-          <span style="font-weight:${retirado?500:700}">${p.clienteNombre}</span>
+          ${mkAvatar(p.clienteNombre)}
+          <span style="font-size:14px;font-weight:${retirado?500:600}">${p.clienteNombre}</span>
           ${p.tel?`<span style="font-size:11px;color:var(--text3)">${p.tel}</span>`:''}
-          <span class="status ${venc?'s-vencido':statusPed(p.estado)}">${venc?'Vencido':p.estado}</span>
+          <span class="status ${venc?'s-vencido':statusPed(p.estado)}">${venc?'⚠️ Vencido':statusLabel(p.estado)}</span>
           ${mecNoms?`<span style="font-size:10px;color:var(--text2);padding:2px 7px;background:var(--surface2);border-radius:10px">👷 ${mecNoms}</span>`:''}
           ${p.sena>0?`<span style="font-size:10px;font-weight:600;color:var(--green);background:var(--green-light);padding:2px 7px;border-radius:10px">💵 Seña ${fmt(p.sena)}</span>`:''}
         </div>
         <div style="text-align:right;flex-shrink:0">
-          <div style="font-weight:700;font-size:15px;font-family:'JetBrains Mono',monospace">${fmt(p.total)}</div>
+          <div style="font-weight:700;font-size:18px;font-family:'JetBrains Mono',monospace;color:var(--green)">${fmt(p.total)}</div>
           <div style="font-size:10px;color:var(--text2)">${p.fechaIn||''} ${p.fechaEst?'→ '+p.fechaEst:''}</div>
         </div>
       </div>
@@ -6845,7 +6883,7 @@ function renderTablaOTs(lista){
           <button onclick="verOTRapido('${o.folio}')" class="btn btn-xs btn-primary" style="margin-left:5px">Ver OT</button>
         </td>
         <td>${o.fechaIn||'—'}</td>
-        <td><span class="status ${venc?'s-vencido':statusClass(o.estado)}">${venc?'Vencido':o.estado}</span></td>
+        <td><span class="status ${venc?'s-vencido':statusClass(o.estado)}">${venc?'⚠️ Vencido':statusLabel(o.estado)}</span></td>
         <td>${o.patente?`<span class="badge b-orange">${o.patente}</span>`:'—'}</td>
         <td style="max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${mecNom}</td>
         <td style="max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.diag||o.obs||'—'}</td>
@@ -8731,7 +8769,7 @@ function verOTRapido(folio){
       </div>
       <div style="background:var(--surface2);border-radius:var(--radius);padding:10px 14px">
         <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Estado</div>
-        <div><span class="status ${venc?'s-vencido':statusClass(o.estado)}" style="font-size:12px">${venc?'Vencido':o.estado}</span></div>
+        <div><span class="status ${venc?'s-vencido':statusClass(o.estado)}" style="font-size:12px">${venc?'⚠️ Vencido':statusLabel(o.estado)}</span></div>
         <div style="font-size:11px;color:var(--text2);margin-top:4px">
           Ingreso: <strong>${fmtF(o.fechaIn)}</strong>
           ${o.fechaEst?` · Entrega est: <strong style="color:${venc?'var(--red)':''}">${fmtF(o.fechaEst)}</strong>`:''}
