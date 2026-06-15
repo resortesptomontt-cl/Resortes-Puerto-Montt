@@ -5364,21 +5364,48 @@ function renderOTs(){
 
     // ── Vista compacta ──────────────────────────────
     if(_otCompact){
-      return`<div style="${rowBorder};${rowBg};${opacity};display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap">
+      return`<div style="${rowBorder};${rowBg};${opacity}">
+      <div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap;cursor:pointer" onclick="toggle('ot-${o.folio}')">
         <span class="folio-tag" style="font-size:10px">${o.folio}</span>
         <span style="font-weight:${entregado?400:600};font-size:12px;flex:1;min-width:120px">${o.clienteNombre}</span>
         ${o.patente?`<span class="badge b-orange" style="font-size:10px">${o.patente}</span>`:''}
         ${tel?`<span style="font-size:10px;color:var(--text3)">📞 ${tel}</span>`:''}
         <span class="status ${venc?'s-vencido':statusClass(o.estado)}" style="font-size:10px">${venc?'⚠️ Vencido':statusLabel(o.estado)}</span>
         ${mecNombres?`<span style="font-size:10px;color:var(--text3)">👷 ${mecNombres.split(',')[0]}${o.mecanicos?.length>1?'+'+( o.mecanicos.length-1)+'':''}</span>`:''}
-        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;min-width:80px;text-align:right">${fmt(o.total)}</span>
-        <div style="display:flex;gap:4px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;min-width:80px;text-align:right;color:var(--green)">${fmt(o.total)}</span>
+        <div style="display:flex;gap:4px" onclick="event.stopPropagation()">
+          <button class="btn btn-xs" onclick="imprimirOT('${o.folio}')" title="Imprimir PDF">🖨</button>
           <select style="padding:3px 6px;border:1px solid var(--border);border-radius:var(--radius);font-size:10px;font-family:'Inter',sans-serif;background:var(--surface);color:var(--text)" onchange="actualizarEstadoOT('${o.folio}',this.value)">
             ${['Recibido','En proceso','Listo','Entregado s/OC','Entregado'].map(s=>`<option ${o.estado===s?'selected':''}>${s}</option>`).join('')}
           </select>
           <button class="btn btn-xs" onclick="abrirEditOT('${o.folio}')" title="Editar">✏</button>
           <button class="btn btn-xs btn-green" onclick="otAVenta('${o.folio}')" title="Registrar venta">→</button>
         </div>
+        <span style="font-size:11px;color:var(--text3)">▾</span>
+      </div>
+      <div class="exp-body" id="ot-${o.folio}">
+        <div style="padding:10px 14px 12px 14px;border-top:1px dashed var(--border)">
+        ${o.diag?`<div style="font-size:12px;margin-bottom:6px"><strong>Diagnóstico:</strong> ${o.diag}</div>`:''}
+        ${o.items&&o.items.length?`<div class="tw" style="margin-bottom:8px"><table>
+          <thead><tr><th>Ítem</th><th>Cant.</th><th>P.Unit.</th><th class="tr">Subtotal</th></tr></thead>
+          <tbody>${o.items.map(it=>`<tr>
+            <td style="font-weight:500">${it.nombre}</td>
+            <td>${it.qty} ${it.unidad||'und'}</td>
+            <td style="font-family:'JetBrains Mono',monospace">${fmt(it.pu||0)}</td>
+            <td class="tr" style="font-family:'JetBrains Mono',monospace;font-weight:600">${fmt(it.sub||0)}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>`:''}
+        ${o.obs?`<div style="font-size:12px;color:var(--text2);margin-bottom:6px">📝 ${o.obs}</div>`:''}
+        ${o.docTipo&&o.docTipo!=='Sin Boleta/Factura'?`<div style="font-size:12px;color:var(--green);margin-bottom:6px">🧾 ${o.docTipo}${o.docFolio?' N°'+o.docFolio:''}</div>`:''}
+        <div class="row-acts" style="justify-content:flex-end">
+          <button class="btn btn-xs" onclick="event.stopPropagation();imprimirOT('${o.folio}')">🖨 PDF</button>
+          ${(o.tel||o.clienteNombre)?`<button class="btn btn-xs btn-green" onclick="event.stopPropagation();waOT('${o.folio}')">💬 WhatsApp</button>`:''}
+          <button class="btn btn-xs" onclick="event.stopPropagation();abrirEditOT('${o.folio}')">✏ Editar</button>
+          <button class="btn btn-xs ${o.docTipo?'btn-teal':'btn-ghost'}" onclick="event.stopPropagation();abrirDocOT('${o.folio}')">🧾 ${o.docTipo?o.docTipo.replace('electrónica','e.'):'Doc.'}</button>
+          <button class="btn btn-xs" style="color:var(--text3)" onclick="event.stopPropagation();eliminarOT('${o.folio}')">🗑</button>
+        </div>
+        </div>
+      </div>
       </div>`;
     }
     return`
