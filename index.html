@@ -7350,11 +7350,10 @@ function renderCreditos(){
         </div>
         <!-- Pie -->
         <div style="padding:8px 16px;background:var(--surface2);border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text2)">
-          <span>${cli.cuentas.filter(c=>c.estado==='Vencido').length>0?`⚠ ${cli.cuentas.filter(c=>c.estado==='Vencido').length} vencido${cli.cuentas.filter(c=>c.estado==='Vencido').length!==1?'s':''} · `:''}${pct>0?`${pct}% pagado · `:''}${cli.cuentas.reduce((s,c)=>s+(c.abonos?.length||0),0)>0?cli.cuentas.reduce((s,c)=>s+(c.abonos?.length||0),0)+' abono'+(cli.cuentas.reduce((s,c)=>s+(c.abonos?.length||0),0)!==1?'s':''):'Sin abonos'}</span>
+          <span>${cli.cuentas.filter(c=>c.estado==='Vencido').length>0?`⚠ ${cli.cuentas.filter(c=>c.estado==='Vencido').length} vencido${cli.cuentas.filter(c=>c.estado==='Vencido').length!==1?'s':''} · `:''}${cli.cuentas.reduce((s,c)=>s+(c.abonos?.length||0),0)>0?cli.cuentas.reduce((s,c)=>s+(c.abonos?.length||0),0)+' abono'+(cli.cuentas.reduce((s,c)=>s+(c.abonos?.length||0),0)!==1?'s':''):'Sin abonos'}</span>
         </div>
       </div>`;
-      // Fix pct reference issue - it's block-scoped, this footer pct is wrong, use a simpler calculation
-    }).join("").replace(/\${pct>0[^}]+}/g,'');
+    }).join("");
   }
 
   // ── PANEL PAGADOS ─────────────────────────────────
