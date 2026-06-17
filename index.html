@@ -2745,6 +2745,77 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
           </div>
           <div id="edit-ot-veh-pill" style="display:none;margin-top:5px;background:var(--teal-light);border:1px solid var(--teal);border-radius:var(--radius);padding:5px 10px;font-size:12px"></div>
         </div>
+
+        <!-- Zona del vehículo (eje y lado) -->
+        <div class="field" style="grid-column:1/-1">
+          <label>Zona del vehículo <span style="font-weight:400;font-size:10px;color:var(--text3)">— eje y lado a reparar</span></label>
+          <div style="border:1px solid var(--border);border-radius:var(--radius);padding:12px;background:var(--surface2)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+              <span style="font-size:11px;color:var(--text2)">Configuración del vehículo</span>
+              <span id="eot-config-badge" style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;background:var(--accent-light);color:var(--accent)">6x4</span>
+            </div>
+            <div style="margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span style="font-size:11px;color:var(--text2);width:130px;flex-shrink:0">Ejes direcc. (cabina)</span>
+              <button type="button" id="eot-ft-btn-1" class="btn btn-xs" onclick="setEjeFrontOT(1)">1</button>
+              <button type="button" id="eot-ft-btn-2" class="btn btn-xs" onclick="setEjeFrontOT(2)">2</button>
+            </div>
+            <div style="margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span style="font-size:11px;color:var(--text2);width:130px;flex-shrink:0">Ejes traseros (carrocería)</span>
+              <button type="button" id="eot-rr-btn-1" class="btn btn-xs" onclick="setEjeRearOT(1)">1</button>
+              <button type="button" id="eot-rr-btn-2" class="btn btn-xs" onclick="setEjeRearOT(2)">2</button>
+              <button type="button" id="eot-rr-btn-3" class="btn btn-xs" onclick="setEjeRearOT(3)">3</button>
+              <button type="button" id="eot-rr-btn-4" class="btn btn-xs" onclick="setEjeRearOT(4)">4</button>
+            </div>
+            <div style="margin-bottom:10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <span style="font-size:10px;color:var(--text3)">Tipo:</span>
+              <div id="eot-type-toggles" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+            </div>
+            <div style="text-align:center;margin-bottom:8px;background:var(--bg);border-radius:var(--radius);padding:10px 0">
+              <svg width="200" height="433" viewBox="0 0 240 520" role="img" style="max-width:100%">
+                <title>Vista superior del camión</title>
+                <defs>
+                  <linearGradient id="eot-metalBody" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stop-color="#8E99A3"/><stop offset="12%" stop-color="#D8DEE3"/><stop offset="50%" stop-color="#B8C0C7"/><stop offset="88%" stop-color="#D8DEE3"/><stop offset="100%" stop-color="#8E99A3"/>
+                  </linearGradient>
+                  <linearGradient id="eot-metalCab" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stop-color="#9AA5AF"/><stop offset="15%" stop-color="#E2E7EB"/><stop offset="50%" stop-color="#C4CCD3"/><stop offset="85%" stop-color="#E2E7EB"/><stop offset="100%" stop-color="#9AA5AF"/>
+                  </linearGradient>
+                  <radialGradient id="eot-tireShadow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#000000" stop-opacity="0.28"/><stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+                  </radialGradient>
+                </defs>
+                <rect x="68" y="108" width="104" height="10" rx="3" fill="#8C97A3"/>
+                <rect x="78" y="109" width="10" height="8" rx="2" fill="#D9534F"/>
+                <rect x="152" y="109" width="10" height="8" rx="2" fill="#D9534F"/>
+                <text x="120" y="98" text-anchor="middle" font-size="10" fill="#9E9B96" font-family="Inter">Trasero</text>
+                <rect x="68" y="120" width="104" height="265" rx="3" fill="url(#eot-metalBody)" stroke="#6B7785" stroke-width="1"/>
+                <line x1="120" y1="124" x2="120" y2="381" stroke="#8FA3B3" stroke-width="0.5"/>
+                <g id="eot-shadows"></g>
+                <g id="eot-rear-axles"></g>
+                <rect x="58" y="385" width="124" height="105" rx="14" fill="url(#eot-metalCab)" stroke="#6B7785" stroke-width="1"/>
+                <rect x="70" y="390" width="100" height="22" rx="4" fill="#ABB6C0" stroke="#8FA3B3" stroke-width="0.5"/>
+                <g fill="#F5C76B" stroke="#C9A85D" stroke-width="0.5"><circle cx="85" cy="388" r="2"/><circle cx="100" cy="388" r="2"/><circle cx="120" cy="388" r="2"/><circle cx="140" cy="388" r="2"/><circle cx="155" cy="388" r="2"/></g>
+                <path d="M75 412 L165 412 L158 442 L82 442 Z" fill="#DCE8F0" stroke="#8FA3B3" stroke-width="1"/>
+                <path d="M80 414 L100 414 L92 425 L80 425 Z" fill="#ffffff" opacity="0.45"/>
+                <line x1="120" y1="412" x2="120" y2="442" stroke="#8FA3B3" stroke-width="1"/>
+                <rect x="88" y="445" width="64" height="20" rx="3" fill="#7C8894" stroke="#5C6B7A" stroke-width="0.5"/>
+                <g stroke="#9AA5AF" stroke-width="0.8"><line x1="96" y1="447" x2="96" y2="463"/><line x1="104" y1="447" x2="104" y2="463"/><line x1="112" y1="447" x2="112" y2="463"/><line x1="120" y1="447" x2="120" y2="463"/><line x1="128" y1="447" x2="128" y2="463"/><line x1="136" y1="447" x2="136" y2="463"/><line x1="144" y1="447" x2="144" y2="463"/></g>
+                <rect x="66" y="467" width="22" height="11" rx="3" fill="#F5D98C" stroke="#C9A85D"/>
+                <rect x="152" y="467" width="22" height="11" rx="3" fill="#F5D98C" stroke="#C9A85D"/>
+                <rect x="58" y="480" width="124" height="10" rx="4" fill="#8C97A3" stroke="#5C6B7A" stroke-width="0.5"/>
+                <circle cx="120" cy="485" r="3" fill="#5C6B7A"/>
+                <g id="eot-front-axles"></g>
+                <text x="120" y="505" text-anchor="middle" font-size="10" fill="#9E9B96" font-family="Inter">Delantero (direccional)</text>
+              </svg>
+            </div>
+            <div style="display:flex;gap:12px;justify-content:center;margin-bottom:10px;font-size:10px;color:var(--text2)">
+              <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#7C8894;margin-right:4px;vertical-align:middle"></span>Tracción</span>
+              <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#C9974D;margin-right:4px;vertical-align:middle"></span>Tag/Pusher</span>
+            </div>
+            <div id="eot-zonas-list" style="display:flex;flex-wrap:wrap;gap:5px;min-height:24px"></div>
+          </div>
+        </div>
+
         <div class="field">
           <label>Mecánicos <span style="font-weight:400;font-size:10px;color:var(--text3)">— uno o más</span></label>
           <div id="edit-ot-mec-pills" onclick="toggleMecPicker('edit-ot')"
@@ -5369,6 +5440,7 @@ function renderOTs(){
         <span class="folio-tag" style="font-size:10px">${o.folio}</span>
         <span style="font-weight:${entregado?400:600};font-size:12px;flex:1;min-width:120px">${o.clienteNombre}</span>
         ${o.patente?`<span class="badge b-orange" style="font-size:10px">${o.patente}</span>`:''}
+        ${(o.zonasVehiculo&&o.zonasVehiculo.length)?o.zonasVehiculo.map(z=>`<span class="badge b-teal" style="font-size:9px">${z}</span>`).join(''):''}
         ${tel?`<span style="font-size:10px;color:var(--text3)">📞 ${tel}</span>`:''}
         <span class="status ${venc?'s-vencido':statusClass(o.estado)}" style="font-size:10px">${venc?'⚠️ Vencido':statusLabel(o.estado)}</span>
         ${mecNombres?`<span style="font-size:10px;color:var(--text3)">👷 ${mecNombres.split(',')[0]}${o.mecanicos?.length>1?'+'+( o.mecanicos.length-1)+'':''}</span>`:''}
@@ -5416,6 +5488,7 @@ function renderOTs(){
           ${mkAvatar(o.clienteNombre)}
           <span style="font-size:14px;font-weight:${entregado?500:600}">${o.clienteNombre}</span>
           ${o.patente?`<span class="badge b-orange">${o.patente}</span>`:''}
+          ${(o.zonasVehiculo&&o.zonasVehiculo.length)?o.zonasVehiculo.map(z=>`<span class="badge b-teal">${z}</span>`).join(''):''}
           ${o.marca?`<span style="font-size:11px;color:var(--text2)">${o.marca} ${o.modelo||''}</span>`:''}
           ${(()=>{
             const telEncargado=_cli?.contactoTel||o.contactoTel||'';
@@ -7957,6 +8030,100 @@ function guardarEditMec(){
 let _editOTFolio=null;
 let _editOTItems=[];
 
+// ── Selector de zona del vehículo (ejes) ─────────
+const EOT_TIPO_DEFAULT={
+  1:{1:'traccion'},
+  2:{1:'traccion',2:'traccion'},
+  3:{1:'tag',2:'traccion',3:'traccion'},
+  4:{1:'tag',2:'tag',3:'traccion',4:'traccion'}
+};
+let _eotFront=1, _eotRear=2;
+let _eotTypes={1:'traccion',2:'traccion'};
+let _eotZonas=new Set();
+
+function setEjeFrontOT(n){_eotFront=n;pruneZonasOT();renderEjesOT();}
+function setEjeRearOT(n){_eotRear=n;_eotTypes={...EOT_TIPO_DEFAULT[n]};pruneZonasOT();renderEjesOT();}
+function toggleEjeTipoOT(i){_eotTypes[i]=_eotTypes[i]==='tag'?'traccion':'tag';renderEjesOT();}
+
+function pruneZonasOT(){
+  const valid=new Set();
+  for(let i=1;i<=_eotFront;i++){valid.add('FT'+i+'-I');valid.add('FT'+i+'-D');}
+  for(let i=1;i<=_eotRear;i++){valid.add('RR'+i+'-I');valid.add('RR'+i+'-D');}
+  _eotZonas=new Set([..._eotZonas].filter(z=>valid.has(z)));
+}
+
+function eotComputeRearY(i,n){
+  const rearClusterY=180, frontClusterY=330, half=18;
+  if(n===1) return rearClusterY;
+  if(n===2) return i===1 ? rearClusterY+half : rearClusterY-half;
+  if(n===3){ if(i===1) return frontClusterY; if(i===2) return rearClusterY+half; return rearClusterY-half; }
+  if(i===1) return frontClusterY+half; if(i===2) return frontClusterY-half; if(i===3) return rearClusterY+half; return rearClusterY-half;
+}
+function eotComputeFrontY(i,n){ const center=427, half=20; if(n===1) return center; return i===1 ? center+half : center-half; }
+
+function eotAxleSVG(prefix,idx,centerY,wheelH,barColor){
+  const codeI=prefix+idx+'-I', codeD=prefix+idx+'-D';
+  const lTop=centerY-wheelH/2, rTop=centerY-wheelH/2;
+  return `<g stroke="#8A8F96" stroke-width="1" stroke-linecap="round" style="pointer-events:none">
+    <line x1="70" y1="${centerY-6}" x2="88" y2="${centerY-6}"/><line x1="72" y1="${centerY}" x2="86" y2="${centerY}"/><line x1="74" y1="${centerY+6}" x2="84" y2="${centerY+6}"/>
+    <line x1="170" y1="${centerY-6}" x2="152" y2="${centerY-6}"/><line x1="168" y1="${centerY}" x2="154" y2="${centerY}"/><line x1="166" y1="${centerY+6}" x2="156" y2="${centerY+6}"/>
+  </g>
+  <line x1="68" y1="${centerY}" x2="172" y2="${centerY}" stroke="${barColor}" stroke-width="4" stroke-linecap="round"/>
+  <rect data-eotzone="${codeI}" x="44" y="${lTop}" width="24" height="${wheelH}" rx="4" fill="#2B2B2E" stroke="#1a1a1c" stroke-width="1" onclick="selectZonaOT('${codeI}')" style="cursor:pointer"/>
+  <text data-eotzone="${codeI}" x="56" y="${centerY+4}" text-anchor="middle" font-size="10" font-weight="500" fill="#fff" font-family="Inter" style="pointer-events:none">I</text>
+  <rect data-eotzone="${codeD}" x="172" y="${rTop}" width="24" height="${wheelH}" rx="4" fill="#2B2B2E" stroke="#1a1a1c" stroke-width="1" onclick="selectZonaOT('${codeD}')" style="cursor:pointer"/>
+  <text data-eotzone="${codeD}" x="184" y="${centerY+4}" text-anchor="middle" font-size="10" font-weight="500" fill="#fff" font-family="Inter" style="pointer-events:none">D</text>
+  <text x="120" y="${centerY+3}" text-anchor="middle" font-size="9" fill="#412402" font-weight="600" font-family="Inter" style="pointer-events:none">${prefix}${idx}</text>`;
+}
+function eotShadowSVG(centerY,wheelH){ return `<ellipse cx="56" cy="${centerY}" rx="18" ry="${wheelH*0.7}" fill="url(#eot-tireShadow)"/><ellipse cx="184" cy="${centerY}" rx="18" ry="${wheelH*0.7}" fill="url(#eot-tireShadow)"/>`; }
+
+function eotFriendlyZona(z){
+  const m=z.match(/^(FT|RR)(\d)-(I|D)$/); if(!m) return '';
+  const idx=m[2], side=m[3]==='I'?'Izq.':'Der.';
+  if(m[1]==='FT') return `Direccional ${idx} · ${side}`;
+  const tipo=_eotTypes[idx]==='tag'?'Tag/Pusher':'Tracción';
+  return `Trasero ${idx} (${tipo}) · ${side}`;
+}
+
+function selectZonaOT(z){
+  if(_eotZonas.has(z))_eotZonas.delete(z);else _eotZonas.add(z);
+  eotApplySelectionStyles();
+}
+
+function eotApplySelectionStyles(){
+  document.querySelectorAll('[data-eotzone]').forEach(el=>{
+    const z=el.getAttribute('data-eotzone'); const isSel=_eotZonas.has(z); const tag=el.tagName.toLowerCase();
+    if(tag==='rect'){ el.setAttribute('fill',isSel?'#FAC775':'#2B2B2E'); el.setAttribute('stroke',isSel?'#854F0B':'#1a1a1c'); }
+    else if(tag==='text'){ el.setAttribute('fill',isSel?'#412402':'#fff'); }
+  });
+  const listEl=$('eot-zonas-list');
+  if(!listEl)return;
+  if(_eotZonas.size===0){ listEl.innerHTML='<span style="font-size:11px;color:var(--text3)">Sin zona marcada</span>'; }
+  else { listEl.innerHTML=[..._eotZonas].sort().map(z=>`<span style="font-size:11px;padding:3px 9px;border-radius:20px;background:var(--amber-light);color:var(--amber)"><strong>${z}</strong> · ${eotFriendlyZona(z)}</span>`).join(''); }
+}
+
+function renderEjesOT(){
+  const rearEl=$('eot-rear-axles'), frontEl=$('eot-front-axles'), shadowEl=$('eot-shadows');
+  if(!rearEl||!frontEl||!shadowEl)return;
+  let rearInner='', frontInner='', shadows='';
+  for(let i=1;i<=_eotRear;i++){ const y=eotComputeRearY(i,_eotRear); const color=_eotTypes[i]==='tag'?'#C9974D':'#7C8894'; shadows+=eotShadowSVG(y,22); rearInner+=eotAxleSVG('RR',i,y,22,color); }
+  for(let i=1;i<=_eotFront;i++){ const y=eotComputeFrontY(i,_eotFront); shadows+=eotShadowSVG(y,20); frontInner+=eotAxleSVG('FT',i,y,20,'#7C8894'); }
+  rearEl.innerHTML=rearInner; frontEl.innerHTML=frontInner; shadowEl.innerHTML=shadows;
+  [1,2].forEach(n=>{const b=$('eot-ft-btn-'+n);if(b)b.style.outline=_eotFront===n?'2px solid var(--accent)':'';});
+  [1,2,3,4].forEach(n=>{const b=$('eot-rr-btn-'+n);if(b)b.style.outline=_eotRear===n?'2px solid var(--accent)':'';});
+  let togglesHtml='';
+  for(let i=1;i<=_eotRear;i++){
+    const t=_eotTypes[i]||'traccion'; const isTag=t==='tag';
+    const label=isTag?'Tag/Pusher':'Tracción';
+    togglesHtml+=`<button type="button" onclick="toggleEjeTipoOT(${i})" class="btn btn-xs" style="background:${isTag?'var(--amber-light)':'var(--surface)'};color:${isTag?'var(--amber)':'var(--text2)'}">RR${i}: ${label}</button>`;
+  }
+  const togglesEl=$('eot-type-toggles'); if(togglesEl)togglesEl.innerHTML=togglesHtml;
+  const totalEnds=(_eotFront+_eotRear)*2;
+  let traccionAxles=0; for(let i=1;i<=_eotRear;i++){ if(_eotTypes[i]==='traccion') traccionAxles++; }
+  const badgeEl=$('eot-config-badge'); if(badgeEl)badgeEl.textContent=`${totalEnds}x${traccionAxles*2}`;
+  eotApplySelectionStyles();
+}
+
 // ── Documento tributario en OT guardada ──────────
 let _docOTFolio=null;
 function abrirDocOT(folio){
@@ -8062,6 +8229,13 @@ function abrirEditOT(folio){
   $('edit-ot-diag').value=o.diag||'';
   $('edit-ot-obs').value=o.obs||'';
   $('edit-ot-estado').value=o.estado||'Recibido';
+
+  // Init selector de zona del vehículo
+  _eotFront=o.ejeFront||1;
+  _eotRear=o.ejeRear||2;
+  _eotTypes=o.ejeTypes?{...o.ejeTypes}:{...EOT_TIPO_DEFAULT[_eotRear]};
+  _eotZonas=new Set(o.zonasVehiculo||[]);
+  renderEjesOT();
 
   // Set client ID and status indicator
   if($('edit-ot-cli-id'))$('edit-ot-cli-id').value=o.clienteId||'';
@@ -8192,6 +8366,7 @@ function cerrarEditOT(){
   $('modal-edit-ot').style.display='none';
   document.body.style.overflow='';
   _editOTFolio=null;_editOTItems=[];_editOTImgs=[];
+  _eotFront=1;_eotRear=2;_eotTypes={1:'traccion',2:'traccion'};_eotZonas=new Set();
 }
 function renderEditOTItems(){
   const subtotal=_editOTItems.reduce((s,i)=>s+i.sub,0);
@@ -8296,6 +8471,10 @@ function guardarEditOT(){
   o.descuento=descuento;
   o.total=Math.max(0,_editOTItems.reduce((s,i)=>s+i.sub,0)-descuento);
   o.imgs=[..._editOTImgs];
+  o.ejeFront=_eotFront;
+  o.ejeRear=_eotRear;
+  o.ejeTypes={..._eotTypes};
+  o.zonasVehiculo=[..._eotZonas];
   save();renderOTs();renderDashboard();cerrarEditOT();
   toast(`Orden ${_editOTFolio} actualizada — ${fmt(o.total)}`);
 }
@@ -9016,6 +9195,7 @@ function buildDocOT(o,v){
       ${o.marca?`<div class="info-row"><span class="info-lbl">Vehículo:</span><span class="info-val">${o.marca} ${o.modelo}</span></div>`:''}
       ${v?.anio?`<div class="info-row"><span class="info-lbl">Año:</span><span class="info-val">${v.anio}</span></div>`:''}
       ${o.km?`<div class="info-row"><span class="info-lbl">Km ingreso:</span><span class="info-val">${fmtN(o.km)} km</span></div>`:''}
+      ${(o.zonasVehiculo&&o.zonasVehiculo.length)?`<div class="info-row"><span class="info-lbl">Zona/Eje:</span><span class="info-val" style="font-weight:700;color:#b85c1a">${o.zonasVehiculo.join(', ')}</span></div>`:''}
       ${o.mecanico?`<div class="info-row"><span class="info-lbl">Mecánico:</span><span class="info-val">${o.mecanico}</span></div>`:''}
     </div>
   </div>
