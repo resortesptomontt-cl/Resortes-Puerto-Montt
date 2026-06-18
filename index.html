@@ -850,15 +850,15 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap">
               <div style="display:flex;align-items:center;gap:4px">
                 <span style="font-size:10px;color:var(--text3)">Direcc.</span>
-                <button type="button" id="cot-zona-ft-1" class="btn btn-xs" onclick="zonaSetFront('cot',1)" style="width:22px;height:22px;padding:0;border-radius:50%">1</button>
-                <button type="button" id="cot-zona-ft-2" class="btn btn-xs" onclick="zonaSetFront('cot',2)" style="width:22px;height:22px;padding:0;border-radius:50%">2</button>
+                <button type="button" id="cot-zona-ft-1" class="btn btn-xs" onclick="zonaSetFront('cot',1)" style="width:24px;height:24px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">1</button>
+                <button type="button" id="cot-zona-ft-2" class="btn btn-xs" onclick="zonaSetFront('cot',2)" style="width:24px;height:24px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">2</button>
               </div>
               <div style="display:flex;align-items:center;gap:4px">
                 <span style="font-size:10px;color:var(--text3)">Traseros</span>
-                <button type="button" id="cot-zona-rr-1" class="btn btn-xs" onclick="zonaSetRear('cot',1)" style="width:22px;height:22px;padding:0;border-radius:50%">1</button>
-                <button type="button" id="cot-zona-rr-2" class="btn btn-xs" onclick="zonaSetRear('cot',2)" style="width:22px;height:22px;padding:0;border-radius:50%">2</button>
-                <button type="button" id="cot-zona-rr-3" class="btn btn-xs" onclick="zonaSetRear('cot',3)" style="width:22px;height:22px;padding:0;border-radius:50%">3</button>
-                <button type="button" id="cot-zona-rr-4" class="btn btn-xs" onclick="zonaSetRear('cot',4)" style="width:22px;height:22px;padding:0;border-radius:50%">4</button>
+                <button type="button" id="cot-zona-rr-1" class="btn btn-xs" onclick="zonaSetRear('cot',1)" style="width:24px;height:24px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">1</button>
+                <button type="button" id="cot-zona-rr-2" class="btn btn-xs" onclick="zonaSetRear('cot',2)" style="width:24px;height:24px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">2</button>
+                <button type="button" id="cot-zona-rr-3" class="btn btn-xs" onclick="zonaSetRear('cot',3)" style="width:24px;height:24px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">3</button>
+                <button type="button" id="cot-zona-rr-4" class="btn btn-xs" onclick="zonaSetRear('cot',4)" style="width:24px;height:24px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">4</button>
               </div>
               <span id="cot-zona-config-badge" style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--accent-light);color:var(--accent)">6x4</span>
             </div>
@@ -994,6 +994,59 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
           <div class="field"><label>N° Orden</label><input id="ot-folio" readonly style="background:var(--surface2);color:var(--text2)"></div>
         </div>
         <div id="ot-veh-pill" style="display:none;margin-top:4px"></div>
+
+        <!-- Zona del vehículo — colapsable, al final de Recepción -->
+        <div style="margin-top:10px;border:1px solid var(--border);border-radius:var(--radius)">
+          <div onclick="zonaToggleExpand('ot')" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;user-select:none">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <span style="font-size:12px;color:var(--text2)">🔧 Zona del vehículo</span>
+              <span id="ot-zona-chips" style="display:flex;gap:4px;flex-wrap:wrap"></span>
+            </div>
+            <span id="ot-zona-arrow" style="font-size:11px;color:var(--text3)">▾</span>
+          </div>
+          <div id="ot-zona-body" style="display:none;border-top:1px solid var(--border);padding:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+              <div style="display:flex;align-items:center;gap:4px">
+                <span style="font-size:10px;color:var(--text3)">Direcc.</span>
+                <button type="button" id="ot-zona-ft-1" class="btn btn-xs" onclick="zonaSetFront('ot',1)" style="width:24px;height:24px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">1</button>
+                <button type="button" id="ot-zona-ft-2" class="btn btn-xs" onclick="zonaSetFront('ot',2)" style="width:24px;height:24px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">2</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:4px">
+                <span style="font-size:10px;color:var(--text3)">Traseros</span>
+                <button type="button" id="ot-zona-rr-1" class="btn btn-xs" onclick="zonaSetRear('ot',1)" style="width:24px;height:24px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">1</button>
+                <button type="button" id="ot-zona-rr-2" class="btn btn-xs" onclick="zonaSetRear('ot',2)" style="width:24px;height:24px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">2</button>
+                <button type="button" id="ot-zona-rr-3" class="btn btn-xs" onclick="zonaSetRear('ot',3)" style="width:24px;height:24px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">3</button>
+                <button type="button" id="ot-zona-rr-4" class="btn btn-xs" onclick="zonaSetRear('ot',4)" style="width:24px;height:24px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">4</button>
+              </div>
+              <span id="ot-zona-config-badge" style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--accent-light);color:var(--accent)">6x4</span>
+            </div>
+            <div style="display:flex;gap:10px">
+              <div style="flex-shrink:0;text-align:center;background:var(--surface2);border-radius:8px;padding:6px 0;position:relative">
+                <div style="position:absolute;top:2px;left:4px;font-size:7px;color:var(--text3)">◀ Izq</div>
+                <div style="position:absolute;top:2px;right:4px;font-size:7px;color:var(--text3)">Der ▶</div>
+                <svg width="120" height="260" viewBox="0 0 240 520" role="img" style="margin-top:9px">
+                  <title>Vista superior compacta del camión</title>
+                  <defs>
+                    <linearGradient id="ot-zona-mb" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#8E99A3"/><stop offset="50%" stop-color="#B8C0C7"/><stop offset="100%" stop-color="#8E99A3"/></linearGradient>
+                    <linearGradient id="ot-zona-mc" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#9AA5AF"/><stop offset="50%" stop-color="#C4CCD3"/><stop offset="100%" stop-color="#9AA5AF"/></linearGradient>
+                  </defs>
+                  <rect x="68" y="120" width="104" height="265" rx="3" fill="url(#ot-zona-mb)" stroke="#6B7785" stroke-width="1"/>
+                  <line x1="120" y1="124" x2="120" y2="381" stroke="#8FA3B3" stroke-width="0.5"/>
+                  <g id="ot-zona-rear"></g>
+                  <rect x="58" y="385" width="124" height="105" rx="14" fill="url(#ot-zona-mc)" stroke="#6B7785" stroke-width="1"/>
+                  <path d="M75 412 L165 412 L158 442 L82 442 Z" fill="#DCE8F0" stroke="#8FA3B3" stroke-width="1"/>
+                  <rect x="88" y="445" width="64" height="20" rx="3" fill="#7C8894" stroke="#5C6B7A" stroke-width="0.5"/>
+                  <rect x="58" y="480" width="124" height="10" rx="4" fill="#8C97A3" stroke="#5C6B7A" stroke-width="0.5"/>
+                  <g id="ot-zona-front"></g>
+                </svg>
+              </div>
+              <div style="flex:1;min-width:0">
+                <div id="ot-zona-types" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px"></div>
+                <div id="ot-zona-rows" style="display:flex;flex-direction:column;gap:6px;max-height:180px;overflow-y:auto"></div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -2814,15 +2867,15 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
               <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap">
                 <div style="display:flex;align-items:center;gap:4px">
                   <span style="font-size:10px;color:var(--text3)">Direcc.</span>
-                  <button type="button" id="eot-zona-ft-1" class="btn btn-xs" onclick="zonaSetFront('eot',1)" style="width:22px;height:22px;padding:0;border-radius:50%">1</button>
-                  <button type="button" id="eot-zona-ft-2" class="btn btn-xs" onclick="zonaSetFront('eot',2)" style="width:22px;height:22px;padding:0;border-radius:50%">2</button>
+                  <button type="button" id="eot-zona-ft-1" class="btn btn-xs" onclick="zonaSetFront('eot',1)" style="width:24px;height:24px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">1</button>
+                  <button type="button" id="eot-zona-ft-2" class="btn btn-xs" onclick="zonaSetFront('eot',2)" style="width:24px;height:24px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">2</button>
                 </div>
                 <div style="display:flex;align-items:center;gap:4px">
                   <span style="font-size:10px;color:var(--text3)">Traseros</span>
-                  <button type="button" id="eot-zona-rr-1" class="btn btn-xs" onclick="zonaSetRear('eot',1)" style="width:22px;height:22px;padding:0;border-radius:50%">1</button>
-                  <button type="button" id="eot-zona-rr-2" class="btn btn-xs" onclick="zonaSetRear('eot',2)" style="width:22px;height:22px;padding:0;border-radius:50%">2</button>
-                  <button type="button" id="eot-zona-rr-3" class="btn btn-xs" onclick="zonaSetRear('eot',3)" style="width:22px;height:22px;padding:0;border-radius:50%">3</button>
-                  <button type="button" id="eot-zona-rr-4" class="btn btn-xs" onclick="zonaSetRear('eot',4)" style="width:22px;height:22px;padding:0;border-radius:50%">4</button>
+                  <button type="button" id="eot-zona-rr-1" class="btn btn-xs" onclick="zonaSetRear('eot',1)" style="width:24px;height:24px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">1</button>
+                  <button type="button" id="eot-zona-rr-2" class="btn btn-xs" onclick="zonaSetRear('eot',2)" style="width:24px;height:24px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">2</button>
+                  <button type="button" id="eot-zona-rr-3" class="btn btn-xs" onclick="zonaSetRear('eot',3)" style="width:24px;height:24px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">3</button>
+                  <button type="button" id="eot-zona-rr-4" class="btn btn-xs" onclick="zonaSetRear('eot',4)" style="width:24px;height:24px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">4</button>
                 </div>
                 <span id="eot-zona-config-badge" style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--accent-light);color:var(--accent)">6x4</span>
               </div>
@@ -5292,6 +5345,8 @@ function guardarOT(){
     km,diag:$('ot-diag').value.trim(),obs:$('ot-obs').value.trim(),
     items:[...lines.ot],total,estado:$('ot-estado').value,
     imgs:[..._otImgs],
+    ejeFront:ZONA_STATE.ot.front,ejeRear:ZONA_STATE.ot.rear,ejeTypes:{...ZONA_STATE.ot.types},
+    zonasVehiculo:Object.keys(ZONA_STATE.ot.zonas).map(k=>({codigo:k,detalle:ZONA_STATE.ot.zonas[k]||''})),
     docTipo,
     docFolio:docTipo?($('ot-doc-folio')?.value||'').trim():'',
     docFecha:docTipo?($('ot-doc-fecha')?.value||''):'',
@@ -5344,6 +5399,9 @@ function limpiarOT(){
   if($('ot-pu'))$('ot-pu').value='';
   _otImgs=[];renderOTImgsPreview();
   initMecPicker('ot',[]);  $('ot-veh-pill').style.display='none';
+  ZONA_STATE.ot={front:1,rear:2,types:{1:'traccion',2:'traccion'},zonas:{},expanded:false};
+  if($('ot-zona-body')){$('ot-zona-body').style.display='none';$('ot-zona-arrow').textContent='▾';}
+  zonaRenderAll('ot');
   renderLineas('ot');setToday('ot-fecha-in');setOTFolio();
 }
 function actualizarEstadoOT(folio,est){
@@ -8086,7 +8144,8 @@ const ZONA_TIPO_DEFAULT={
 };
 const ZONA_STATE={
   eot:{front:1,rear:2,types:{1:'traccion',2:'traccion'},zonas:{},expanded:false},
-  cot:{front:1,rear:2,types:{1:'traccion',2:'traccion'},zonas:{},expanded:false}
+  cot:{front:1,rear:2,types:{1:'traccion',2:'traccion'},zonas:{},expanded:false},
+  ot:{front:1,rear:2,types:{1:'traccion',2:'traccion'},zonas:{},expanded:false}
 };
 
 function zonaSetFront(ns,n){ const s=ZONA_STATE[ns]; s.front=n; zonaPrune(ns); zonaRenderAll(ns); }
@@ -11822,6 +11881,7 @@ llenarSelectsCat();
 renderDashboard();
 updateBadges();
 zonaRenderAll('cot');
+zonaRenderAll('ot');
 (()=>{const lt=document.querySelector('.logo-title');if(lt&&CFG.nombre)lt.textContent=CFG.nombre;})();
 
 // Expose nav actions for live updates
