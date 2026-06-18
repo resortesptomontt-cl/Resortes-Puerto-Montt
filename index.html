@@ -2770,8 +2770,10 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
               <span style="font-size:10px;color:var(--text3)">Tipo:</span>
               <div id="eot-type-toggles" style="display:flex;gap:6px;flex-wrap:wrap"></div>
             </div>
-            <div style="text-align:center;margin-bottom:8px;background:var(--bg);border-radius:var(--radius);padding:10px 0">
-              <svg width="200" height="433" viewBox="0 0 240 520" role="img" style="max-width:100%">
+            <div style="text-align:center;margin-bottom:8px;background:var(--bg);border-radius:var(--radius);padding:10px 0;position:relative">
+              <div style="position:absolute;top:4px;left:10px;font-size:9px;color:var(--text3)">◀ Lado real izquierdo</div>
+              <div style="position:absolute;top:4px;right:10px;font-size:9px;color:var(--text3);text-align:right">Lado real derecho ▶</div>
+              <svg width="200" height="433" viewBox="0 0 240 520" role="img" style="max-width:100%;margin-top:14px">
                 <title>Vista superior del camión</title>
                 <defs>
                   <linearGradient id="eot-metalBody" x1="0" y1="0" x2="1" y2="0">
@@ -2812,7 +2814,8 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
               <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#7C8894;margin-right:4px;vertical-align:middle"></span>Tracción</span>
               <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#C9974D;margin-right:4px;vertical-align:middle"></span>Tag/Pusher</span>
             </div>
-            <div id="eot-zonas-list" style="display:flex;flex-wrap:wrap;gap:5px;min-height:24px"></div>
+            <div style="font-size:11px;color:var(--text2);margin-bottom:6px">Zona afectada — clic en una rueda para agregarla y describir el trabajo</div>
+            <div id="eot-zonas-list" style="display:flex;flex-direction:column;gap:8px;min-height:24px"></div>
           </div>
         </div>
 
@@ -5440,7 +5443,7 @@ function renderOTs(){
         <span class="folio-tag" style="font-size:10px">${o.folio}</span>
         <span style="font-weight:${entregado?400:600};font-size:12px;flex:1;min-width:120px">${o.clienteNombre}</span>
         ${o.patente?`<span class="badge b-orange" style="font-size:10px">${o.patente}</span>`:''}
-        ${(o.zonasVehiculo&&o.zonasVehiculo.length)?o.zonasVehiculo.map(z=>`<span class="badge b-teal" style="font-size:9px">${z}</span>`).join(''):''}
+        ${(o.zonasVehiculo&&o.zonasVehiculo.length)?o.zonasVehiculo.map(z=>`<span class="badge b-teal" style="font-size:9px">${z.codigo}</span>`).join(''):''}
         ${tel?`<span style="font-size:10px;color:var(--text3)">📞 ${tel}</span>`:''}
         <span class="status ${venc?'s-vencido':statusClass(o.estado)}" style="font-size:10px">${venc?'⚠️ Vencido':statusLabel(o.estado)}</span>
         ${mecNombres?`<span style="font-size:10px;color:var(--text3)">👷 ${mecNombres.split(',')[0]}${o.mecanicos?.length>1?'+'+( o.mecanicos.length-1)+'':''}</span>`:''}
@@ -5488,7 +5491,7 @@ function renderOTs(){
           ${mkAvatar(o.clienteNombre)}
           <span style="font-size:14px;font-weight:${entregado?500:600}">${o.clienteNombre}</span>
           ${o.patente?`<span class="badge b-orange">${o.patente}</span>`:''}
-          ${(o.zonasVehiculo&&o.zonasVehiculo.length)?o.zonasVehiculo.map(z=>`<span class="badge b-teal">${z}</span>`).join(''):''}
+          ${(o.zonasVehiculo&&o.zonasVehiculo.length)?o.zonasVehiculo.map(z=>`<span class="badge b-teal">${z.codigo}</span>`).join(''):''}
           ${o.marca?`<span style="font-size:11px;color:var(--text2)">${o.marca} ${o.modelo||''}</span>`:''}
           ${(()=>{
             const telEncargado=_cli?.contactoTel||o.contactoTel||'';
@@ -8039,7 +8042,7 @@ const EOT_TIPO_DEFAULT={
 };
 let _eotFront=1, _eotRear=2;
 let _eotTypes={1:'traccion',2:'traccion'};
-let _eotZonas=new Set();
+let _eotZonas={};
 
 function setEjeFrontOT(n){_eotFront=n;pruneZonasOT();renderEjesOT();}
 function setEjeRearOT(n){_eotRear=n;_eotTypes={...EOT_TIPO_DEFAULT[n]};pruneZonasOT();renderEjesOT();}
@@ -8049,7 +8052,7 @@ function pruneZonasOT(){
   const valid=new Set();
   for(let i=1;i<=_eotFront;i++){valid.add('FT'+i+'-I');valid.add('FT'+i+'-D');}
   for(let i=1;i<=_eotRear;i++){valid.add('RR'+i+'-I');valid.add('RR'+i+'-D');}
-  _eotZonas=new Set([..._eotZonas].filter(z=>valid.has(z)));
+  Object.keys(_eotZonas).forEach(z=>{if(!valid.has(z))delete _eotZonas[z];});
 }
 
 function eotComputeRearY(i,n){
@@ -8069,10 +8072,10 @@ function eotAxleSVG(prefix,idx,centerY,wheelH,barColor){
     <line x1="170" y1="${centerY-6}" x2="152" y2="${centerY-6}"/><line x1="168" y1="${centerY}" x2="154" y2="${centerY}"/><line x1="166" y1="${centerY+6}" x2="156" y2="${centerY+6}"/>
   </g>
   <line x1="68" y1="${centerY}" x2="172" y2="${centerY}" stroke="${barColor}" stroke-width="4" stroke-linecap="round"/>
-  <rect data-eotzone="${codeI}" x="44" y="${lTop}" width="24" height="${wheelH}" rx="4" fill="#2B2B2E" stroke="#1a1a1c" stroke-width="1" onclick="selectZonaOT('${codeI}')" style="cursor:pointer"/>
-  <text data-eotzone="${codeI}" x="56" y="${centerY+4}" text-anchor="middle" font-size="10" font-weight="500" fill="#fff" font-family="Inter" style="pointer-events:none">I</text>
-  <rect data-eotzone="${codeD}" x="172" y="${rTop}" width="24" height="${wheelH}" rx="4" fill="#2B2B2E" stroke="#1a1a1c" stroke-width="1" onclick="selectZonaOT('${codeD}')" style="cursor:pointer"/>
-  <text data-eotzone="${codeD}" x="184" y="${centerY+4}" text-anchor="middle" font-size="10" font-weight="500" fill="#fff" font-family="Inter" style="pointer-events:none">D</text>
+  <rect data-eotzone="${codeD}" x="44" y="${lTop}" width="24" height="${wheelH}" rx="4" fill="#2B2B2E" stroke="#1a1a1c" stroke-width="1" onclick="selectZonaOT('${codeD}')" style="cursor:pointer"/>
+  <text data-eotzone="${codeD}" x="56" y="${centerY+4}" text-anchor="middle" font-size="10" font-weight="500" fill="#fff" font-family="Inter" style="pointer-events:none">D</text>
+  <rect data-eotzone="${codeI}" x="172" y="${rTop}" width="24" height="${wheelH}" rx="4" fill="#2B2B2E" stroke="#1a1a1c" stroke-width="1" onclick="selectZonaOT('${codeI}')" style="cursor:pointer"/>
+  <text data-eotzone="${codeI}" x="184" y="${centerY+4}" text-anchor="middle" font-size="10" font-weight="500" fill="#fff" font-family="Inter" style="pointer-events:none">I</text>
   <text x="120" y="${centerY+3}" text-anchor="middle" font-size="9" fill="#412402" font-weight="600" font-family="Inter" style="pointer-events:none">${prefix}${idx}</text>`;
 }
 function eotShadowSVG(centerY,wheelH){ return `<ellipse cx="56" cy="${centerY}" rx="18" ry="${wheelH*0.7}" fill="url(#eot-tireShadow)"/><ellipse cx="184" cy="${centerY}" rx="18" ry="${wheelH*0.7}" fill="url(#eot-tireShadow)"/>`; }
@@ -8086,20 +8089,33 @@ function eotFriendlyZona(z){
 }
 
 function selectZonaOT(z){
-  if(_eotZonas.has(z))_eotZonas.delete(z);else _eotZonas.add(z);
-  eotApplySelectionStyles();
+  if(_eotZonas.hasOwnProperty(z))delete _eotZonas[z];else _eotZonas[z]='';
+  eotApplySelectionStyles();eotRenderZonaRows();
 }
+function eotRemoveZona(z){ delete _eotZonas[z]; eotApplySelectionStyles(); eotRenderZonaRows(); }
+function eotUpdateDetalle(z,val){ _eotZonas[z]=val; }
 
 function eotApplySelectionStyles(){
   document.querySelectorAll('[data-eotzone]').forEach(el=>{
-    const z=el.getAttribute('data-eotzone'); const isSel=_eotZonas.has(z); const tag=el.tagName.toLowerCase();
+    const z=el.getAttribute('data-eotzone'); const isSel=_eotZonas.hasOwnProperty(z); const tag=el.tagName.toLowerCase();
     if(tag==='rect'){ el.setAttribute('fill',isSel?'#FAC775':'#2B2B2E'); el.setAttribute('stroke',isSel?'#854F0B':'#1a1a1c'); }
     else if(tag==='text'){ el.setAttribute('fill',isSel?'#412402':'#fff'); }
   });
+}
+
+function eotRenderZonaRows(){
   const listEl=$('eot-zonas-list');
   if(!listEl)return;
-  if(_eotZonas.size===0){ listEl.innerHTML='<span style="font-size:11px;color:var(--text3)">Sin zona marcada</span>'; }
-  else { listEl.innerHTML=[..._eotZonas].sort().map(z=>`<span style="font-size:11px;padding:3px 9px;border-radius:20px;background:var(--amber-light);color:var(--amber)"><strong>${z}</strong> · ${eotFriendlyZona(z)}</span>`).join(''); }
+  const zonas=Object.keys(_eotZonas).sort();
+  if(!zonas.length){ listEl.innerHTML='<span style="font-size:11px;color:var(--text3)">Sin zona marcada</span>'; return; }
+  listEl.innerHTML=zonas.map(z=>`
+    <div style="border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px;background:var(--bg)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:12px"><strong style="color:var(--amber)">${z}</strong> · ${eotFriendlyZona(z)}</span>
+        <button type="button" onclick="eotRemoveZona('${z}')" style="font-size:11px;padding:2px 8px;border:none;background:none;color:var(--text3);cursor:pointer">✕</button>
+      </div>
+      <input type="text" placeholder="Detalle del trabajo realizado en esta caja, lado y eje..." value="${(_eotZonas[z]||'').replace(/"/g,'&quot;')}" oninput="eotUpdateDetalle('${z}', this.value)" style="width:100%;font-size:12px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text);font-family:'Inter',sans-serif">
+    </div>`).join('');
 }
 
 function renderEjesOT(){
@@ -8121,7 +8137,7 @@ function renderEjesOT(){
   const totalEnds=(_eotFront+_eotRear)*2;
   let traccionAxles=0; for(let i=1;i<=_eotRear;i++){ if(_eotTypes[i]==='traccion') traccionAxles++; }
   const badgeEl=$('eot-config-badge'); if(badgeEl)badgeEl.textContent=`${totalEnds}x${traccionAxles*2}`;
-  eotApplySelectionStyles();
+  eotApplySelectionStyles();eotRenderZonaRows();
 }
 
 // ── Documento tributario en OT guardada ──────────
@@ -8234,7 +8250,11 @@ function abrirEditOT(folio){
   _eotFront=o.ejeFront||1;
   _eotRear=o.ejeRear||2;
   _eotTypes=o.ejeTypes?{...o.ejeTypes}:{...EOT_TIPO_DEFAULT[_eotRear]};
-  _eotZonas=new Set(o.zonasVehiculo||[]);
+  _eotZonas={};
+  (o.zonasVehiculo||[]).forEach(z=>{
+    if(typeof z==='string')_eotZonas[z]=''; // compatibilidad con datos antiguos sin detalle
+    else if(z&&z.codigo)_eotZonas[z.codigo]=z.detalle||'';
+  });
   renderEjesOT();
 
   // Set client ID and status indicator
@@ -8366,7 +8386,7 @@ function cerrarEditOT(){
   $('modal-edit-ot').style.display='none';
   document.body.style.overflow='';
   _editOTFolio=null;_editOTItems=[];_editOTImgs=[];
-  _eotFront=1;_eotRear=2;_eotTypes={1:'traccion',2:'traccion'};_eotZonas=new Set();
+  _eotFront=1;_eotRear=2;_eotTypes={1:'traccion',2:'traccion'};_eotZonas={};
 }
 function renderEditOTItems(){
   const subtotal=_editOTItems.reduce((s,i)=>s+i.sub,0);
@@ -8474,7 +8494,7 @@ function guardarEditOT(){
   o.ejeFront=_eotFront;
   o.ejeRear=_eotRear;
   o.ejeTypes={..._eotTypes};
-  o.zonasVehiculo=[..._eotZonas];
+  o.zonasVehiculo=Object.keys(_eotZonas).map(k=>({codigo:k,detalle:_eotZonas[k]||''}));
   save();renderOTs();renderDashboard();cerrarEditOT();
   toast(`Orden ${_editOTFolio} actualizada — ${fmt(o.total)}`);
 }
@@ -9195,11 +9215,17 @@ function buildDocOT(o,v){
       ${o.marca?`<div class="info-row"><span class="info-lbl">Vehículo:</span><span class="info-val">${o.marca} ${o.modelo}</span></div>`:''}
       ${v?.anio?`<div class="info-row"><span class="info-lbl">Año:</span><span class="info-val">${v.anio}</span></div>`:''}
       ${o.km?`<div class="info-row"><span class="info-lbl">Km ingreso:</span><span class="info-val">${fmtN(o.km)} km</span></div>`:''}
-      ${(o.zonasVehiculo&&o.zonasVehiculo.length)?`<div class="info-row"><span class="info-lbl">Zona/Eje:</span><span class="info-val" style="font-weight:700;color:#b85c1a">${o.zonasVehiculo.join(', ')}</span></div>`:''}
+      ${(o.zonasVehiculo&&o.zonasVehiculo.length)?`<div class="info-row"><span class="info-lbl">Zona/Eje:</span><span class="info-val" style="font-weight:700;color:#b85c1a">${o.zonasVehiculo.map(z=>z.codigo).join(', ')}</span></div>`:''}
       ${o.mecanico?`<div class="info-row"><span class="info-lbl">Mecánico:</span><span class="info-val">${o.mecanico}</span></div>`:''}
     </div>
   </div>
   ${o.diag?`<div class="sec-hdr">Diagnóstico / trabajo solicitado</div><div class="obs-box">${o.diag}</div>`:''}
+  ${(o.zonasVehiculo&&o.zonasVehiculo.length)?`<div class="sec-hdr">Detalle de trabajo por eje y lado</div>
+  <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+  ${o.zonasVehiculo.map(z=>`<div style="background:#FDF3E0;border:1px solid #E0C070;border-radius:5px;padding:6px 10px;font-size:11px">
+    <strong style="color:#7A4F10">${z.codigo}</strong>${z.detalle?` — ${z.detalle}`:` <span style="color:#999">(sin detalle escrito)</span>`}
+  </div>`).join('')}
+  </div>`:''}
   <div class="sec-hdr">Detalle de servicios y repuestos</div>
   <table><thead><tr><th>#</th><th>Descripción</th><th>Cantidad</th><th>Unidad</th><th class="tr">IVA</th></tr></thead>
   <tbody>${o.items.map((it,i)=>{
