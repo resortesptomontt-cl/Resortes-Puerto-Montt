@@ -9250,32 +9250,28 @@ function dosCopiasHtml(html){
     ${html}
   </div>`;
 }
+function _doPrint(titulo, bodyHtml){
+  const full=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${titulo}</title></head><body>${bodyHtml}</body></html>`;
+  const blob=new Blob([full],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const win=window.open(url,'_blank');
+  if(!win){toast('⚠ Habilita ventanas emergentes para imprimir');URL.revokeObjectURL(url);return;}
+  win.onload=()=>setTimeout(()=>{win.focus();win.print();setTimeout(()=>URL.revokeObjectURL(url),15000);},300);
+}
 function imprimirOT(folio){
   const o=DB.ordenes.find(x=>x.folio===folio);if(!o)return;
   const v=o.vehiculoId?DB.vehiculos.find(x=>x.id===o.vehiculoId):null;
-  const html=buildDocOT(o,v);
-  const win=window.open('','_blank','width=860,height=1100');
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>OT ${o.folio}</title></head><body>${dosCopiasHtml(html)}</body></html>`);
-  win.document.close();win.focus();
-  setTimeout(()=>{win.print();},500);
+  _doPrint('OT '+o.folio,dosCopiasHtml(buildDocOT(o,v)));
 }
 function imprimirCot(folio){
   const c=DB.cotizaciones.find(x=>x.folio===folio);if(!c)return;
   const v=c.vehiculoId?DB.vehiculos.find(x=>x.id===c.vehiculoId):null;
-  const html=buildDocCot(c,v);
-  const win=window.open('','_blank','width=860,height=1100');
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>COT ${c.folio}</title></head><body>${dosCopiasHtml(html)}</body></html>`);
-  win.document.close();win.focus();
-  setTimeout(()=>{win.print();},500);
+  _doPrint('COT '+c.folio,dosCopiasHtml(buildDocCot(c,v)));
 }
 function imprimirVenta(folio){
   const v=DB.ventas.find(x=>x.folio===folio);if(!v)return;
   const vh=v.vehiculoId?DB.vehiculos.find(x=>x.id===v.vehiculoId):null;
-  const html=buildDocVenta(v,vh);
-  const win=window.open('','_blank','width=860,height=1100');
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>VT ${v.folio}</title></head><body>${dosCopiasHtml(html)}</body></html>`);
-  win.document.close();win.focus();
-  setTimeout(()=>{win.print();},500);
+  _doPrint('VT '+v.folio,dosCopiasHtml(buildDocVenta(v,vh)));
 }
 function previsualizarDoc(tipo){
   if(tipo==='ot'){
