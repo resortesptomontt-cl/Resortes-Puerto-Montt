@@ -9368,6 +9368,14 @@ function bancoHtml(){
   </div>`;
 }
 
+function zonaLabel(codigo, allCodigos){
+  const m=codigo.match(/^(FT|RR)(\d)-(I|D)$/);if(!m)return codigo;
+  const prefix=m[1],num=parseInt(m[2]),side=m[3];
+  const tipo=prefix==='FT'?'DELANTERO':'TRASERO';
+  const lado=side==='D'?'DERECHO':'IZQUIERDO';
+  const nums=[...new Set((allCodigos||[]).map(z=>{const x=z.match(/^(FT|RR)(\d)/);return x&&x[1]===prefix?parseInt(x[2]):null;}).filter(Boolean))];
+  return nums.length>1?`${tipo} ${num} ${lado}`:`${tipo} ${lado}`;
+}
 function buildDocOT(o,v){
   const fmtF=d=>{if(!d)return'';const[y,m,dd]=d.split('-');return`${dd}/${m}/${y}`;};
   return docCSS()+`<div class="doc">
@@ -9393,16 +9401,18 @@ function buildDocOT(o,v){
       ${o.marca?`<div class="info-row"><span class="info-lbl">Vehículo:</span><span class="info-val">${o.marca} ${o.modelo}</span></div>`:''}
       ${v?.anio?`<div class="info-row"><span class="info-lbl">Año:</span><span class="info-val">${v.anio}</span></div>`:''}
       ${o.km?`<div class="info-row"><span class="info-lbl">Km ingreso:</span><span class="info-val">${fmtN(o.km)} km</span></div>`:''}
-      ${(o.zonasVehiculo&&o.zonasVehiculo.length)?`<div class="info-row"><span class="info-lbl">Zona/Eje:</span><span class="info-val" style="font-weight:700;color:#b85c1a">${o.zonasVehiculo.map(z=>z.codigo).join(', ')}</span></div>`:''}
+      ${(o.zonasVehiculo&&o.zonasVehiculo.length)?`<div class="info-row"><span class="info-lbl">Zona/Eje:</span><span class="info-val" style="font-weight:700;color:#b85c1a">${o.zonasVehiculo.map(z=>zonaLabel(z.codigo,o.zonasVehiculo.map(x=>x.codigo))).join(' · ')}</span></div>`:''}
       ${o.mecanico?`<div class="info-row"><span class="info-lbl">Mecánico:</span><span class="info-val">${o.mecanico}</span></div>`:''}
     </div>
   </div>
   ${o.diag?`<div class="sec-hdr">Diagnóstico / trabajo solicitado</div><div class="obs-box">${o.diag}</div>`:''}
   ${(o.zonasVehiculo&&o.zonasVehiculo.length)?`<div class="sec-hdr">Detalle de trabajo por eje y lado</div>
   <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
-  ${o.zonasVehiculo.map(z=>`<div style="background:#FDF3E0;border:1px solid #E0C070;border-radius:5px;padding:6px 10px;font-size:11px">
-    <strong style="color:#7A4F10">${z.codigo}</strong>${z.detalle?` — ${z.detalle}`:` <span style="color:#999">(sin detalle escrito)</span>`}
-  </div>`).join('')}
+  ${o.zonasVehiculo.map(z=>{const allCods=o.zonasVehiculo.map(x=>x.codigo);return`<div style="background:#FDF3E0;border:1px solid #E0C070;border-radius:5px;padding:8px 12px;font-size:11px;display:flex;gap:8px;align-items:baseline">
+    <strong style="color:#7A4F10;font-size:12px;white-space:nowrap">${zonaLabel(z.codigo,allCods)}</strong>
+    <span style="color:#C09040;font-size:9px;font-family:monospace;white-space:nowrap">${z.codigo}</span>
+    ${z.detalle?`<span style="color:#555">— ${z.detalle}</span>`:`<span style="color:#bbb;font-style:italic">sin detalle escrito</span>`}
+  </div>`;}).join('')}
   </div>`:''}
   <div class="sec-hdr">Detalle de servicios y repuestos</div>
   <table><thead><tr><th>#</th><th>Descripción</th><th>Cantidad</th><th>Unidad</th><th class="tr">IVA</th></tr></thead>
