@@ -7638,15 +7638,36 @@ function renderReportes(){
       </div>`;
     }).join('')+'</div>';
 
-  // Top productos
+  // Top productos — solo ítems del inventario (tienen pid)
   const prodMap={};
-  DB.ventas.forEach(v=>v.items.forEach(i=>{prodMap[i.nombre]=(prodMap[i.nombre]||0)+i.qty;}));
-  DB.ordenes.forEach(o=>o.items.forEach(i=>{prodMap[i.nombre]=(prodMap[i.nombre]||0)+i.qty;}));
-  const topProds=Object.entries(prodMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  $('rep-top-prod').innerHTML=topProds.length?topProds.map(([nom,qty])=>`
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
-      <span>${nom}</span><span style="font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--accent)">${fmtN(qty)} und</span>
-    </div>`).join(''):'<div class="empty" style="padding:16px">Sin datos</div>';
+  const acum=(items)=>items.forEach(i=>{
+    if(!i.pid) return; // ignorar ítems libres
+    if(!prodMap[i.pid]) prodMap[i.pid]={qty:0,monto:0,nombre:i.nombre};
+    prodMap[i.pid].qty   += i.qty||0;
+    prodMap[i.pid].monto += (i.sub||0) + (i.iva?Math.round((i.sub||0)*0.19):0);
+  });
+  DB.ventas.forEach(v=>acum(v.items||[]));
+  DB.ordenes.forEach(o=>acum(o.items||[]));
+  const topProds=Object.values(prodMap).sort((a,b)=>b.qty-a.qty).slice(0,10);
+  const maxQty=topProds[0]?.qty||1;
+  $('rep-top-prod').innerHTML=topProds.length
+    ? topProds.map((p,idx)=>{
+        const barW=Math.round((p.qty/maxQty)*100);
+        const medal=idx===0?'🥇':idx===1?'🥈':idx===2?'🥉':'';
+        return`<div style="padding:8px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:4px">
+            <span style="font-weight:500">${medal} ${p.nombre}</span>
+            <div style="display:flex;gap:12px;align-items:center">
+              <span style="font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--accent)">${fmtN(p.qty)} und</span>
+              <span style="font-size:11px;color:var(--text2)">${fmt(p.monto)}</span>
+            </div>
+          </div>
+          <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden">
+            <div style="height:100%;width:${barW}%;background:var(--accent);border-radius:3px;transition:width .4s"></div>
+          </div>
+        </div>`;
+      }).join('')
+    : '<div class="empty" style="padding:16px">Sin ventas de productos de inventario</div>';
 
   // Top clientes
   const cliMap={};
