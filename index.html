@@ -103,6 +103,78 @@
 
   .boletas-resumen { font-size:11px; color:var(--muted); margin:6px 0; display:flex; flex-wrap:wrap; gap:6px; }
 
+  .balance-panel {
+    background: linear-gradient(135deg, #1a2540, #1e2d1e);
+    border: 1px solid rgba(61,220,132,.3);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .balance-panel .bal-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .balance-panel .bal-value { font-size: 28px; font-weight: 800; color: var(--green); }
+  .balance-panel .bal-value.negativo { color: var(--red); }
+  .balance-panel .bal-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .balance-mini { text-align: right; }
+  .balance-mini .bm-label { font-size: 11px; color: var(--muted); }
+  .balance-mini .bm-val { font-size: 14px; font-weight: 700; }
+
+  .anticipo-bloque {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+  .anticipo-bloque-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 14px;
+    background: var(--panel2);
+    border-bottom: 1px solid var(--border);
+  }
+  .anticipo-bloque-header .ab-nombre { font-weight: 700; font-size: 14px; }
+  .anticipo-bloque-header .ab-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .anticipo-bloque-header .ab-monto { font-size: 16px; font-weight: 800; color: var(--green); }
+  .anticipo-bloque-header .ab-monto.pendiente { color: var(--amber); }
+  .plan-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    gap: 8px;
+  }
+  .plan-item:last-child { border-bottom: none; }
+  .plan-item.pagado-item { opacity: .5; }
+  .plan-item .pi-nombre { font-size: 13px; font-weight: 600; }
+  .plan-item .pi-urg { font-size: 11px; margin-top: 2px; }
+  .plan-item .pi-derecha { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+  .plan-item .pi-monto { font-size: 14px; font-weight: 700; color: var(--accent); }
+  .plan-item .pi-monto.pagado { color: var(--green); }
+  .btn-pagar-plan {
+    background: var(--accent); color: #fff; border: none; border-radius: 6px;
+    padding: 5px 10px; font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  .btn-pagar-plan:hover { opacity: .85; }
+  .btn-pagar-plan.pagado { background: transparent; border: 1px solid var(--green); color: var(--green); cursor: default; }
+  .plan-sobrante {
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--muted);
+    background: rgba(61,220,132,.05);
+    border-top: 1px solid var(--border);
+  }
+  .confirmar-anticipo-btn {
+    margin: 10px 14px;
+    grid-column: unset;
+    width: calc(100% - 28px);
+    background: var(--green);
+    color: #06210f;
+    font-weight: 700;
+  }
+
   .mora-box { background:rgba(176,140,255,.08); border:1px solid rgba(176,140,255,.35); border-radius:8px; padding:10px 12px; font-size:12.5px; color:var(--text); margin-top:8px; line-height:1.5; }
   .mora-box b { color:var(--purple); }
 
@@ -225,8 +297,13 @@
 
   <!-- ANTICIPO -->
   <div class="view" id="view-anticipo">
+
+    <!-- Balance disponible ahora -->
+    <div id="balance-disponible-panel"></div>
+
+    <!-- Registrar anticipo -->
     <div class="panel">
-      <h2>Registrar anticipo del sábado</h2>
+      <h2>Registrar anticipo</h2>
       <form id="form-anticipo">
         <div>
           <label>Monto (CLP)</label>
@@ -239,16 +316,17 @@
         <div class="full">
           <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--text)">
             <input type="checkbox" id="a-pendiente" style="width:auto">
-            Todavía no lo recibí — solo quiero ver la sugerencia de reparto
+            Todavía no lo recibí — solo quiero planificarlo
           </label>
         </div>
-        <button type="submit">Registrar</button>
+        <button type="submit">Registrar y generar plan de pago</button>
       </form>
     </div>
 
+    <!-- Registrar ingreso extra -->
     <div class="panel">
       <h2>Registrar ingreso extra</h2>
-      <p class="hint">Venta, trabajo aparte, devolución, plata prestada que te devolvieron — cualquier plata que entró y no es tu sueldo.</p>
+      <p class="hint">Venta, trabajo aparte, devolución, plata devuelta — cualquier plata que entró y no es tu sueldo.</p>
       <form id="form-extra">
         <div>
           <label>Monto (CLP)</label>
@@ -259,7 +337,7 @@
           <input type="date" id="x-fecha" required>
         </div>
         <div class="full">
-          <label>Origen del ingreso</label>
+          <label>Origen</label>
           <select id="x-origen">
             <option>Venta</option>
             <option>Trabajo extra</option>
@@ -270,25 +348,20 @@
         </div>
         <div class="full">
           <label>Detalle (opcional)</label>
-          <input type="text" id="x-desc" placeholder="Ej: venta de moto, hora extra en la empresa">
+          <input type="text" id="x-desc" placeholder="Ej: venta de moto, hora extra">
         </div>
         <button type="submit">Registrar ingreso extra</button>
       </form>
     </div>
 
-    <div class="panel" id="panel-ingresos-mes">
+    <!-- Plan del mes: todos los anticipos con sus planes -->
+    <div id="plan-mes-container"></div>
+
+    <div class="panel" style="margin-top:16px">
       <h2>Ingresos de este mes</h2>
       <div id="resumen-ingresos-mes"></div>
     </div>
 
-    <div class="panel" id="panel-sugerencia">
-      <h2>Sugerencia de reparto</h2>
-      <p class="hint" id="sugerencia-hint">Ordenado por urgencia: primero lo que vence pronto, después lo demás.</p>
-      <div id="sugerencia-lista"><div class="empty">Registrá un anticipo arriba para ver cómo repartirlo.</div></div>
-    </div>
-    <div class="tip">
-      <b>Cómo lo ordena:</b> deudas con vencimiento en los próximos 7 días van primero (en rojo), luego las de este mes (en amarillo), y al final las que no tienen fecha definida. Si el anticipo no alcanza para todo, prioriza las primeras de la lista — no las repartas todas en partes iguales.
-    </div>
   </div>
 
   <!-- GASTOS DIARIOS -->
@@ -807,137 +880,171 @@ function eliminarMovExtra(id) {
   renderTodo();
 }
 
+// ---------- Plan mensual de anticipos ----------
+
+function urgenciaDeudaGlobal(d) {
+  if (d.boletas && d.boletas.length) {
+    const pend = d.boletas.filter(b=>!b.pagada);
+    if (!pend.length) return { nivel:'ok', label:'Todas pagadas' };
+    const orden = {vencida:-1,urgente:0,pronto:1,ok:2,'sin-fecha':3};
+    return pend.map(b=>nivelUrgenciaFecha(b.fecha)).sort((a,b)=>orden[a.nivel]-orden[b.nivel])[0];
+  }
+  return nivelUrgencia(d.dia);
+}
+
+function generarReparto(monto) {
+  const activas = data.deudas
+    .filter(d => d.activa !== false)
+    .map(d => {
+      const faltante = (d.boletas && d.boletas.length)
+        ? d.boletas.filter(b=>!b.pagada).reduce((s,b)=>s+b.monto,0)
+        : Math.max(0, d.total - d.pagado);
+      const sugerido = d.minimo > 0 ? Math.min(d.minimo, faltante) : faltante;
+      return { id:d.id, nombre:d.nombre, sugerido, faltante, urg:urgenciaDeudaGlobal(d) };
+    })
+    .filter(d => d.faltante > 0)
+    .sort((a,b) => {
+      const orden = {vencida:-1,urgente:0,pronto:1,ok:2,'sin-fecha':3};
+      return orden[a.urg.nivel] - orden[b.urg.nivel];
+    });
+  let restante = monto;
+  const items = activas.map(d => {
+    const asignado = Math.max(0, Math.min(restante, d.sugerido));
+    restante -= asignado;
+    return { deudaId:d.id, nombre:d.nombre, urgNivel:d.urg.nivel, urgLabel:d.urg.label, montoSugerido:asignado, montoPago:asignado, pagado:false };
+  });
+  return { items, sobrante: restante };
+}
+
 document.getElementById('form-anticipo').addEventListener('submit', e=>{
   e.preventDefault();
   const monto = parseFloat(document.getElementById('a-monto').value);
   const fecha = document.getElementById('a-fecha').value;
   const pendiente = document.getElementById('a-pendiente').checked;
   if (!monto || monto<=0) { toast('Pon un monto válido'); return; }
-
-  data.movimientos.push({ id: uid(), tipo:'anticipo', detalle: pendiente ? 'Anticipo pendiente de recibir' : 'Anticipo de sueldo', monto, fecha, pendiente });
+  const reparto = generarReparto(monto);
+  data.movimientos.push({ id:uid(), tipo:'anticipo', detalle:pendiente?'Anticipo pendiente':'Anticipo de sueldo', monto, fecha, pendiente, reparto:reparto.items, sobrante:reparto.sobrante });
   guardar();
-  toast(pendiente ? 'Anticipo guardado como pendiente' : 'Anticipo registrado');
+  toast(pendiente ? 'Anticipo planificado ✓' : 'Anticipo registrado ✓');
   e.target.reset();
   document.getElementById('a-fecha').value = new Date().toISOString().slice(0,10);
   renderTodo();
 });
 
-function mostrarSugerencia(monto, esPendiente) {
-  const activas = data.deudas.filter(d => d.activa !== false && (d.total - d.pagado) > 0);
-  const hint = document.getElementById('sugerencia-hint');
-
-  if (esPendiente) {
-    hint.innerHTML = `<span style="color:var(--amber)">⚠ Este anticipo está marcado como pendiente — todavía no lo recibiste. La sugerencia te muestra a dónde va a ir cuando llegue, pero los botones de pago van a estar desactivados hasta que lo confirmes como recibido.</span>`;
-  } else {
-    hint.textContent = 'Ordenado por urgencia. Tocá "Pagar" en cada deuda a medida que la vayas pagando — podés editar el monto antes de confirmar.';
-  }
-
-  if (!activas.length) {
-    document.getElementById('sugerencia-lista').innerHTML = `<div class="empty">No tenés deudas pendientes. Este anticipo está libre para ahorro o gastos.</div>`;
-    return;
-  }
-
-  function urgenciaDeuda(d) {
+function pagarItemPlan(anticIpoId, itemIdx) {
+  const mv = data.movimientos.find(m=>m.id===anticIpoId);
+  if (!mv || !mv.reparto) return;
+  const item = mv.reparto[itemIdx];
+  if (!item || item.pagado) return;
+  const inputEl = document.getElementById('plan-monto-'+anticIpoId+'-'+itemIdx);
+  const monto = inputEl ? parseFloat(inputEl.value)||0 : item.montoPago;
+  if (monto <= 0) { toast('El monto es 0'); return; }
+  const d = data.deudas.find(x=>x.id===item.deudaId);
+  if (d) {
     if (d.boletas && d.boletas.length) {
-      const pendientes = d.boletas.filter(b=>!b.pagada);
-      if (!pendientes.length) return { nivel:'ok', label:'Todas pagadas', dias:null };
-      const niveles = pendientes.map(b=>nivelUrgenciaFecha(b.fecha));
-      const orden = {vencida:-1, urgente:0, pronto:1, ok:2, 'sin-fecha':3};
-      return niveles.sort((a,b)=>orden[a.nivel]-orden[b.nivel])[0];
-    }
-    return nivelUrgencia(d.dia);
-  }
-
-  const ordenadas = [...activas].sort((a,b)=>{
-    const orden = {vencida:-1, urgente:0, pronto:1, ok:2, 'sin-fecha':3};
-    return orden[urgenciaDeuda(a).nivel] - orden[urgenciaDeuda(b).nivel];
-  });
-
-  let restante = monto;
-  const filas = ordenadas.map(d => {
-    let faltante;
-    if (d.boletas && d.boletas.length) {
-      faltante = d.boletas.filter(b=>!b.pagada).reduce((s,b)=>s+b.monto,0);
+      let por = monto;
+      for (const b of d.boletas.filter(b=>!b.pagada).sort((a,b_)=>a.fecha.localeCompare(b_.fecha))) {
+        if (por<=0) break;
+        if (por>=b.monto){b.pagada=true;por-=b.monto;}
+      }
+      d.pagado = d.boletas.filter(b=>b.pagada).reduce((s,b)=>s+b.monto,0);
     } else {
-      faltante = Math.max(0, d.total - d.pagado);
+      d.pagado = Math.min(d.total, d.pagado + monto);
     }
-    const sugerido = d.minimo > 0 ? Math.min(d.minimo, faltante) : faltante;
-    const asignado = Math.max(0, Math.min(restante, sugerido));
-    restante -= asignado;
-    const urg = urgenciaDeuda(d);
-    return { d, asignado, urg };
-  });
-
-  document.getElementById('sugerencia-lista').innerHTML = filas.map(({d, asignado, urg}) => `
-    <div class="asignacion-item">
-      <div class="izq">
-        <div class="nombre">${d.nombre}</div>
-        <span class="pill ${urg.nivel}" style="margin-top:4px; display:inline-block">${urg.label}</span>
-      </div>
-      <div style="text-align:right; min-width:130px">
-        <input type="number" min="0" step="1" value="${asignado}"
-          id="abono-input-${d.id}"
-          style="width:120px; text-align:right; margin-bottom:6px; font-size:13px; padding:6px 8px"
-          ${esPendiente ? 'disabled' : ''}>
-        <br>
-        <button class="small secondary" ${esPendiente ? 'disabled style="opacity:.4"' : ''}
-          onclick="pagarDeuda('${d.id}')">
-          ${esPendiente ? 'Pendiente' : 'Registrar pago'}
-        </button>
-      </div>
-    </div>
-  `).join('') + (restante > 0
-    ? `<div class="alert ok" style="margin-top:10px">Te sobran ${fmt(restante)} después de cubrir los mínimos sugeridos. Podés abonar más a la deuda más urgente o guardarlo.</div>`
-    : '');
+    if (d.pagado >= d.total) d.activa = false;
+  }
+  item.pagado = true; item.montoPago = monto;
+  data.movimientos.push({ id:uid(), tipo:'pago', detalle:'Pago a: '+item.nombre, monto, fecha:new Date().toISOString().slice(0,10) });
+  guardar();
+  toast(fmt(monto)+' pagado a '+item.nombre+' ✓');
+  renderTodo();
 }
 
-function pagarDeuda(id) {
-  const inputEl = document.getElementById('abono-input-' + id);
-  const monto = parseFloat(inputEl ? inputEl.value : 0);
-  if (!monto || monto <= 0) { toast('El monto del abono es 0'); return; }
-  const d = data.deudas.find(x=>x.id===id);
-  if (!d) return;
+function confirmarAnticipo(id) {
+  const mv = data.movimientos.find(m=>m.id===id);
+  if (!mv) return;
+  mv.pendiente = false; mv.detalle = 'Anticipo de sueldo';
+  guardar(); toast('Anticipo confirmado ✓'); renderTodo();
+}
 
-  if (d.boletas && d.boletas.length) {
-    let porAbonar = monto;
-    for (const b of d.boletas.filter(b=>!b.pagada).sort((a,b_)=>a.fecha.localeCompare(b_.fecha))) {
-      if (porAbonar <= 0) break;
-      if (porAbonar >= b.monto) { b.pagada = true; porAbonar -= b.monto; }
-    }
-    d.pagado = d.boletas.filter(b=>b.pagada).reduce((s,b)=>s+b.monto,0);
-  } else {
-    d.pagado = Math.min(d.total, d.pagado + monto);
+function renderBalanceDisponible() {
+  const m = new Date().toISOString().slice(0,7);
+  const totalRecibido = data.movimientos
+    .filter(mv=>((mv.tipo==='anticipo'&&!mv.pendiente)||mv.tipo==='extra')&&mv.fecha.slice(0,7)===m)
+    .reduce((s,mv)=>s+mv.monto,0);
+  const totalPagado = data.movimientos
+    .filter(mv=>mv.tipo==='pago'&&mv.fecha.slice(0,7)===m)
+    .reduce((s,mv)=>s+mv.monto,0);
+  const totalPendiente = data.movimientos
+    .filter(mv=>mv.tipo==='anticipo'&&mv.pendiente&&mv.fecha.slice(0,7)===m)
+    .reduce((s,mv)=>s+mv.monto,0);
+  const disponible = totalRecibido - totalPagado;
+  const panel = document.getElementById('balance-disponible-panel');
+  if (!panel) return;
+  panel.innerHTML = '<div class="balance-panel"><div><div class="bal-label">Disponible ahora</div><div class="bal-value '+(disponible<0?'negativo':'')+'">'
+    +fmt(disponible)+'</div><div class="bal-meta">'+fmt(totalRecibido)+' recibidos − '+fmt(totalPagado)+' pagados</div></div>'
+    +'<div style="display:flex;gap:14px;flex-wrap:wrap">'
+    +'<div class="balance-mini"><div class="bm-label">Recibido</div><div class="bm-val" style="color:var(--green)">'+fmt(totalRecibido)+'</div></div>'
+    +'<div class="balance-mini"><div class="bm-label">Pagado</div><div class="bm-val" style="color:var(--red)">'+fmt(totalPagado)+'</div></div>'
+    +(totalPendiente>0?'<div class="balance-mini"><div class="bm-label">Por recibir</div><div class="bm-val" style="color:var(--amber)">'+fmt(totalPendiente)+'</div></div>':'')
+    +'</div></div>';
+}
+
+function renderPlanMes() {
+  const m = new Date().toISOString().slice(0,7);
+  const anticiposMes = data.movimientos
+    .filter(mv=>mv.tipo==='anticipo'&&mv.fecha.slice(0,7)===m)
+    .sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const cont = document.getElementById('plan-mes-container');
+  if (!cont) return;
+  if (!anticiposMes.length) {
+    cont.innerHTML='<div class="tip"><b>Aún no hay anticipos este mes.</b> Registrá el primero arriba y el sistema genera el plan de pagos automáticamente.</div>';
+    return;
   }
-
-  if (d.pagado >= d.total) d.activa = false;
-  data.movimientos.push({ id: uid(), tipo:'pago', detalle:'Pago a: '+d.nombre, monto, fecha: new Date().toISOString().slice(0,10) });
-  guardar();
-  toast(`Abono de ${fmt(monto)} registrado a ${d.nombre}`);
-  renderTodo();
+  cont.innerHTML = anticiposMes.map(function(antic) {
+    const reparto = antic.reparto || [];
+    const totalAsignado = reparto.reduce(function(s,it){return s+it.montoSugerido;},0);
+    const sobrante = antic.monto - totalAsignado;
+    const itemsHtml = reparto.length ? reparto.map(function(it,idx){
+      const pagadoHtml = '<div class="pi-monto pagado">'+fmt(it.montoPago)+' ✓</div><button class="btn-pagar-plan pagado" disabled>Pagado</button>';
+      const aid = antic.id;
+      const pagarHtml = '<input type="number" id="plan-monto-'+aid+'-'+idx+'" value="'+it.montoSugerido+'" min="0" step="1"'
+        +' style="width:110px;text-align:right;margin-bottom:4px;font-size:13px;padding:5px 8px"'+(antic.pendiente?' disabled':'')+'>'
+        +'<br><button class="btn-pagar-plan" onclick="pagarItemPlan(' + JSON.stringify(aid) + ',' + idx + ')"'+(antic.pendiente?' disabled style="opacity:.4"':'')+'>Pagar</button>';
+      return '<div class="plan-item '+(it.pagado?'pagado-item':'')+'"><div><div class="pi-nombre">'+it.nombre+'</div>'
+        +'<div class="pi-urg"><span class="pill '+it.urgNivel+'">'+it.urgLabel+'</span></div></div>'
+        +'<div class="pi-derecha">'+(it.pagado?pagadoHtml:pagarHtml)+'</div></div>';
+    }).join('') : '<div class="empty" style="padding:12px">Sin deudas pendientes para este anticipo.</div>';
+    const confirmarBtn = antic.pendiente ? '<button class="btn-pagar-plan" style="margin:10px 14px;width:calc(100% - 28px);background:var(--green);color:#06210f;font-weight:700" onclick="confirmarAnticipo(' + JSON.stringify(antic.id) + ')">&#x2713; Confirmar que lo recibí</button>' : '';
+    const sobranteHtml = sobrante>0 ? '<div class="plan-sobrante">Margen libre: <b style="color:var(--green)">'+fmt(sobrante)+'</b> — para gastos del día o abonar extra</div>' : '';
+    return '<div class="anticipo-bloque"><div class="anticipo-bloque-header"><div>'
+      +'<div class="ab-nombre">'+(antic.pendiente?'⏳ ':'✓ ')+'Anticipo '+antic.fecha+'</div>'
+      +'<div class="ab-meta">'+(antic.pendiente?'Pendiente de recibir':'Recibido')+' · '+reparto.filter(function(it){return it.pagado;}).length+'/'+reparto.length+' pagos hechos</div>'
+      +'</div><div class="ab-monto '+(antic.pendiente?'pendiente':'')+'">'+fmt(antic.monto)+'</div></div>'
+      +confirmarBtn+itemsHtml+sobranteHtml+'</div>';
+  }).join('');
 }
 
 // ---------- Cards / Alerta ----------
 function renderCards() {
   const activas = data.deudas.filter(d=>d.activa !== false);
-  const totalDeuda = activas.reduce((s,d)=>s + Math.max(0,d.total - d.pagado), 0);
+  const totalDeuda = activas.reduce((s,d)=>s+Math.max(0,d.total-d.pagado),0);
   const totalPagado = data.deudas.reduce((s,d)=>s+d.pagado,0);
-  const urgentes = activas.filter(d => nivelUrgencia(d.dia).nivel === 'urgente').length;
-  const totalOriginal = data.deudas.reduce((s,d)=>s+d.total,0);
-
-  document.getElementById('cards').innerHTML = `
+  const urgentes = activas.filter(d=>urgenciaDeudaGlobal(d).nivel==='urgente'||urgenciaDeudaGlobal(d).nivel==='vencida').length;
+  const cardsEl = document.getElementById('cards'); if(!cardsEl) return;
+  cardsEl.innerHTML = `
     <div class="card"><div class="label">Deuda pendiente</div><div class="value red">${fmt(totalDeuda)}</div></div>
     <div class="card"><div class="label">Ya pagado</div><div class="value green">${fmt(totalPagado)}</div></div>
-    <div class="card"><div class="label">Vencen en 7 días</div><div class="value amber">${urgentes}</div></div>
+    <div class="card"><div class="label">Vencen pronto</div><div class="value amber">${urgentes}</div></div>
     <div class="card"><div class="label">Deudas activas</div><div class="value purple">${activas.length}</div></div>
   `;
-
-  const alertaCont = document.getElementById('alerta-principal');
+  const alertaCont = document.getElementById('alerta-principal'); if(!alertaCont) return;
   if (!data.deudas.length) {
-    alertaCont.innerHTML = `<div class="alert warn">Empieza cargando tus deudas en la pestaña "Mis deudas", aunque sea con montos aproximados. Sin eso no hay nada que ordenar.</div>`;
+    alertaCont.innerHTML = `<div class="alert warn">Empieza cargando tus deudas en la pestaña "Mis deudas", aunque sea con montos aproximados.</div>`;
   } else if (urgentes > 0) {
-    alertaCont.innerHTML = `<div class="alert bad">Tenés ${urgentes} deuda${urgentes>1?'s':''} que vence${urgentes>1?'n':''} en los próximos 7 días. Cuando recibas tu anticipo del sábado, esa${urgentes>1?'s':''} va${urgentes>1?'n':''} primero.</div>`;
+    alertaCont.innerHTML = `<div class="alert bad">Tenés ${urgentes} deuda${urgentes>1?'s':''} urgente${urgentes>1?'s':''} o vencida${urgentes>1?'s':''}. Priorizalas en el próximo anticipo.</div>`;
   } else if (totalDeuda > 0) {
-    alertaCont.innerHTML = `<div class="alert ok">No tenés vencimientos urgentes esta semana. Buen momento para abonar más de lo mínimo a la deuda más cara y salir antes.</div>`;
+    alertaCont.innerHTML = `<div class="alert ok">No tenés vencimientos urgentes esta semana. Buen momento para abonar más de lo mínimo.</div>`;
   } else {
     alertaCont.innerHTML = `<div class="alert ok">No registras deuda pendiente. 🎉</div>`;
   }
@@ -948,33 +1055,23 @@ function renderTabla() {
   const lista = [...data.movimientos].sort((a,b)=>b.fecha.localeCompare(a.fecha));
   const body = document.getElementById('tabla-body');
   const empty = document.getElementById('tabla-empty');
+  if (!body) return;
   if (!lista.length) { body.innerHTML=''; empty.style.display='block'; return; }
   empty.style.display = 'none';
   body.innerHTML = lista.map(m => `
     <tr>
       <td>${m.fecha}</td>
       <td>
-        ${m.tipo==='anticipo' ? '↑ Anticipo' : m.tipo==='extra' ? '↑ Extra' : '↓ Pago'}
-        ${m.pendiente ? '<span class="pill" style="color:var(--amber);border-color:rgba(255,178,79,.4);margin-left:4px">Pendiente</span>' : ''}
+        ${m.tipo==='anticipo'?'↑ Anticipo':m.tipo==='extra'?'↑ Extra':'↓ Pago'}
+        ${m.pendiente?'<span class="pill" style="color:var(--amber);border-color:rgba(255,178,79,.4);margin-left:4px">Pendiente</span>':''}
       </td>
-      <td>
-        ${m.detalle}
-        ${m.pendiente ? `<br><button class="danger-out" style="color:var(--green);border-color:rgba(61,220,132,.4);margin-top:4px" onclick="confirmarAnticipo('${m.id}')">✓ Confirmar recepción</button>` : ''}
-      </td>
+      <td>${m.detalle||'-'}${m.pendiente?`<br><button class="danger-out" style="color:var(--green);border-color:rgba(61,220,132,.4);margin-top:4px" onclick="confirmarAnticipo('${m.id}')">✓ Confirmar recepción</button>`:''}</td>
       <td class="num" style="color:${m.tipo==='pago'?'var(--red)':m.pendiente?'var(--amber)':'var(--green)'}">${m.tipo==='pago'?'-':'+'}${fmt(m.monto)}</td>
       <td><button class="danger-out" onclick="eliminarMov('${m.id}')">✕</button></td>
     </tr>
   `).join('');
 }
-function confirmarAnticipo(id) {
-  const mv = data.movimientos.find(m=>m.id===id);
-  if (!mv) return;
-  mv.pendiente = false;
-  mv.detalle = 'Anticipo de sueldo';
-  guardar();
-  toast('Anticipo confirmado como recibido ✓');
-  renderTodo();
-}
+
 function eliminarMov(id) {
   data.movimientos = data.movimientos.filter(m=>m.id!==id);
   guardar();
@@ -1017,7 +1114,8 @@ function renderResumenSemana() {
   const porDia = total / 7;
   const masAlta = [...deLaSemana].sort((a,b)=>b.monto-a.monto)[0];
 
-  document.getElementById('resumen-semana-cards').innerHTML = `
+  const rscEl = document.getElementById('resumen-semana-cards'); if(!rscEl) return;
+  rscEl.innerHTML = `
     <div class="card"><div class="label">Gastado esta semana</div><div class="value red">${fmt(total)}</div></div>
     <div class="card"><div class="label">Promedio diario</div><div class="value amber">${fmt(porDia)}</div></div>
     <div class="card"><div class="label">Gasto más alto</div><div class="value">${masAlta?fmt(masAlta.monto):'$0'}</div></div>
@@ -1197,7 +1295,8 @@ function renderProyeccion() {
 
   const balanceProyectado = totalProyectado - totalVencimientosMes;
 
-  document.getElementById('proyeccion-cards').innerHTML = `
+  const pcEl = document.getElementById('proyeccion-cards'); if(!pcEl) return;
+  pcEl.innerHTML = `
     <div class="card"><div class="label">Anticipos recibidos este mes</div><div class="value green">${fmt(anticiposRecibidosMes)}</div></div>
     <div class="card"><div class="label">${usaConfig ? 'Falta por recibir (configurado)' : `Proyectado (${sabadosRestantes} sábado${sabadosRestantes===1?'':'s'})`}</div><div class="value amber">${fmt(proyectadoRestante)}</div></div>
     <div class="card"><div class="label">Vence este mes</div><div class="value red">${fmt(totalVencimientosMes)}</div></div>
@@ -1248,20 +1347,14 @@ function renderTodo() {
   renderListaDeudas();
   renderSueldoConfig();
   renderProyeccion();
+  renderBalanceDisponible();
+  renderPlanMes();
+  renderResumenIngresosMes();
   renderTabla();
   renderResumenSemana();
   renderBarrasGastos();
   renderTablaGastos();
   renderAlertaGastosVsDeuda();
-  renderResumenIngresosMes();
-
-  // Sugerencia: usa el último anticipo registrado (pendiente o recibido)
-  const ultimoAnticipo = [...data.movimientos]
-    .filter(m => m.tipo === 'anticipo')
-    .sort((a,b) => b.fecha.localeCompare(a.fecha))[0];
-  if (ultimoAnticipo) {
-    mostrarSugerencia(ultimoAnticipo.monto, ultimoAnticipo.pendiente);
-  }
 }
 renderTodo();
 </script>
