@@ -5562,8 +5562,9 @@ function renderOTs(){
         <span class="folio-tag" style="font-size:10px">${o.folio}</span>
         <span style="font-weight:${entregado?400:600};font-size:12px;flex:1;min-width:120px">${o.clienteNombre}</span>
         ${o.patente?`<span class="badge b-orange" style="font-size:10px">${o.patente}</span>`:''}
+        ${(o.marca||o.modelo)?`<span style="font-size:10px;color:var(--text2);font-weight:500">${[o.marca,o.modelo].filter(Boolean).join(' ')}</span>`:''}
         ${(o.zonasVehiculo&&o.zonasVehiculo.length)?o.zonasVehiculo.map(z=>`<span class="badge b-teal" style="font-size:9px">${z.codigo}</span>`).join(''):''}
-        ${tel?`<span style="font-size:10px;color:var(--text3)">📞 ${tel}</span>`:''}
+        ${tel?`<span style="font-size:10px;font-weight:600;color:var(--accent);background:var(--accent-light);padding:2px 9px;border-radius:10px;white-space:nowrap">📞 ${tel}</span>`:''}
         <span class="status ${venc?'s-vencido':statusClass(o.estado)}" style="font-size:10px">${venc?'⚠️ Vencido':statusLabel(o.estado)}</span>
         ${mecNombres?`<span style="font-size:10px;color:var(--text3)">👷 ${mecNombres.split(',')[0]}${o.mecanicos?.length>1?'+'+( o.mecanicos.length-1)+'':''}</span>`:''}
         <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;min-width:80px;text-align:right;color:var(--green)">${fmt(o.total)}</span>
@@ -5611,14 +5612,15 @@ function renderOTs(){
           <span style="font-size:14px;font-weight:${entregado?500:600}">${o.clienteNombre}</span>
           ${o.patente?`<span class="badge b-orange">${o.patente}</span>`:''}
           ${(o.zonasVehiculo&&o.zonasVehiculo.length)?o.zonasVehiculo.map(z=>`<span class="badge b-teal">${z.codigo}</span>`).join(''):''}
-          ${o.marca?`<span style="font-size:11px;color:var(--text2)">${o.marca} ${o.modelo||''}</span>`:''}
+          ${o.marca?`<span style="font-size:12px;color:var(--text2);font-weight:500">${o.marca}${o.modelo?' '+o.modelo:''}</span>`:''}
           ${(()=>{
             const telEncargado=_cli?.contactoTel||o.contactoTel||'';
             const telEmpresa=_cli?.tel||o.tel||'';
+            const pill=(t)=>`<span style="font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-light);padding:3px 10px;border-radius:10px;white-space:nowrap">📞 ${t}</span>`;
             if(telEncargado&&telEmpresa&&telEncargado!==telEmpresa)
-              return`<span style="font-size:11px;color:var(--text3)">📞 ${telEncargado} · ${telEmpresa}</span>`;
+              return pill(telEncargado)+' '+pill(telEmpresa);
             const t=telEncargado||telEmpresa;
-            return t?`<span style="font-size:11px;color:var(--text3)">📞 ${t}</span>`:'';
+            return t?pill(t):'';
           })()}
           <span class="status ${venc?'s-vencido':statusClass(o.estado)}">${venc?'⚠️ Vencido':statusLabel(o.estado)}</span>
           ${mecNombres?`<span style="font-size:10px;color:var(--text2);padding:2px 7px;background:var(--surface2);border-radius:10px">👷 ${mecNombres}</span>`:''}
