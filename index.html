@@ -2942,6 +2942,11 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
       </div>
       <div class="field" style="margin-bottom:10px"><label>Diagnóstico</label><textarea id="edit-ot-diag" style="min-height:50px"></textarea></div>
       <div class="field" style="margin-bottom:12px"><label>Observaciones</label><textarea id="edit-ot-obs" style="min-height:50px"></textarea></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);margin-bottom:12px;cursor:pointer">
+        <input type="checkbox" id="edit-ot-reapriete" style="width:auto">
+        🔧 Requiere reapriete de abrazaderas (7 días hábiles tras entrega)
+        <span id="edit-ot-reapriete-auto" style="font-size:10px;color:var(--text3)"></span>
+      </label>
       <hr style="margin-bottom:12px">
       <div style="font-size:12px;font-weight:600;margin-bottom:8px">Ítems de la orden</div>
       <div id="edit-ot-items"></div>
@@ -3006,6 +3011,29 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
       </div>
     </div>
     <div class="modal-body" id="ot-preview-body" style="max-height:70vh;overflow-y:auto"></div>
+  </div>
+</div>
+
+<div id="modal-reapriete" class="modal-overlay" style="display:none" onclick="if(event.target===this)cerrarReapriete()">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-hdr">
+      <h3 id="reap-titulo">Registrar reapriete</h3>
+      <button class="btn btn-ghost btn-sm" onclick="cerrarReapriete()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--amber-light,#FAEEDA);border-radius:var(--radius);padding:9px 13px;font-size:11px;color:var(--amber,#854F0B);margin-bottom:12px">
+        El reapriete gratuito es requisito para mantener la garantía del trabajo de abrazaderas.
+      </div>
+      <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field"><label>Fecha del reapriete</label><input id="reap-fecha" type="date"></div>
+        <div class="field"><label>Realizado por</label><select id="reap-mec"></select></div>
+      </div>
+      <div class="field" style="margin-top:10px"><label>Observaciones</label><input id="reap-obs" type="text" placeholder="Torque verificado, sin novedad"></div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-ghost" onclick="cerrarReapriete()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarReapriete()">Guardar reapriete</button>
+    </div>
   </div>
 </div>
 
@@ -4058,6 +4086,18 @@ function renderDashboard(){
       tipo:'err',icon:'💳',
       msg:`<strong>${credVenc.length}</strong> crédito${credVenc.length!==1?'s':''} vencido${credVenc.length!==1?'s':''} — ${fmt(credVenc.reduce((s,c)=>s+c.saldo,0))} sin cobrar`,
       action:`nav('creditos',null)`
+    });
+
+    // Reaprietes de abrazaderas pendientes
+    const reapPend=DB.ordenes.map(o=>({o,r:reaprieteEstado(o)})).filter(x=>x.r&&(x.r.tipo==='pendiente'||x.r.tipo==='porVencer'));
+    reapPend.sort((a,b)=>(a.r.dias||0)-(b.r.dias||0));
+    reapPend.forEach(({o,r})=>{
+      const fmt_f=f=>f?f.split('-').reverse().join('-'):'';
+      alertas.push({
+        tipo:r.tipo==='porVencer'?'err':'warn',icon:'🔧',
+        msg:`Reapriete <strong>${o.folio}</strong> · ${o.clienteNombre||''}${o.patente?' ('+o.patente+')':''} — ${r.tipo==='porVencer'?'<strong>vence '+fmt_f(r.vence)+'</strong>':'quedan '+r.dias+' días'}${(o.contactoTel||o.tel)?' · 📞 '+(o.contactoTel||o.tel):''}`,
+        action:`nav('ordenes',null);setTimeout(()=>{$('s-ot').value='${o.folio}';renderOTs();},300)`
+      });
     });
 
     const alertEl=$('dash-alertas');
@@ -5421,9 +5461,92 @@ function limpiarOT(){
   zonaRenderAll('ot');
   renderLineas('ot');setToday('ot-fecha-in');setOTFolio();
 }
+// ── Reapriete de abrazaderas — 7 días hábiles tras entrega ──────────
+function addBusinessDays(fechaStr,n){
+  const d=new Date(fechaStr+'T12:00:00');
+  let added=0;
+  while(added<n){
+    d.setDate(d.getDate()+1);
+    const dow=d.getDay();
+    if(dow!==0&&dow!==6)added++;
+  }
+  return d.toISOString().slice(0,10);
+}
+function otRequiereReapriete(o){
+  if(o.reaprieteManual===false)return false; // desactivado a mano
+  if(o.reaprieteManual===true)return true;   // activado a mano
+  return (o.items||[]).some(i=>(i.nombre||'').toLowerCase().includes('abrazadera'));
+}
+function reaprieteEstado(o){
+  // null = no aplica | {tipo:'pendiente'|'porVencer'|'realizado'|'vencido', dias, vence}
+  if(!otRequiereReapriete(o))return null;
+  if(o.reapriete&&o.reapriete.fecha)return{tipo:'realizado',fecha:o.reapriete.fecha};
+  if(o.estado!=='Entregado'&&o.estado!=='Entregado s/OC')return{tipo:'esperaEntrega'};
+  const base=o.fechaEntregado||o.fechaIn;
+  if(!base)return{tipo:'esperaEntrega'};
+  const vence=addBusinessDays(base,7);
+  const hoy=today();
+  if(hoy>vence)return{tipo:'vencido',vence};
+  const dHoy=new Date(hoy+'T12:00:00'),dV=new Date(vence+'T12:00:00');
+  const dias=Math.round((dV-dHoy)/86400000);
+  return{tipo:dias<=2?'porVencer':'pendiente',dias,vence};
+}
+function reapriete_badge(o){
+  const r=reaprieteEstado(o);
+  if(!r)return'';
+  const fmt_f=f=>f?f.split('-').reverse().join('-'):'';
+  if(r.tipo==='realizado')return`<span class="badge" style="font-size:9px;background:var(--green-light,#EAF3DE);color:var(--green,#3B6D11)">🔧✓ Reapriete ${fmt_f(r.fecha)}</span>`;
+  if(r.tipo==='vencido')return`<span class="badge" style="font-size:9px;background:var(--red-light,#FCEBEB);color:var(--red,#A32D2D)">🔧✕ Garantía caducada</span>`;
+  if(r.tipo==='porVencer')return`<span class="badge" style="font-size:9px;background:var(--red-light,#FCEBEB);color:var(--red,#A32D2D)">🔧⚠ Reapriete vence ${fmt_f(r.vence)}</span>`;
+  if(r.tipo==='pendiente')return`<span class="badge" style="font-size:9px;background:var(--amber-light,#FAEEDA);color:var(--amber,#854F0B)">🔧 Reapriete: ${r.dias} días</span>`;
+  return'';
+}
+let _reaprieteFolio=null;
+function abrirReapriete(folio){
+  const o=DB.ordenes.find(x=>x.folio===folio);if(!o)return;
+  _reaprieteFolio=folio;
+  $('reap-fecha').value=today();
+  $('reap-mec').innerHTML='<option value="">— Seleccionar —</option>'+DB.mecanicos.filter(m=>m.activo!==false).map(m=>`<option value="${m.nombre}">${m.nombre}</option>`).join('');
+  $('reap-obs').value='';
+  $('reap-titulo').textContent='Registrar reapriete — '+folio;
+  $('modal-reapriete').style.display='flex';
+  document.body.style.overflow='hidden';
+}
+function cerrarReapriete(){
+  $('modal-reapriete').style.display='none';
+  document.body.style.overflow='';
+  _reaprieteFolio=null;
+}
+function guardarReapriete(){
+  const o=DB.ordenes.find(x=>x.folio===_reaprieteFolio);if(!o)return;
+  const fecha=$('reap-fecha').value;
+  if(!fecha){toast('⚠ Indica la fecha del reapriete');return;}
+  o.reapriete={fecha,mecanico:$('reap-mec').value||'',obs:$('reap-obs').value.trim()};
+  save();cerrarReapriete();renderOTs();renderDashboard();
+  toast('✓ Reapriete registrado — garantía vigente');
+}
+function toggleReaprieteManual(folio){
+  const o=DB.ordenes.find(x=>x.folio===folio);if(!o)return;
+  const auto=(o.items||[]).some(i=>(i.nombre||'').toLowerCase().includes('abrazadera'));
+  const actual=otRequiereReapriete(o);
+  o.reaprieteManual=!actual;
+  if(o.reaprieteManual===auto)delete o.reaprieteManual; // coincide con auto → limpiar override
+  save();renderOTs();
+  toast(otRequiereReapriete(o)?'🔧 Reapriete activado para esta OT':'Reapriete desactivado');
+}
 function actualizarEstadoOT(folio,est){
   const ot=DB.ordenes.find(o=>o.folio===folio);
-  if(ot){ot.estado=est;save();renderOTs();renderDashboard();toast('Estado actualizado: '+est);}
+  if(ot){
+    const eraEntregado=ot.estado==='Entregado'||ot.estado==='Entregado s/OC';
+    const esEntregado=est==='Entregado'||est==='Entregado s/OC';
+    ot.estado=est;
+    if(esEntregado&&!eraEntregado&&!ot.fechaEntregado)ot.fechaEntregado=today();
+    save();renderOTs();renderDashboard();toast('Estado actualizado: '+est);
+    if(esEntregado&&!eraEntregado&&otRequiereReapriete(ot)&&!ot.reapriete){
+      const vence=addBusinessDays(ot.fechaEntregado,7);
+      setTimeout(()=>toast('🔧 Reapriete de abrazaderas: vence el '+vence.split('-').reverse().join('-')),1200);
+    }
+  }
 }
 function eliminarOT(folio){
   if(!confirm('¿Eliminar esta orden?'))return;
@@ -5564,12 +5687,14 @@ function renderOTs(){
         ${o.patente?`<span class="badge b-orange" style="font-size:10px">${o.patente}</span>`:''}
         ${(o.marca||o.modelo)?`<span style="font-size:10px;color:var(--text2);font-weight:500">${[o.marca,o.modelo].filter(Boolean).join(' ')}</span>`:''}
         ${(o.zonasVehiculo&&o.zonasVehiculo.length)?o.zonasVehiculo.map(z=>`<span class="badge b-teal" style="font-size:9px">${z.codigo}</span>`).join(''):''}
+        ${reapriete_badge(o)}
         ${tel?`<span style="font-size:10px;font-weight:600;color:var(--accent);background:var(--accent-light);padding:2px 9px;border-radius:10px;white-space:nowrap">📞 ${tel}</span>`:''}
         <span class="status ${venc?'s-vencido':statusClass(o.estado)}" style="font-size:10px">${venc?'⚠️ Vencido':statusLabel(o.estado)}</span>
         ${mecNombres?`<span style="font-size:10px;color:var(--text3)">👷 ${mecNombres.split(',')[0]}${o.mecanicos?.length>1?'+'+( o.mecanicos.length-1)+'':''}</span>`:''}
         <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;min-width:80px;text-align:right;color:var(--green)">${fmt(o.total)}</span>
         <div style="display:flex;gap:4px" onclick="event.stopPropagation()">
           <button class="btn btn-xs" onclick="imprimirOT('${o.folio}')" title="Imprimir PDF">🖨</button>
+          <button class="btn btn-xs" onclick="imprimirHojaTrabajo('${o.folio}')" title="Hoja de trabajo (sin precios)">👷</button>
           <select style="padding:3px 6px;border:1px solid var(--border);border-radius:var(--radius);font-size:10px;font-family:'Inter',sans-serif;background:var(--surface);color:var(--text)" onchange="actualizarEstadoOT('${o.folio}',this.value)">
             ${['Recibido','En proceso','Listo','Entregado s/OC','Entregado'].map(s=>`<option ${o.estado===s?'selected':''}>${s}</option>`).join('')}
           </select>
@@ -5594,6 +5719,7 @@ function renderOTs(){
         ${o.docTipo&&o.docTipo!=='Sin Boleta/Factura'?`<div style="font-size:12px;color:var(--green);margin-bottom:6px">🧾 ${o.docTipo}${o.docFolio?' N°'+o.docFolio:''}</div>`:''}
         <div class="row-acts" style="justify-content:flex-end">
           <button class="btn btn-xs" onclick="event.stopPropagation();imprimirOT('${o.folio}')">🖨 PDF</button>
+          <button class="btn btn-xs" onclick="event.stopPropagation();imprimirHojaTrabajo('${o.folio}')">👷 Hoja trabajo</button>
           ${(o.tel||o.clienteNombre)?`<button class="btn btn-xs btn-green" onclick="event.stopPropagation();waOT('${o.folio}')">💬 WhatsApp</button>`:''}
           <button class="btn btn-xs" onclick="event.stopPropagation();abrirEditOT('${o.folio}')">✏ Editar</button>
           <button class="btn btn-xs ${o.docTipo?'btn-teal':'btn-ghost'}" onclick="event.stopPropagation();abrirDocOT('${o.folio}')">🧾 ${o.docTipo?o.docTipo.replace('electrónica','e.'):'Doc.'}</button>
@@ -5687,8 +5813,26 @@ function renderOTs(){
                 <div style="position:absolute;bottom:3px;right:3px;background:rgba(0,0,0,.5);border-radius:3px;padding:1px 4px;font-size:9px;color:#fff;pointer-events:none">${ix+1}/${o.imgs.length}</div>
               </div>`).join('')}
           </div>`:''}
+        ${(()=>{
+          const r=reaprieteEstado(o);
+          if(!r||r.tipo==='esperaEntrega')return'';
+          const fmt_f=f=>f?f.split('-').reverse().join('-'):'';
+          if(r.tipo==='realizado')return`<div style="background:var(--green-light,#EAF3DE);border:1px solid var(--green,#97C459);border-radius:var(--radius);padding:9px 14px;font-size:12px;margin-bottom:10px">
+            🔧✓ <strong>Reapriete realizado</strong> el ${fmt_f(r.fecha)}${o.reapriete.mecanico?' por '+o.reapriete.mecanico:''}${o.reapriete.obs?' — '+o.reapriete.obs:''} · Garantía vigente
+          </div>`;
+          if(r.tipo==='vencido')return`<div style="background:var(--red-light,#FCEBEB);border:1px solid var(--red,#F09595);border-radius:var(--radius);padding:9px 14px;font-size:12px;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span>🔧✕ <strong>Reapriete vencido sin asistir</strong> (venció ${fmt_f(r.vence)}) — garantía caducada</span>
+            <button class="btn btn-xs" onclick="event.stopPropagation();abrirReapriete('${o.folio}')" title="Registrar de todas formas">Registrar igual</button>
+          </div>`;
+          const esUrgente=r.tipo==='porVencer';
+          return`<div style="background:${esUrgente?'var(--red-light,#FCEBEB)':'var(--amber-light,#FAEEDA)'};border:1px solid ${esUrgente?'var(--red,#F09595)':'var(--amber,#FAC775)'};border-radius:var(--radius);padding:9px 14px;font-size:12px;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span>🔧 <strong>Reapriete de abrazaderas pendiente</strong> — ${esUrgente?'⚠ vence':'vence'} el ${fmt_f(r.vence)} (${r.dias} día${r.dias===1?'':'s'})· Gratuito, requerido para garantía</span>
+            <button class="btn btn-xs btn-primary" onclick="event.stopPropagation();abrirReapriete('${o.folio}')">Registrar reapriete</button>
+          </div>`;
+        })()}
         <div class="row-acts" style="justify-content:flex-end">
           <button class="btn btn-xs" onclick="event.stopPropagation();imprimirOT('${o.folio}')">🖨 PDF</button>
+          <button class="btn btn-xs" onclick="event.stopPropagation();imprimirHojaTrabajo('${o.folio}')" title="Hoja de trabajo sin precios">👷 Hoja</button>
           ${(o.tel||o.clienteNombre)?`<button class="btn btn-xs btn-green" onclick="event.stopPropagation();waOT('${o.folio}')" title="WhatsApp">💬</button>`:''}
           <button class="btn btn-xs" onclick="event.stopPropagation();abrirEditOT('${o.folio}')">✏ Editar</button>
           <button class="btn btn-xs ${o.docTipo?'btn-teal':'btn-ghost'}" onclick="event.stopPropagation();abrirDocOT('${o.folio}')" title="${o.docTipo?'Doc: '+o.docTipo:'Asignar documento'}">
@@ -8443,6 +8587,11 @@ function abrirEditOT(folio){
   $('edit-ot-diag').value=o.diag||'';
   $('edit-ot-obs').value=o.obs||'';
   $('edit-ot-estado').value=o.estado||'Recibido';
+  const _autoReap=(o.items||[]).some(i=>(i.nombre||'').toLowerCase().includes('abrazadera'));
+  if($('edit-ot-reapriete')){
+    $('edit-ot-reapriete').checked=otRequiereReapriete(o);
+    $('edit-ot-reapriete-auto').textContent=_autoReap?'(detectado automáticamente por ítem "abrazadera")':'';
+  }
 
   // Init selector de zona del vehículo
   ZONA_STATE.eot.vtype=o.vtype||'camion';
@@ -8686,7 +8835,16 @@ function guardarEditOT(){
   o.km=parseFloat($('edit-ot-km').value)||0;
   o.diag=$('edit-ot-diag').value.trim();
   o.obs=$('edit-ot-obs').value.trim();
+  const _eraEntregado=o.estado==='Entregado'||o.estado==='Entregado s/OC';
   o.estado=$('edit-ot-estado').value;
+  const _esEntregado=o.estado==='Entregado'||o.estado==='Entregado s/OC';
+  if(_esEntregado&&!_eraEntregado&&!o.fechaEntregado)o.fechaEntregado=today();
+  // Checkbox manual de reapriete: solo guardar override si difiere de la detección automática
+  if($('edit-ot-reapriete')){
+    const _chkReap=$('edit-ot-reapriete').checked;
+    const _autoR=(_editOTItems||[]).some(i=>(i.nombre||'').toLowerCase().includes('abrazadera'));
+    if(_chkReap!==_autoR)o.reaprieteManual=_chkReap;else delete o.reaprieteManual;
+  }
   o.mecanicoId=mecs.map(m=>m.id).join(',');
   o.mecanico=mecs.map(m=>m.nombre).join(' / ');
   o.mecanicos=mecs.map(m=>({id:m.id,nombre:m.nombre}));
@@ -9285,6 +9443,134 @@ function imprimirOT(folio){
   const o=DB.ordenes.find(x=>x.folio===folio);if(!o)return;
   const v=o.vehiculoId?DB.vehiculos.find(x=>x.id===o.vehiculoId):null;
   _doPrint('OT '+o.folio,dosCopiasHtml(buildDocOT(o,v)));
+}
+function imprimirHojaTrabajo(folio){
+  const o=DB.ordenes.find(x=>x.folio===folio);if(!o)return;
+  _doPrint('Hoja de trabajo '+o.folio,buildHojaTrabajo(o));
+}
+function buildHojaTrabajo(o){
+  const VTYPE_NOMBRE={camion:'Camión pesado',batea:'Batea / Rampla',camioneta:'Camioneta',bus:'Bus'};
+  const mecNombres=(o.mecanicos&&o.mecanicos.length)?o.mecanicos.map(m=>m.nombre).join(' · '):(o.mecanico||'—');
+  const allCods=(o.zonasVehiculo||[]).map(z=>z.codigo);
+  // Agrupar ítems por zona
+  const grupos={};
+  (o.items||[]).forEach(it=>{
+    const key=it.zona||'__sin__';
+    if(!grupos[key])grupos[key]=[];
+    grupos[key].push(it);
+  });
+  // Orden: zonas del selector primero, luego sin zona
+  const ordenZonas=[...allCods.filter(c=>grupos[c]),...Object.keys(grupos).filter(k=>k!=='__sin__'&&!allCods.includes(k)),...(grupos['__sin__']?['__sin__']:[])];
+  const zonaBloques=ordenZonas.map(zc=>{
+    const items=grupos[zc];
+    const esFront=zc.startsWith('FT');
+    const titulo=zc==='__sin__'?'Trabajo general':zonaLabel(zc,allCods);
+    const tagColor=zc==='__sin__'?'background:#EEE;color:#555':(esFront?'background:#E6F1FB;color:#0C447C':'background:#FAEEDA;color:#633806');
+    return`<div style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:8px;background:#F5F4F0;border:1px solid #D5D2CC;border-radius:6px 6px 0 0;padding:7px 12px">
+        <span style="${tagColor};border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700">${titulo}</span>
+        ${zc!=='__sin__'?`<span style="font-size:10px;font-family:monospace;color:#888;background:#fff;border:1px solid #ddd;padding:1px 6px;border-radius:10px">${zc}</span>`:''}
+      </div>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #D5D2CC;border-top:none">
+        ${items.map(it=>`<tr>
+          <td style="width:26px;padding:7px 10px;border-bottom:1px solid #E5E2DC"><span style="display:inline-block;width:16px;height:16px;border:2px solid #999;border-radius:3px"></span></td>
+          <td style="padding:7px 10px;border-bottom:1px solid #E5E2DC;font-size:12px;font-weight:600;color:#222">${it.nombre}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #E5E2DC;font-size:12px;font-family:monospace;color:#555;text-align:right;white-space:nowrap">${it.qty} ${it.unidad||'und'}</td>
+        </tr>`).join('')}
+      </table>
+    </div>`;
+  }).join('');
+  const zonasSinItems=allCods.filter(c=>!grupos[c]);
+  const zonasResumen=(o.zonasVehiculo&&o.zonasVehiculo.length)?`
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#777;margin:12px 0 6px;border-bottom:1px solid #D5D2CC;padding-bottom:4px">Zonas marcadas en recepción</div>
+    <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">
+      ${o.zonasVehiculo.map(z=>`<div style="font-size:11px;padding:6px 10px;background:#FDF8EE;border:1px solid #E5D5A8;border-radius:5px">
+        <strong style="color:#7A4F10">${zonaLabel(z.codigo,allCods)}</strong>
+        <span style="font-family:monospace;font-size:9px;color:#B09050"> ${z.codigo}</span>
+        ${z.detalle?` — ${z.detalle}`:''}
+      </div>`).join('')}
+    </div>`:'';
+  return`
+  <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:720px;margin:0 auto;padding:6px;color:#222">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;border-bottom:3px solid #222;padding-bottom:12px;margin-bottom:14px">
+      <div>
+        <div style="font-size:18px;font-weight:800">${CFG.nombre||'Resortes Puerto Montt'}</div>
+        <div style="font-size:10px;color:#777;margin-top:2px">${[CFG.dir,CFG.fono].filter(Boolean).join(' · ')}</div>
+        <div style="margin-top:7px;display:inline-block;background:#F5F4F0;border:1px solid #D5D2CC;border-radius:5px;padding:3px 10px;font-size:11px;color:#555;font-weight:600">
+          👷 HOJA DE TRABAJO — USO INTERNO
+        </div>
+      </div>
+      <div style="text-align:center">
+        <div style="background:#222;color:#fff;font-size:20px;font-weight:800;padding:6px 16px;border-radius:7px;font-family:monospace;letter-spacing:1px">${o.folio}</div>
+        <div style="font-size:9px;color:#888;margin-top:4px;text-transform:uppercase;letter-spacing:.05em">Orden de trabajo</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+      <div style="border:1px solid #D5D2CC;border-radius:7px;padding:7px 11px">
+        <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888">Patente</div>
+        <div style="font-size:14px;font-weight:700;font-family:monospace">${o.patente||'—'}</div>
+      </div>
+      <div style="border:1px solid #D5D2CC;border-radius:7px;padding:7px 11px">
+        <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888">Vehículo</div>
+        <div style="font-size:13px;font-weight:600">${[o.marca,o.modelo].filter(Boolean).join(' ')||'—'}</div>
+      </div>
+      <div style="border:1px solid #D5D2CC;border-radius:7px;padding:7px 11px">
+        <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888">Carrocería</div>
+        <div style="font-size:13px;font-weight:600">${VTYPE_NOMBRE[o.vtype]||'—'}</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div style="border:1px solid #D5D2CC;border-radius:7px;padding:7px 11px">
+        <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888">Cliente</div>
+        <div style="font-size:13px;font-weight:600">${o.clienteNombre||'—'}</div>
+      </div>
+      <div style="border:1px solid #D5D2CC;border-radius:7px;padding:7px 11px">
+        <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888">Contacto</div>
+        <div style="font-size:13px;font-weight:600;font-family:monospace">${o.contactoTel||o.tel||'—'}</div>
+      </div>
+      <div style="border:1px solid #D5D2CC;border-radius:7px;padding:7px 11px">
+        <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888">Fecha ingreso</div>
+        <div style="font-size:13px;font-weight:600">${o.fechaIn||'—'}</div>
+      </div>
+      <div style="border:1px solid #D5D2CC;border-radius:7px;padding:7px 11px">
+        <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888">Fecha estimada entrega</div>
+        <div style="font-size:13px;font-weight:600">${o.fechaEst||'—'}</div>
+      </div>
+    </div>
+    <div style="border:1px solid #D5D2CC;border-radius:7px;padding:7px 11px;margin-bottom:12px">
+      <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888">Mecánico(s) asignado(s)</div>
+      <div style="font-size:13px;font-weight:600">${mecNombres}</div>
+    </div>
+    ${o.km?`<div style="font-size:11px;color:#555;margin-bottom:10px"><strong>KM ingreso:</strong> ${fmtN(o.km)} km</div>`:''}
+    ${o.diag?`
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#777;margin-bottom:6px;border-bottom:1px solid #D5D2CC;padding-bottom:4px">Diagnóstico</div>
+    <div style="border:1px solid #D5D2CC;border-radius:7px;padding:9px 13px;font-size:12px;line-height:1.6;margin-bottom:12px">${o.diag}</div>`:''}
+    ${zonasResumen}
+    ${(o.items&&o.items.length)?`
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#777;margin-bottom:6px;border-bottom:1px solid #D5D2CC;padding-bottom:4px">Trabajo a realizar</div>
+    ${zonaBloques}`:''}
+    ${zonasSinItems.length&&o.items&&o.items.length?`<div style="font-size:10px;color:#999;margin-bottom:10px;font-style:italic">Zonas sin ítems asignados: ${zonasSinItems.map(c=>zonaLabel(c,allCods)).join(', ')}</div>`:''}
+    ${o.obs?`
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#777;margin-bottom:6px;border-bottom:1px solid #D5D2CC;padding-bottom:4px">Observaciones</div>
+    <div style="border:1px solid #D5D2CC;border-radius:7px;padding:9px 13px;font-size:12px;line-height:1.7;margin-bottom:12px">${o.obs}</div>`:''}
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:26px">
+      <div style="border-top:1.5px solid #999;padding-top:5px">
+        <div style="font-size:8px;text-transform:uppercase;letter-spacing:.06em;color:#888">Mecánico responsable</div>
+        <div style="height:32px"></div>
+      </div>
+      <div style="border-top:1.5px solid #999;padding-top:5px">
+        <div style="font-size:8px;text-transform:uppercase;letter-spacing:.06em;color:#888">Revisado por</div>
+        <div style="height:32px"></div>
+      </div>
+      <div style="border-top:1.5px solid #999;padding-top:5px">
+        <div style="font-size:8px;text-transform:uppercase;letter-spacing:.06em;color:#888">Fecha de término</div>
+        <div style="height:32px"></div>
+      </div>
+    </div>
+    <div style="font-size:9px;color:#aaa;text-align:center;margin-top:16px;padding-top:10px;border-top:1px solid #E5E2DC">
+      Documento de uso interno — No contiene información de precios · ${CFG.nombre||'Resortes Puerto Montt'} · Generado ${today()}
+    </div>
+  </div>`;
 }
 function imprimirCot(folio){
   const c=DB.cotizaciones.find(x=>x.folio===folio);if(!c)return;
