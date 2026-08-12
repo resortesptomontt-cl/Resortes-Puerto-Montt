@@ -7074,7 +7074,6 @@ function renderInformeMecanicos(){
   if(!sorted.length){el.innerHTML='<div class="empty">Sin mecánicos activos</div>';return;}
 
   el.innerHTML=sorted.map(m=>{
-    const comision=Math.round(m.total*0.05);
     return`<div class="card" style="margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
         <div>
@@ -7084,7 +7083,6 @@ function renderInformeMecanicos(){
         <div style="text-align:right">
           <div style="font-size:12px;color:var(--text2)">Facturado</div>
           <div style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:18px;color:var(--green)">${fmt(m.total)}</div>
-          <div style="font-size:11px;color:var(--text2)">Comisión estimada (5%): <strong>${fmt(comision)}</strong></div>
         </div>
       </div>
       ${m.ots.length?`<div class="tw" style="margin-top:10px"><table><thead><tr><th>OT</th><th>Cliente</th><th>Estado</th><th class="tr">Monto OT</th></tr></thead>
@@ -10540,10 +10538,7 @@ function calcComisionEstimadaMec(mecId, mes, anio){
 }
 
 function getComisionFinal(mecId, mes, anio){
-  if(!DB.comisionesAjustadas)DB.comisionesAjustadas={};
-  const key=`${mecId}_${mes}_${anio}`;
-  if(DB.comisionesAjustadas[key]!==undefined)return DB.comisionesAjustadas[key];
-  return calcComisionEstimadaMec(mecId,mes,anio).estimado;
+  return 0; // Comisiones desactivadas — el taller no usa este método actualmente
 }
 
 function guardarComisionAjustada(mecId, mes, anio){
@@ -10603,12 +10598,9 @@ function renderResumenAnt(){
 
   el.innerHTML=mecs.map((m,mi)=>{
     const sueldo=m.sueldoBase||0;
-    const {estimado,detalle}=calcComisionEstimadaMec(m.id,mes,anio);
-    const comisionFinal=getComisionFinal(m.id,mes,anio);
-    const ajustada=DB.comisionesAjustadas?.[`${m.id}_${mes}_${anio}`]!==undefined;
     const anticipos=calcAnticiposMes(m.id,mes,anio);
     const cuotaCredito=calcCuotaCreditoMec(m.id,mes,anio);
-    const bruto=sueldo+comisionFinal;
+    const bruto=sueldo;
     const descuentos=anticipos+cuotaCredito;
     const aPagar=Math.max(0,bruto-descuentos);
     const otsMes=DB.ordenes.filter(o=>{
@@ -10667,26 +10659,6 @@ function renderResumenAnt(){
             <div style="display:flex;justify-content:space-between">
               <span style="color:var(--text2)">Sueldo base</span>
               <span style="font-family:'JetBrains Mono',monospace;font-weight:600">${fmt(sueldo)}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-              <div style="flex:1">
-                <div style="color:var(--green);margin-bottom:4px">+ Comisión OTs (5% por OT, dividida entre mecánicos)</div>
-                ${detalle.length?`<div style="font-size:10px;color:var(--text3);padding-left:10px;line-height:1.7">
-                  ${detalle.map(d=>`${d.folio} · ${d.clienteNombre} · ${fmt(d.total)}${d.nMec>1?` ÷ ${d.nMec}`:''} = <strong style="color:var(--green)">${fmt(d.comision)}</strong>`).join('<br>')}
-                </div>`:'<div style="font-size:10px;color:var(--text3);padding-left:10px">Sin OTs este mes</div>'}
-                <div style="font-size:10px;color:var(--text2);margin-top:4px;padding-left:10px">
-                  Estimado automático: <strong style="font-family:'JetBrains Mono',monospace;color:var(--green)">${fmt(estimado)}</strong>
-                  ${ajustada?`<span style="color:var(--amber);margin-left:6px">· Ajustado</span>`:''}
-                </div>
-                <div style="display:flex;align-items:center;gap:6px;margin-top:6px;padding-left:10px;flex-wrap:wrap">
-                  <span style="font-size:11px;color:var(--text2)">Comisión a liquidar:</span>
-                  <input id="com-ajuste-${m.id}" type="number" value="${comisionFinal}" min="0"
-                    style="width:110px;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--text);outline:none;${ajustada?'border-color:var(--amber)':''}">
-                  <button class="btn btn-xs btn-green" onclick="guardarComisionAjustada('${m.id}','${mes}',${anio})">✓ Guardar</button>
-                  ${ajustada?`<button class="btn btn-xs" onclick="resetComisionAjustada('${m.id}','${mes}',${anio})">↩</button>`:''}
-                </div>
-              </div>
-              <span style="font-family:'JetBrains Mono',monospace;font-weight:600;color:${ajustada?'var(--amber)':'var(--green)'};white-space:nowrap">+${fmt(comisionFinal)}</span>
             </div>
             <div style="border-top:1px solid var(--border);margin:2px 0;padding-top:5px;display:flex;justify-content:space-between;font-weight:700">
               <span>= Sueldo bruto</span><span style="font-family:'JetBrains Mono',monospace">${fmt(bruto)}</span>
@@ -10825,11 +10797,9 @@ function imprimirLiquidacion(mecId, mes, anio){
   const cfg=CFG||{};
   const anioN=parseInt(anio);
   const sueldo=m.sueldoBase||0;
-  const {estimado,detalle}=calcComisionEstimadaMec(mecId,mes,anio);
-  const comisionFinal=getComisionFinal(mecId,mes,anio);
   const anticipos=calcAnticiposMes(mecId,mes,anio);
   const cuotaCredito=calcCuotaCreditoMec(mecId,mes,anio);
-  const bruto=sueldo+comisionFinal;
+  const bruto=sueldo;
   const descuentos=anticipos+cuotaCredito;
   const aPagar=Math.max(0,bruto-descuentos);
   const key=`${mecId}_${mes}_${anio}`;
@@ -10887,8 +10857,6 @@ function imprimirLiquidacion(mecId, mes, anio){
     </div>
 
     <div class="row"><span>Sueldo base</span><span class="mono">${fmt(sueldo)}</span></div>
-    <div class="row"><span class="green">+ Comisión ${mes} ${anio}</span><span class="mono green">+${fmt(comisionFinal)}</span></div>
-    ${detalle.length?detalle.map(d=>`<div class="row sub"><span>${d.folio} · ${d.clienteNombre}${d.nMec>1?` ÷${d.nMec}`:''}</span><span class="mono">${fmt(d.comision)}</span></div>`).join(''):'<div class="row sub"><span>Sin OTs este mes</span><span>—</span></div>'}
     <div class="row" style="font-weight:600"><span>= Sueldo bruto</span><span class="mono">${fmt(bruto)}</span></div>
     ${anticiposMes.length?`
     <div class="row amber"><span>− Anticipos del mes</span><span class="mono amber">-${fmt(anticipos)}</span></div>
@@ -10924,12 +10892,14 @@ function imprimirLiquidacion(mecId, mes, anio){
   <div><div class="copia-lbl">Copia 2 de 2 — Trabajador</div>${cuerpo}</div>
   </body></html>`;
 
-  const win=window.open('','_blank','width=860,height=1100');
-  if(win&&win.document){
-    win.document.write(docHtml);
-    win.document.close();win.focus();
-    setTimeout(()=>win.print(),500);
+  const docFull=docHtml;
+  const blob=new Blob([docFull],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const win=window.open(url,'_blank');
+  if(win){
+    win.onload=()=>setTimeout(()=>{win.focus();win.print();setTimeout(()=>URL.revokeObjectURL(url),15000);},300);
   } else {
+    URL.revokeObjectURL(url);
     // Popup blocked — fallback to inline modal
     abrirPrint(`Liquidación ${m.nombre} — ${mes} ${anio}`,
       `<style>@page{margin:10mm}.copia-sep{page-break-after:always;break-after:page}.copia-lbl{font-size:9px;color:#aaa;text-align:right;font-family:Arial;padding:2px 0}</style>
@@ -10949,9 +10919,8 @@ function guardarAnticipo(){
   const m=DB.mecanicos.find(x=>x.id===mid);
   // Check available balance
   const sueldo=m?.sueldoBase||0;
-  const comision=getComisionFinal(mid,mes,anio);
   const yaAnticipado=calcAnticiposMes(mid,mes,anio);
-  const disponible=sueldo+comision-yaAnticipado;
+  const disponible=sueldo-yaAnticipado;
   if(monto>disponible&&disponible>0){
     if(!confirm(`El monto ($${fmtN(monto)}) supera el saldo disponible de ${fmt(disponible)} para ${m.nombre} en ${mes}. ¿Continuar de todas formas?`))return;
   }
@@ -11264,7 +11233,7 @@ function renderStatsAnt(){
     <div class="stat"><div class="stat-lbl">Mecánicos activos</div><div class="stat-val">${mecActivos}</div><div class="stat-sub">en nómina</div></div>
     <div class="stat"><div class="stat-lbl">Anticipos ${mesActual}</div><div class="stat-val" style="color:var(--amber)">${fmt(totalAnticipado)}</div><div class="stat-sub">este mes</div></div>
     <div class="stat"><div class="stat-lbl">Créditos activos</div><div class="stat-val" style="color:var(--red)">${creditosActivos}</div><div class="stat-sub">${fmt(totalCreditos)} pendiente</div></div>
-    <div class="stat"><div class="stat-lbl">Comisiones generadas</div><div class="stat-val" style="color:var(--green)">${fmt(DB.mecanicos.filter(m=>m.estado==='Activo').reduce((s,m)=>s+getComisionFinal(m.id,mesActual,anio),0))}</div><div class="stat-sub">${mesActual} ${anio}</div></div>`;
+    <div class="stat"><div class="stat-lbl">Sueldos base</div><div class="stat-val" style="color:var(--green)">${fmt(DB.mecanicos.filter(m=>m.estado==='Activo').reduce((s,m)=>s+(m.sueldoBase||0),0))}</div><div class="stat-sub">total mensual</div></div>`;
 }
 
 function renderHistAnt(){
