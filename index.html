@@ -9997,22 +9997,11 @@ function buildDocOT(o,v){
   </div>`;}).join('')}
   </div>`:''}
   <div class="sec-hdr">Detalle de servicios y repuestos</div>
-  <table><thead><tr><th>#</th><th>Descripción</th><th>Cantidad</th><th>Unidad</th><th class="tr">IVA</th></tr></thead>
+  <table><thead><tr><th>#</th><th>Descripción</th><th>Cantidad</th><th>Unidad</th></tr></thead>
   <tbody>${o.items.map((it,i)=>{
-    const ivaAmt=it.iva?Math.round(it.sub*0.19):0;
-    return`<tr><td style="color:#aaa;width:28px">${i+1}</td><td style="font-weight:500">${it.nombre}</td><td>${it.qty}</td><td>${it.unidad}</td>
-    <td class="tr" style="font-size:10px;color:${it.iva?'#2a5a2a':'#aaa'}">${it.iva?'+'+fmt(ivaAmt):'—'}</td></tr>`;
+    return`<tr><td style="color:#aaa;width:28px">${i+1}</td><td style="font-weight:500">${it.nombre}</td><td>${it.qty}</td><td>${it.unidad}</td></tr>`;
   }).join('')}</tbody></table>
-  ${(()=>{
-    const neto=o.items.reduce((s,it)=>s+it.sub,0);
-    const iva=o.items.reduce((s,it)=>s+(it.iva?Math.round(it.sub*0.19):0),0);
-    if(iva>0)return`<div style="display:flex;justify-content:flex-end;gap:16px;margin-top:8px;font-size:11px;color:#666">
-      <span>Neto: <strong style="font-family:monospace">${fmt(neto)}</strong></span>
-      <span style="color:#2a5a2a">IVA: <strong style="font-family:monospace">+${fmt(iva)}</strong></span>
-    </div>`;
-    return'';
-  })()}
-  <div class="total-box"><div><div class="lbl">Total de la orden${o.items.some(i=>i.iva)?' (IVA incluido)':''}</div></div><div class="amt">${fmt(o.total)}</div></div>
+  <div class="total-box"><div><div class="lbl">Total de la orden — IVA Incluido</div></div><div class="amt">${fmt(o.total)}</div></div>
   ${o.obs?`<div class="obs-box"><strong>Observaciones:</strong> ${o.obs}</div>`:''}
   ${o.docTipo?`<div style="background:#e8f5f5;border:1px solid #90c0c0;border-radius:6px;padding:10px 14px;margin-top:10px;font-size:11px;color:#1a5a5a">
     <strong>🧾 Documento tributario:</strong> ${o.docTipo}
@@ -10073,26 +10062,16 @@ function buildDocCot(c,v){
     </div>
   </div>
   <div class="sec-hdr">Servicios y repuestos cotizados</div>
-  <table><thead><tr><th>#</th><th>Descripción</th><th>Cantidad</th><th>Unidad</th><th class="tr">IVA</th></tr></thead>
+  <table><thead><tr><th>#</th><th>Descripción</th><th>Cantidad</th><th>Unidad</th></tr></thead>
   <tbody>${c.items.map((it,i)=>{
-    const ivaAmt=it.iva?Math.round(it.sub*0.19):0;
-    return`<tr><td style="color:#aaa;width:28px">${i+1}</td><td style="font-weight:500">${it.nombre}</td><td>${it.qty}</td><td>${it.unidad}</td>
-    <td class="tr" style="font-size:10px;color:${it.iva?'#2a5a2a':'#aaa'}">${it.iva?'+'+fmt(ivaAmt):'—'}</td></tr>`;
+    return`<tr><td style="color:#aaa;width:28px">${i+1}</td><td style="font-weight:500">${it.nombre}</td><td>${it.qty}</td><td>${it.unidad}</td></tr>`;
   }).join('')}</tbody></table>
   ${(()=>{
-    const neto=c.items.reduce((s,it)=>s+it.sub,0);
-    const iva=c.items.reduce((s,it)=>s+(it.iva?Math.round(it.sub*0.19):0),0);
     const desc=c.descuento||0;
-    let html='';
-    if(iva>0||desc>0){
-      html+='<div style="display:flex;justify-content:flex-end;gap:16px;margin-top:8px;font-size:11px;color:#666">';
-      if(iva>0) html+=`<span>Neto: <strong style="font-family:monospace">${fmt(neto)}</strong></span><span style="color:#2a5a2a">IVA: <strong style="font-family:monospace">+${fmt(iva)}</strong></span>`;
-      if(desc>0) html+=`<span style="color:#cc6600">Descuento: <strong style="font-family:monospace">-${fmt(desc)}</strong></span>`;
-      html+='</div>';
-    }
-    return html;
+    if(desc>0)return`<div style="display:flex;justify-content:flex-end;gap:16px;margin-top:8px;font-size:11px;color:#cc6600"><span>Descuento: <strong style="font-family:monospace">-${fmt(desc)}</strong></span></div>`;
+    return'';
   })()}
-  <div class="total-box" style="background:#5a2a7a"><div><div class="lbl">Total cotización${c.items.some(i=>i.iva)?' (IVA incluido)':''}${c.descuento>0?' — descuento aplicado':''}</div></div><div class="amt">${fmt(c.total)}</div></div>
+  <div class="total-box" style="background:#5a2a7a"><div><div class="lbl">Total cotización — IVA Incluido${c.descuento>0?' — descuento aplicado':''}</div></div><div class="amt">${fmt(c.total)}</div></div>
   ${c.obs?`<div class="obs-box"><strong>Notas:</strong> ${c.obs}</div>`:''}
   ${bancoHtml()}
   ${CFG.pieCot?`<div class="pie-txt">${CFG.pieCot}</div>`:''}
