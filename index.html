@@ -832,7 +832,13 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
             <div id="cot-cli-drop" class="ac-dropdown" style="display:none"></div>
             <input type="hidden" id="cot-cli-id">
           </div>
-          <div class="field"><label>Vehículo</label><select id="cot-veh"><option value="">— Seleccionar —</option></select></div>
+          <div class="field ac-wrap">
+            <label>Vehículo <span style="color:var(--text3);font-weight:400;font-size:9px">— busca patente, marca o modelo</span></label>
+            <input id="cot-veh-txt" placeholder="Patente, marca, modelo..." autocomplete="off"
+              oninput="acSearchVeh('cot')" onkeydown="acKeyVeh(event,'cot')" onfocus="acSearchVeh('cot')" onblur="setTimeout(()=>$('cot-veh-drop').style.display='none',180)">
+            <div id="cot-veh-drop" class="ac-dropdown" style="display:none"></div>
+            <input type="hidden" id="cot-veh">
+          </div>
           <div class="field"><label>Fecha</label><input id="cot-fecha" type="date"></div>
         </div>
         <div id="cot-pill" style="display:none"></div>
@@ -989,7 +995,13 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
             <div id="ot-cli-drop" class="ac-dropdown" style="display:none"></div>
             <input type="hidden" id="ot-cli-id">
           </div>
-          <div class="field"><label>Vehículo *</label><select id="ot-veh" onchange="onOTVeh()"><option value="">— Seleccionar —</option></select></div>
+          <div class="field ac-wrap">
+            <label>Vehículo * <span style="color:var(--text3);font-weight:400;font-size:9px">— busca patente, marca o modelo</span></label>
+            <input id="ot-veh-txt" placeholder="Patente, marca, modelo..." autocomplete="off"
+              oninput="acSearchVeh('ot')" onkeydown="acKeyVeh(event,'ot')" onfocus="acSearchVeh('ot')" onblur="setTimeout(()=>$('ot-veh-drop').style.display='none',180)">
+            <div id="ot-veh-drop" class="ac-dropdown" style="display:none"></div>
+            <input type="hidden" id="ot-veh">
+          </div>
           <div class="field"><label>Km ingreso</label><input id="ot-km" type="number" placeholder="km actuales"></div>
           <div class="field"><label>Fecha ingreso</label><input id="ot-fecha-in" type="date"></div>
           <div class="field"><label>Fecha estimada</label><input id="ot-fecha-est" type="date"></div>
@@ -2640,6 +2652,32 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
   </div>
 </div>
 
+<div id="modal-veh-rapido" class="modal-overlay" style="display:none" onclick="if(event.target===this)cerrarVehRapido()">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-hdr">
+      <h3>🚗 Nuevo vehículo rápido</h3>
+      <button class="btn btn-ghost btn-sm" onclick="cerrarVehRapido()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Ingresa los datos básicos. Puedes completar el resto luego en el módulo de Vehículos.</div>
+      <div class="g2" style="margin-bottom:10px">
+        <div class="field"><label>Patente *</label><input id="qveh-pat" placeholder="ABCD12" style="text-transform:uppercase"></div>
+        <div class="field"><label>Propietario</label>
+          <select id="qveh-cli" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none;width:100%"></select>
+        </div>
+        <div class="field"><label>Marca</label><input id="qveh-marca" placeholder="Mercedes-Benz"></div>
+        <div class="field"><label>Modelo</label><input id="qveh-modelo" placeholder="Actros"></div>
+        <div class="field"><label>Año</label><input id="qveh-anio" placeholder="2020" type="number"></div>
+        <div class="field"><label>Km actual</label><input id="qveh-km" placeholder="0" type="number"></div>
+      </div>
+    </div>
+    <div class="modal-footer" style="justify-content:space-between">
+      <button class="btn" onclick="cerrarVehRapido()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarVehRapido()">✓ Guardar y seleccionar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL EDITAR VEHÍCULO -->
 <div id="modal-edit-veh" class="modal-overlay" style="display:none" onclick="if(event.target===this)cerrarEditVehiculo()">
   <div class="modal" style="max-width:560px">
@@ -3419,10 +3457,20 @@ function poblarSel(selId,arr,labelKey,extraFn){
 }
 function vehiculosDeCliente(cliId){return DB.vehiculos.filter(v=>v.clienteId===cliId);}
 function poblarVehsDe(cliId,selId){
+  const el=$(selId);if(!el)return;
+  if(el.tagName==='SELECT'){
+    // Selects clásicos (otros módulos)
+    const vehs=vehiculosDeCliente(cliId);
+    el.innerHTML='<option value="">— Seleccionar —</option>'+
+      vehs.map(v=>`<option value="${v.id}">${v.patente} — ${[v.marca,v.modelo].filter(Boolean).join(' ')}</option>`).join('');
+    return;
+  }
+  // Buscador libre (cot-veh / ot-veh como hidden): limpiar y auto-seleccionar si hay uno solo
+  const ctx=selId.replace('-veh','');
+  el.value='';
+  if($(ctx+'-veh-txt'))$(ctx+'-veh-txt').value='';
   const vehs=vehiculosDeCliente(cliId);
-  const sel=$(selId);if(!sel)return;
-  sel.innerHTML='<option value="">— Seleccionar —</option>'+
-    vehs.map(v=>`<option value="${v.id}">${v.patente} — ${[v.marca,v.modelo].filter(Boolean).join(' ')}</option>`).join('');
+  if(vehs.length===1)acSelVeh(ctx,vehs[0].id);
 }
 function mecActivosSel(selId){
   poblarSel(selId,DB.mecanicos.filter(m=>m.estado==='Activo'),'nombre');
@@ -5104,6 +5152,7 @@ function limpiarCot(){
   if($('cot-cli-txt'))$('cot-cli-txt').value='';
   if($('cot-cli-id'))$('cot-cli-id').value='';
   if($('cot-veh'))$('cot-veh').value='';
+  if($('cot-veh-txt'))$('cot-veh-txt').value='';
   if($('cot-obs'))$('cot-obs').value='';
   if($('cot-descuento'))$('cot-descuento').value='';
   $('cot-pill').style.display='none';
@@ -5449,7 +5498,7 @@ function limpiarOT(){
   lines.ot=[];
   if($('ot-cli-txt'))$('ot-cli-txt').value='';
   if($('ot-cli-id'))$('ot-cli-id').value='';
-  ['ot-veh','ot-fecha-est','ot-km','ot-diag','ot-obs','ot-doc-folio','ot-doc-fecha','ot-doc-monto'].forEach(i=>{if($(i))$(i).value='';});
+  ['ot-veh','ot-veh-txt','ot-fecha-est','ot-km','ot-diag','ot-obs','ot-doc-folio','ot-doc-fecha','ot-doc-monto'].forEach(i=>{if($(i))$(i).value='';});
   if($('ot-doc-tipo'))$('ot-doc-tipo').value='';
   if($('ot-prod-txt'))$('ot-prod-txt').value='';
   if($('ot-prod-id'))$('ot-prod-id').value='';
@@ -8082,7 +8131,7 @@ function acSearchCliCot(){
   const q=($('cot-cli-txt')?.value||'').trim().toLowerCase();
   const drop=$('cot-cli-drop');if(!drop)return;
   $('cot-cli-id').value='';
-  $('cot-veh').innerHTML='<option value="">— Seleccionar —</option>';
+  $('cot-veh').value='';if($('cot-veh-txt'))$('cot-veh-txt').value='';
   $('cot-pill').style.display='none';
   if(!q){drop.style.display='none';return;}
   const hits=DB.clientes.filter(c=>c.nombre.toLowerCase().includes(q)||c.rut.toLowerCase().includes(q)||(c.email||'').toLowerCase().includes(q)).slice(0,8);
@@ -8121,6 +8170,104 @@ function acKeyCliCot(e){
 }
 
 // ══════════════════════════════════════════════════
+// AUTOCOMPLETE VEHÍCULO — COTIZACIÓN Y NUEVA OT
+// ══════════════════════════════════════════════════
+let _acVehIdx={cot:-1,ot:-1};
+let _vehRapidoCtx=null;
+function acSearchVeh(ctx){
+  const txt=$(ctx+'-veh-txt'),drop=$(ctx+'-veh-drop'),hid=$(ctx+'-veh');
+  if(!txt||!drop||!hid)return;
+  const q=txt.value.trim().toLowerCase();
+  hid.value='';
+  if(ctx==='ot'&&$('ot-veh-pill'))$('ot-veh-pill').style.display='none';
+  if(ctx==='cot'&&$('cot-pill')&&!$('cot-cli-id').value)$('cot-pill').style.display='none';
+  if(!q){drop.style.display='none';return;}
+  const cliId=$(ctx+'-cli-id')?.value||'';
+  const match=v=>(v.patente||'').toLowerCase().includes(q)||(v.marca||'').toLowerCase().includes(q)||(v.modelo||'').toLowerCase().includes(q);
+  // Vehículos del cliente seleccionado primero, luego el resto
+  const delCli=cliId?DB.vehiculos.filter(v=>v.clienteId===cliId&&match(v)):[];
+  const otros=DB.vehiculos.filter(v=>(!cliId||v.clienteId!==cliId)&&match(v));
+  const hits=[...delCli,...otros].slice(0,8);
+  let html=hits.map(v=>{
+    const c=DB.clientes.find(x=>x.id===v.clienteId);
+    const esDelCli=cliId&&v.clienteId===cliId;
+    return`<div class="ac-item" onmousedown="acSelVeh('${ctx}','${v.id}')">
+      <div><span class="ac-item-name">${v.patente}</span><span style="font-size:10px;color:var(--text3);margin-left:6px">${[v.marca,v.modelo].filter(Boolean).join(' ')}</span></div>
+      <div class="ac-item-meta">${esDelCli?'<span class="ac-badge-inv" style="background:var(--green-light);color:var(--green)">✓ del cliente</span>':(c?`<span class="ac-badge-inv">${c.nombre.slice(0,18)}</span>`:'')}</div>
+    </div>`;
+  }).join('');
+  const exact=DB.vehiculos.find(v=>(v.patente||'').toLowerCase()===q);
+  if(!exact)html+=`<div class="ac-item ac-item-new" onmousedown="abrirVehRapido('${ctx}')">
+    <div><span class="ac-item-name" style="color:var(--green)">➕ Agregar vehículo: <strong>${txt.value.trim().toUpperCase()}</strong></span></div>
+    <div><span class="ac-badge-new">registro rápido</span></div>
+  </div>`;
+  if(!html){drop.style.display='none';return;}
+  drop.innerHTML=html;drop.style.display='block';_acVehIdx[ctx]=-1;
+}
+function acSelVeh(ctx,id){
+  const v=DB.vehiculos.find(x=>x.id===id);if(!v)return;
+  $(ctx+'-veh-txt').value=v.patente+(v.marca?' — '+[v.marca,v.modelo].filter(Boolean).join(' '):'');
+  $(ctx+'-veh').value=v.id;
+  $(ctx+'-veh-drop').style.display='none';
+  _acVehIdx[ctx]=-1;
+  // Si el vehículo tiene dueño registrado y no hay cliente seleccionado, autocompletar cliente
+  const c=DB.clientes.find(x=>x.id===v.clienteId);
+  if(c&&$(ctx+'-cli-id')&&!$(ctx+'-cli-id').value){
+    $(ctx+'-cli-txt').value=c.nombre;
+    $(ctx+'-cli-id').value=c.id;
+    if(ctx==='cot'&&$('cot-pill')){$('cot-pill').style.display='block';$('cot-pill').innerHTML=clientePill(c,vehiculosDeCliente(c.id));}
+  }
+  if(ctx==='ot')onOTVeh();
+}
+function acKeyVeh(e,ctx){
+  const drop=$(ctx+'-veh-drop');if(!drop||drop.style.display==='none')return;
+  const items=drop.querySelectorAll('.ac-item');if(!items.length)return;
+  if(e.key==='ArrowDown'){e.preventDefault();_acVehIdx[ctx]=Math.min(_acVehIdx[ctx]+1,items.length-1);items.forEach((it,i)=>it.classList.toggle('ac-active',i===_acVehIdx[ctx]));}
+  else if(e.key==='ArrowUp'){e.preventDefault();_acVehIdx[ctx]=Math.max(_acVehIdx[ctx]-1,0);items.forEach((it,i)=>it.classList.toggle('ac-active',i===_acVehIdx[ctx]));}
+  else if(e.key==='Enter'){e.preventDefault();if(_acVehIdx[ctx]>=0&&items[_acVehIdx[ctx]])items[_acVehIdx[ctx]].dispatchEvent(new MouseEvent('mousedown'));}
+  else if(e.key==='Escape')drop.style.display='none';
+}
+function abrirVehRapido(ctx){
+  _vehRapidoCtx=ctx;
+  const txt=($(ctx+'-veh-txt')?.value||'').trim();
+  $('qveh-pat').value=txt.toUpperCase();
+  $('qveh-marca').value='';$('qveh-modelo').value='';$('qveh-anio').value='';$('qveh-km').value='';
+  // Poblar select de propietarios, preseleccionando el cliente del formulario si existe
+  const cliId=$(ctx+'-cli-id')?.value||'';
+  $('qveh-cli').innerHTML='<option value="">— Sin propietario —</option>'+
+    DB.clientes.map(c=>`<option value="${c.id}"${c.id===cliId?' selected':''}>${c.nombre}</option>`).join('');
+  $(ctx+'-veh-drop').style.display='none';
+  $('modal-veh-rapido').style.display='flex';
+  document.body.style.overflow='hidden';
+  setTimeout(()=>$('qveh-marca')?.focus(),150);
+}
+function cerrarVehRapido(){
+  $('modal-veh-rapido').style.display='none';
+  document.body.style.overflow='';
+  _vehRapidoCtx=null;
+}
+function guardarVehRapido(){
+  const pat=$('qveh-pat').value.trim().toUpperCase();
+  if(!pat){toast('⚠ Ingresa la patente');return;}
+  if(DB.vehiculos.some(v=>(v.patente||'').toUpperCase()===pat)){toast('⚠ Esa patente ya está registrada');return;}
+  const v={
+    id:uid(),patente:pat,
+    clienteId:$('qveh-cli').value||null,
+    marca:$('qveh-marca').value.trim(),modelo:$('qveh-modelo').value.trim(),
+    anio:$('qveh-anio').value?parseInt($('qveh-anio').value):null,
+    km:$('qveh-km').value?parseFloat($('qveh-km').value):0,
+    combustible:'Diésel',creado:new Date().toISOString()
+  };
+  DB.vehiculos.push(v);
+  save();
+  const ctx=_vehRapidoCtx;
+  cerrarVehRapido();
+  if(ctx)acSelVeh(ctx,v.id);
+  if(typeof renderVehiculos==='function')renderVehiculos();
+  toast('✓ Vehículo '+pat+' registrado');
+}
+
+// ══════════════════════════════════════════════════
 // AUTOCOMPLETE CLIENTE — ÓRDENES DE TRABAJO
 // ══════════════════════════════════════════════════
 let _acCliOTIdx=-1;
@@ -8128,7 +8275,7 @@ function acSearchCliOT(){
   const q=($('ot-cli-txt')?.value||'').trim().toLowerCase();
   const drop=$('ot-cli-drop');if(!drop)return;
   $('ot-cli-id').value='';
-  $('ot-veh').innerHTML='<option value="">— Seleccionar —</option>';
+  $('ot-veh').value='';if($('ot-veh-txt'))$('ot-veh-txt').value='';
   $('ot-veh-pill').style.display='none';
   if(!q){drop.style.display='none';return;}
   const hits=DB.clientes.filter(c=>c.nombre.toLowerCase().includes(q)||c.rut.toLowerCase().includes(q)||(c.email||'').toLowerCase().includes(q)).slice(0,8);
@@ -10173,7 +10320,7 @@ function reservaAOT(id){
     if($('ot-cli-txt'))$('ot-cli-txt').value=r.clienteNombre;
     if($('ot-cli-id'))$('ot-cli-id').value=r.clienteId||'';
     if(r.clienteId)poblarVehsDe(r.clienteId,'ot-veh');
-    if(r.vehiculoId&&$('ot-veh'))$('ot-veh').value=r.vehiculoId;
+    if(r.vehiculoId&&$('ot-veh'))acSelVeh('ot',r.vehiculoId);
     if($('ot-diag'))$('ot-diag').value=r.servicio;
     if($('ot-fecha-in'))$('ot-fecha-in').value=r.fecha;
     if(r.mecanicoId&&$('ot-mec-ids'))$('ot-mec-ids').value=r.mecanicoId;
