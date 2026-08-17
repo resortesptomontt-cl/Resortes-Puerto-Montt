@@ -2652,6 +2652,41 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
   </div>
 </div>
 
+<div id="modal-edit-cot" class="modal-overlay" style="display:none" onclick="if(event.target===this)cerrarEditCot()">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-hdr">
+      <h3>✎ Editar cotización — <span id="ecot-titulo"></span></h3>
+      <button class="btn btn-ghost btn-sm" onclick="cerrarEditCot()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="g2" style="margin-bottom:10px">
+        <div class="field ac-wrap" style="grid-column:1/-1">
+          <label>Cliente</label>
+          <input id="ecot-cli-txt" placeholder="Nombre del cliente..." autocomplete="off"
+            oninput="acSearchCliEcot()" onfocus="acSearchCliEcot()" onblur="setTimeout(()=>$('ecot-cli-drop').style.display='none',180)">
+          <div id="ecot-cli-drop" class="ac-dropdown" style="display:none"></div>
+          <input type="hidden" id="ecot-cli-id">
+        </div>
+        <div class="field ac-wrap" style="grid-column:1/-1">
+          <label>Vehículo</label>
+          <input id="ecot-veh-txt" placeholder="Patente, marca, modelo..." autocomplete="off"
+            oninput="acSearchVeh('ecot')" onkeydown="acKeyVeh(event,'ecot')" onfocus="acSearchVeh('ecot')" onblur="setTimeout(()=>$('ecot-veh-drop').style.display='none',180)">
+          <div id="ecot-veh-drop" class="ac-dropdown" style="display:none"></div>
+          <input type="hidden" id="ecot-veh">
+        </div>
+        <div class="field"><label>Fecha</label><input id="ecot-fecha" type="date"></div>
+        <div class="field"><label>Descuento total ($)</label><input id="ecot-descuento" type="number" min="0" placeholder="0"></div>
+        <div class="field" style="grid-column:1/-1"><label>Observaciones</label><textarea id="ecot-obs" style="min-height:60px"></textarea></div>
+      </div>
+      <div style="font-size:11px;color:var(--text3)">Los ítems se editan directamente en la lista de la cotización (cantidad, precio, dto, IVA).</div>
+    </div>
+    <div class="modal-footer" style="justify-content:space-between">
+      <button class="btn" onclick="cerrarEditCot()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarEditCotForm()">✓ Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
 <div id="modal-veh-rapido" class="modal-overlay" style="display:none" onclick="if(event.target===this)cerrarVehRapido()">
   <div class="modal" style="max-width:440px">
     <div class="modal-hdr">
@@ -5201,6 +5236,9 @@ function editItemInline(tipo, folio, idx, field, val){
   else if(tipo==='v') rec=DB.ventas.find(v=>v.folio===folio);
   else if(tipo==='cot') rec=DB.cotizaciones.find(c=>c.folio===folio);
   if(!rec||!rec.items[idx])return;
+  if(tipo==='cot'&&(rec.estado==='Convertida'||rec.estado==='Aceptada')){
+    toast('🔒 Cotización '+rec.estado.toLowerCase()+' — no se puede modificar');renderCots();return;
+  }
   if(field==='del'){
     if(!confirm('¿Eliminar este ítem?'))return;
     rec.items.splice(idx,1);
@@ -5237,6 +5275,9 @@ function addItemInline(tipo, folio){
   else if(tipo==='v') rec=DB.ventas.find(v=>v.folio===folio);
   else if(tipo==='cot') rec=DB.cotizaciones.find(c=>c.folio===folio);
   if(!rec)return;
+  if(tipo==='cot'&&(rec.estado==='Convertida'||rec.estado==='Aceptada')){
+    toast('🔒 Cotización '+rec.estado.toLowerCase()+' — no se puede modificar');return;
+  }
   rec.items.push({nombre:nom,qty,pu,unidad:'und',sub,dto:0,iva:false,libre:true});
   rec.total=rec.items.reduce((s,it)=>{
     const d=it.dto||0;const s2=Math.round(it.qty*it.pu*(1-d/100));
@@ -5248,6 +5289,80 @@ function addItemInline(tipo, folio){
   else renderCots();
 }
 
+// ── Editar cabecera de cotización ──────────────────
+let _editCotFolio=null;
+function abrirEditCot(folio){
+  const c=DB.cotizaciones.find(x=>x.folio===folio);if(!c)return;
+  if(c.estado==='Convertida'||c.estado==='Aceptada'){
+    toast('🔒 Cotización '+c.estado.toLowerCase()+' — no se puede modificar');return;
+  }
+  _editCotFolio=folio;
+  $('ecot-titulo').textContent=folio;
+  $('ecot-cli-txt').value=c.clienteNombre||'';
+  $('ecot-cli-id').value=c.clienteId||'';
+  const v=c.vehiculoId?DB.vehiculos.find(x=>x.id===c.vehiculoId):null;
+  $('ecot-veh-txt').value=v?(v.patente+(v.marca?' — '+[v.marca,v.modelo].filter(Boolean).join(' '):'')):(c.patente||'');
+  $('ecot-veh').value=c.vehiculoId||'';
+  $('ecot-fecha').value=c.fecha||'';
+  $('ecot-descuento').value=c.descuento||'';
+  $('ecot-obs').value=c.obs||'';
+  $('modal-edit-cot').style.display='flex';
+  document.body.style.overflow='hidden';
+}
+function cerrarEditCot(){
+  $('modal-edit-cot').style.display='none';
+  document.body.style.overflow='';
+  _editCotFolio=null;
+}
+function acSearchCliEcot(){
+  const q=($('ecot-cli-txt')?.value||'').trim().toLowerCase();
+  const drop=$('ecot-cli-drop');if(!drop)return;
+  $('ecot-cli-id').value='';
+  if(!q){drop.style.display='none';return;}
+  const hits=DB.clientes.filter(c=>c.nombre.toLowerCase().includes(q)||c.rut.toLowerCase().includes(q)).slice(0,8);
+  if(!hits.length){drop.style.display='none';return;}
+  drop.innerHTML=hits.map(c=>`<div class="ac-item" onmousedown="acSelCliEcot('${c.id}')">
+    <div><span class="ac-item-name">${c.nombre}</span><span style="font-size:10px;color:var(--text3);margin-left:6px">${c.rut}</span></div>
+    <div class="ac-item-meta"><span class="ac-badge-inv">${vehiculosDeCliente(c.id).length} veh.</span></div>
+  </div>`).join('');
+  drop.style.display='block';
+}
+function acSelCliEcot(id){
+  const c=DB.clientes.find(x=>x.id===id);if(!c)return;
+  $('ecot-cli-txt').value=c.nombre;
+  $('ecot-cli-id').value=c.id;
+  $('ecot-cli-drop').style.display='none';
+}
+function guardarEditCotForm(){
+  const c=DB.cotizaciones.find(x=>x.folio===_editCotFolio);if(!c)return;
+  const cliNombre=$('ecot-cli-txt').value.trim();
+  if(!cliNombre){toast('⚠ El cliente no puede quedar vacío');return;}
+  const cliId=$('ecot-cli-id').value||null;
+  const cli=cliId?DB.clientes.find(x=>x.id===cliId):null;
+  c.clienteId=cliId;
+  c.clienteNombre=cli?cli.nombre:cliNombre;
+  c.clienteRut=cli?.rut||c.clienteRut||'';
+  c.tel=cli?.tel||c.tel||'';
+  const vehId=$('ecot-veh').value||null;
+  const v=vehId?DB.vehiculos.find(x=>x.id===vehId):null;
+  c.vehiculoId=vehId;
+  c.patente=v?.patente||(vehId?'':c.patente)||'';
+  c.marca=v?.marca||'';
+  c.modelo=v?.modelo||'';
+  c.fecha=$('ecot-fecha').value||c.fecha;
+  c.descuento=parseFloat($('ecot-descuento').value)||0;
+  c.obs=$('ecot-obs').value.trim();
+  // Recalcular total con el nuevo descuento
+  const subtotal=c.items.reduce((s,it)=>{
+    const dto=it.dto||0;
+    const sub=Math.round(it.qty*it.pu*(1-dto/100));
+    return s+sub+(it.iva?Math.round(sub*0.19):0);
+  },0);
+  c.total=Math.max(0,subtotal-(c.descuento||0));
+  save();cerrarEditCot();renderCots();
+  toast('✓ Cotización '+c.folio+' actualizada');
+}
+
 function renderCots(){
   const q=($('s-cot')?.value||'').toLowerCase();
   const est=$('s-cot-est')?.value||'';
@@ -5256,7 +5371,9 @@ function renderCots(){
   if(est)lista=lista.filter(c=>c.estado===est);
   const el=$('lista-cots');
   if(!lista.length){el.innerHTML='<div class="empty"><div class="empty-icon">📝</div>No hay cotizaciones</div>';return;}
-  el.innerHTML=lista.map(c=>`
+  el.innerHTML=lista.map(c=>{
+    const locked=c.estado==='Convertida'||c.estado==='Aceptada';
+    return`
     <div class="exp-row">
       <div class="exp-hdr" onclick="toggle('c-${c.folio}')">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -5265,6 +5382,7 @@ function renderCots(){
           <span style="font-size:11px;color:var(--text2)">${c.clienteRut}</span>
           ${c.patente?`<span class="badge b-orange">${c.patente}</span>`:''}
           <span class="status ${statusClass(c.estado)}">${c.estado}</span>
+          ${locked?`<span style="font-size:10px;color:var(--text3)">🔒</span>`:''}
           ${c.otFolio?`<span class="folio-tag" style="font-size:10px">→ ${c.otFolio}</span>`:''}
         </div>
         <div style="text-align:right;flex-shrink:0">
@@ -5273,12 +5391,21 @@ function renderCots(){
         </div>
       </div>
       <div class="exp-body" id="c-${c.folio}">
-        <div class="tw" style="margin:10px 0"><table><thead><tr><th>Producto</th><th>Cant.</th><th>P.Unit.</th><th>Dto %</th><th>IVA</th><th class="tr">Subtotal</th><th></th></tr></thead>
+        ${locked?`<div style="font-size:11px;color:var(--text3);background:var(--surface2);border-radius:var(--radius);padding:7px 12px;margin:10px 0 0">🔒 Cotización ${c.estado.toLowerCase()} — bloqueada para edición</div>`:''}
+        <div class="tw" style="margin:10px 0"><table><thead><tr><th>Producto</th><th>Cant.</th><th>P.Unit.</th><th>Dto %</th><th>IVA</th><th class="tr">Subtotal</th>${locked?'':'<th></th>'}</tr></thead>
         <tbody>${c.items.map((it,ix)=>{
           const dto=it.dto||0;
           const sub=Math.round(it.qty*it.pu*(1-dto/100));
           const ivaAmt=it.iva?Math.round(sub*0.19):0;
           const tot=sub+ivaAmt;
+          if(locked)return`<tr>
+            <td style="font-weight:500">${it.nombre}</td>
+            <td>${it.qty}</td>
+            <td style="font-family:'JetBrains Mono',monospace">${fmt(it.pu)}</td>
+            <td style="text-align:center">${dto?dto+'%':'—'}</td>
+            <td><span style="font-size:11px;color:${it.iva?'var(--green)':'var(--text3)'}">${it.iva?'IVA ✓':'Sin IVA'}</span></td>
+            <td class="tr" style="font-family:'JetBrains Mono',monospace;font-weight:600">${fmt(tot)}</td>
+          </tr>`;
           return`<tr>
             <td style="font-weight:500">${it.nombre}</td>
             <td><input type="number" value="${it.qty}" min="0.01" step="0.01"
@@ -5298,15 +5425,16 @@ function renderCots(){
               onclick="editItemInline('cot','${c.folio}',${ix},'del',null)">✕</button></td>
           </tr>`;
         }).join('')}</tbody></table></div>
-        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px;padding:8px;background:var(--surface2);border-radius:var(--radius)">
+        ${locked?'':`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px;padding:8px;background:var(--surface2);border-radius:var(--radius)">
           <input id="add-item-nom-cot-${c.folio}" placeholder="Descripción del ítem" style="flex:1;min-width:120px;padding:5px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px;background:var(--bg);color:var(--text)">
           <input id="add-item-qty-cot-${c.folio}" type="number" value="1" min="0.01" placeholder="Cant." style="width:60px;padding:5px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;background:var(--bg);color:var(--text)">
           <input id="add-item-pu-cot-${c.folio}" type="number" placeholder="Precio" min="0" style="width:90px;padding:5px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;background:var(--bg);color:var(--text)">
           <button class="btn btn-xs btn-primary" onclick="addItemInline('cot','${c.folio}')">+ Agregar</button>
-        </div>
+        </div>`}
         ${c.obs?`<div style="font-size:12px;color:var(--text2);margin-bottom:10px">📋 ${c.obs}</div>`:''}
         <div class="row-acts" style="justify-content:flex-end">
           <button class="btn btn-xs" onclick="event.stopPropagation();imprimirCot('${c.folio}')">🖨 PDF</button>
+          ${locked?'':`<button class="btn btn-xs" onclick="event.stopPropagation();abrirEditCot('${c.folio}')">✎ Editar</button>`}
           ${(c.tel||c.clienteNombre)?`<button class="btn btn-xs btn-green" onclick="event.stopPropagation();waCot('${c.folio}')" title="Enviar por WhatsApp">💬 WhatsApp</button>`:''}
           ${c.estado==='Pendiente'?`
             <button class="btn btn-xs btn-green" onclick="event.stopPropagation();estadoCot('${c.folio}','Aceptada')">✓ Aceptada</button>
@@ -5316,7 +5444,7 @@ function renderCots(){
           <button class="btn btn-xs btn-red" onclick="event.stopPropagation();eliminarCot('${c.folio}')">🗑 Eliminar</button>
         </div>
       </div>
-    </div>`).join('');
+    </div>`;}).join('');
 }
 
 // ══════════════════════════════════════════════════
