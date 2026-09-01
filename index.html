@@ -3925,7 +3925,7 @@ function renderLineas(ctx){
     renderTotalesWrap(ctx);return;
   }
   const INP='padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;background:var(--bg);color:var(--text);outline:none';
-  wrap.innerHTML='<div class="tw"><table><thead><tr><th>Producto</th><th>Cant.</th><th>Unidad</th><th>P.Unit. (neto)</th><th style="text-align:center">Dto %</th><th style="text-align:center">IVA 19%</th><th class="tr">Subtotal</th><th></th></tr></thead><tbody>'+
+  wrap.innerHTML='<div class="tw"><table><thead><tr><th>Producto</th><th>Cant.</th><th>Unidad</th><th>P.Unit.</th><th style="text-align:center">Dto %</th><th class="tr">Subtotal</th><th></th></tr></thead><tbody>'+
     lines[ctx].map((l,i)=>{
       const dto    = l.dto||0;
       const subDto = Math.round(l.qty * l.pu * (1 - dto/100));
@@ -3959,16 +3959,6 @@ function renderLineas(ctx){
             <span style="font-size:10px;color:var(--text3)">%</span>
           </div>
           ${dto>0?`<div style="font-size:9px;color:var(--accent2);margin-top:1px">-${fmt(l.qty*l.pu-subDto)}</div>`:''}
-        </td>
-        <td style="text-align:center">
-          <button onclick="toggleIva('${ctx}',${i})"
-            style="border:none;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;
-              background:${l.iva?'var(--green)':'var(--surface2)'};
-              color:${l.iva?'#fff':'var(--text3)'};
-              border:1px solid ${l.iva?'var(--green)':'var(--border2)'}"
-            title="${l.iva?'Clic para quitar IVA':'Clic para agregar IVA'}">
-            ${l.iva?`+IVA ${fmt(ivaAmt)}`:'Sin IVA'}
-          </button>
         </td>
         <td class="tr" style="font-weight:600;font-family:'JetBrains Mono',monospace">${fmt(total)}</td>
         <td><button class="btn btn-xs btn-red" onclick="delLinea('${ctx}',${i})">✕</button></td>
@@ -5262,6 +5252,16 @@ function editItemInline(tipo, folio, idx, field, val){
     rec.items.splice(idx,1);
   } else {
     rec.items[idx][field]=val;
+    // Al cambiar precio de un ítem de inventario, ofrecer actualizar el producto
+    if(field==='pu'&&rec.items[idx].pid){
+      const prod=DB.inventario.find(p=>p.id===rec.items[idx].pid);
+      if(prod&&prod.precio!==val&&val>0){
+        if(confirm(`El precio de "${prod.nombre}" en inventario es ${fmt(prod.precio)}.\n¿Actualizar el inventario al nuevo precio de ${fmt(val)}?\n\n(Aceptar = actualizar inventario · Cancelar = solo este documento)`)){
+          prod.precio=val;
+          toast('✓ Precio de '+prod.nombre+' actualizado en inventario');
+        }
+      }
+    }
     // Recalculate sub
     const it=rec.items[idx];
     const dto=it.dto||0;
@@ -5410,7 +5410,7 @@ function renderCots(){
       </div>
       <div class="exp-body" id="c-${c.folio}">
         ${locked?`<div style="font-size:11px;color:var(--text3);background:var(--surface2);border-radius:var(--radius);padding:7px 12px;margin:10px 0 0">🔒 Cotización ${c.estado.toLowerCase()} — bloqueada para edición</div>`:''}
-        <div class="tw" style="margin:10px 0"><table><thead><tr><th>Producto</th><th>Cant.</th><th>P.Unit.</th><th>Dto %</th><th>IVA</th><th class="tr">Subtotal</th>${locked?'':'<th></th>'}</tr></thead>
+        <div class="tw" style="margin:10px 0"><table><thead><tr><th>Producto</th><th>Cant.</th><th>P.Unit.</th><th>Dto %</th><th class="tr">Subtotal</th>${locked?'':'<th></th>'}</tr></thead>
         <tbody>${c.items.map((it,ix)=>{
           const dto=it.dto||0;
           const sub=Math.round(it.qty*it.pu*(1-dto/100));
@@ -5421,7 +5421,6 @@ function renderCots(){
             <td>${it.qty}</td>
             <td style="font-family:'JetBrains Mono',monospace">${fmt(it.pu)}</td>
             <td style="text-align:center">${dto?dto+'%':'—'}</td>
-            <td><span style="font-size:11px;color:${it.iva?'var(--green)':'var(--text3)'}">${it.iva?'IVA ✓':'Sin IVA'}</span></td>
             <td class="tr" style="font-family:'JetBrains Mono',monospace;font-weight:600">${fmt(tot)}</td>
           </tr>`;
           return`<tr>
@@ -5435,9 +5434,6 @@ function renderCots(){
             <td><input type="number" value="${dto||''}" min="0" max="100" placeholder="0"
               style="width:50px;padding:3px 6px;border:1px solid ${dto>0?'var(--accent2)':'var(--border)'};border-radius:4px;font-size:12px;text-align:center;background:var(--bg);color:var(--text)"
               onchange="editItemInline('cot','${c.folio}',${ix},'dto',parseFloat(this.value)||0)"></td>
-            <td><button onclick="editItemInline('cot','${c.folio}',${ix},'iva',!${!!it.iva})"
-              style="border:none;border-radius:20px;padding:2px 8px;font-size:11px;font-weight:600;cursor:pointer;background:${it.iva?'var(--green)':'var(--surface2)'};color:${it.iva?'#fff':'var(--text3)'}">
-              ${it.iva?'IVA ✓':'Sin IVA'}</button></td>
             <td class="tr" style="font-family:'JetBrains Mono',monospace;font-weight:600">${fmt(tot)}</td>
             <td><button style="background:none;border:none;cursor:pointer;color:var(--red);font-size:14px"
               onclick="editItemInline('cot','${c.folio}',${ix},'del',null)">✕</button></td>
@@ -5957,7 +5953,7 @@ function renderOTs(){
         ${o.diag?`<div style="font-size:12px;margin:10px 0"><strong>Diagnóstico:</strong> ${o.diag}</div>`:''}
         ${o.items.length?`<div style="margin-bottom:10px">
           <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:6px">Ítems</div>
-          <div class="tw"><table><thead><tr><th>Producto</th><th>Cant.</th><th>P.Unit.</th><th>Dto %</th><th>IVA</th><th class="tr">Subtotal</th><th></th></tr></thead>
+          <div class="tw"><table><thead><tr><th>Producto</th><th>Cant.</th><th>P.Unit.</th><th>Dto %</th><th class="tr">Subtotal</th><th></th></tr></thead>
           <tbody>${o.items.map((it,ix)=>{
             const dto=it.dto||0;
             const sub=Math.round(it.qty*it.pu*(1-dto/100));
@@ -5974,9 +5970,6 @@ function renderOTs(){
               <td><input type="number" value="${dto||''}" min="0" max="100" placeholder="0"
                 style="width:50px;padding:3px 6px;border:1px solid ${dto>0?'var(--accent2)':'var(--border)'};border-radius:4px;font-size:12px;text-align:center;background:var(--bg);color:var(--text)"
                 onchange="editItemInline('ot','${o.folio}',${ix},'dto',parseFloat(this.value)||0)"></td>
-              <td><button onclick="editItemInline('ot','${o.folio}',${ix},'iva',!${!!it.iva})"
-                style="border:none;border-radius:20px;padding:2px 8px;font-size:11px;font-weight:600;cursor:pointer;background:${it.iva?'var(--green)':'var(--surface2)'};color:${it.iva?'#fff':'var(--text3)'}">
-                ${it.iva?'IVA ✓':'Sin IVA'}</button></td>
               <td class="tr" style="font-family:'JetBrains Mono',monospace;font-weight:600">${fmt(tot)}</td>
               <td><button style="background:none;border:none;cursor:pointer;color:var(--red);font-size:14px"
                 onclick="editItemInline('ot','${o.folio}',${ix},'del',null)">✕</button></td>
@@ -7525,7 +7518,7 @@ function renderVentas(){
       </div>
       <div class="exp-body" id="v-${v.folio}">
         ${v.mecanico?`<div style="font-size:12px;color:var(--text2);margin-bottom:8px">👷 ${v.mecanico}</div>`:''}
-        <div class="tw" style="margin-bottom:10px"><table><thead><tr><th>Producto</th><th>Cant.</th><th>P.Unit.</th><th>Dto %</th><th>IVA</th><th class="tr">Subtotal</th><th></th></tr></thead>
+        <div class="tw" style="margin-bottom:10px"><table><thead><tr><th>Producto</th><th>Cant.</th><th>P.Unit.</th><th>Dto %</th><th class="tr">Subtotal</th><th></th></tr></thead>
           <tbody>${v.items.map((it,ix)=>{
             const dto=it.dto||0;
             const sub=Math.round(it.qty*it.pu*(1-dto/100));
@@ -7542,9 +7535,6 @@ function renderVentas(){
               <td><input type="number" value="${dto||''}" min="0" max="100" placeholder="0"
                 style="width:50px;padding:3px 6px;border:1px solid ${dto>0?'var(--accent2)':'var(--border)'};border-radius:4px;font-size:12px;text-align:center;background:var(--bg);color:var(--text)"
                 onchange="editItemInline('v','${v.folio}',${ix},'dto',parseFloat(this.value)||0)"></td>
-              <td><button onclick="editItemInline('v','${v.folio}',${ix},'iva',!${!!it.iva})"
-                style="border:none;border-radius:20px;padding:2px 8px;font-size:11px;font-weight:600;cursor:pointer;background:${it.iva?'var(--green)':'var(--surface2)'};color:${it.iva?'#fff':'var(--text3)'}">
-                ${it.iva?'IVA ✓':'Sin IVA'}</button></td>
               <td class="tr" style="font-family:'JetBrains Mono',monospace;font-weight:600">${fmt(tot)}</td>
               <td><button style="background:none;border:none;cursor:pointer;color:var(--red);font-size:14px"
                 onclick="editItemInline('v','${v.folio}',${ix},'del',null)">✕</button></td>
@@ -9051,10 +9041,27 @@ function renderEditOTItems(){
         onchange="_editOTItems[${i}].qty=parseFloat(this.value)||0;_editOTItems[${i}].sub=_editOTItems[${i}].qty*_editOTItems[${i}].pu;renderEditOTItems()"></td>
       <td>${it.unidad}</td>
       <td><input type="number" value="${it.pu}" min="0" style="width:80px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace"
-        onchange="_editOTItems[${i}].pu=parseFloat(this.value)||0;_editOTItems[${i}].sub=_editOTItems[${i}].qty*_editOTItems[${i}].pu;renderEditOTItems()"></td>
+        onchange="cambiarPrecioItemOT(${i},parseFloat(this.value)||0)"></td>
       <td class="tr" style="font-family:'JetBrains Mono',monospace;font-weight:600">${fmt(it.sub)}</td>
       <td><button style="background:none;border:none;cursor:pointer;color:var(--red);font-size:14px" onclick="_editOTItems.splice(${i},1);renderEditOTItems()">✕</button></td>
     </tr>`).join('')+'</tbody></table></div>';
+}
+function cambiarPrecioItemOT(i,nuevoPu){
+  const it=_editOTItems[i];if(!it)return;
+  it.pu=nuevoPu;
+  it.sub=it.qty*it.pu;
+  // Si el ítem viene del inventario y el precio difiere, ofrecer actualizar el producto
+  if(it.pid){
+    const prod=DB.inventario.find(p=>p.id===it.pid);
+    if(prod&&prod.precio!==nuevoPu&&nuevoPu>0){
+      if(confirm(`El precio de "${prod.nombre}" en inventario es ${fmt(prod.precio)}.\n¿Actualizar el inventario al nuevo precio de ${fmt(nuevoPu)}?\n\n(Aceptar = actualizar inventario · Cancelar = solo esta OT)`)){
+        prod.precio=nuevoPu;
+        save();
+        toast('✓ Precio de '+prod.nombre+' actualizado en inventario');
+      }
+    }
+  }
+  renderEditOTItems();
 }
 // Autocomplete for edit OT product
 let _acEditOTIdx=-1;
