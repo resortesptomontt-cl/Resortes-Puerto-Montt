@@ -3257,6 +3257,19 @@ function load(){
       if(d)DB[k]=JSON.parse(d);
     });
   }catch(e){}
+  // Migración: vehículos creados sin clienteNombre/clienteRut denormalizados
+  try{
+    let migrados=0;
+    (DB.vehiculos||[]).forEach(v=>{
+      if(v.clienteNombre===undefined||v.clienteNombre===null){
+        const cli=v.clienteId?(DB.clientes||[]).find(x=>x.id===v.clienteId):null;
+        v.clienteNombre=cli?.nombre||'Sin propietario';
+        v.clienteRut=v.clienteRut||cli?.rut||'';
+        migrados++;
+      }
+    });
+    if(migrados)console.log('Migrados '+migrados+' vehículos sin propietario denormalizado');
+  }catch(e){}
 }
 let _lastSaveTime=0;
 function save(){
@@ -4754,7 +4767,10 @@ function eliminarVehiculo(id){
 function renderVehiculos(){
   const q=($('svh')?.value||'').toLowerCase();
   let lista=DB.vehiculos;
-  if(q)lista=lista.filter(v=>v.patente.toLowerCase().includes(q)||(v.marca||'').toLowerCase().includes(q)||(v.modelo||'').toLowerCase().includes(q)||v.clienteNombre.toLowerCase().includes(q));
+  if(q)lista=lista.filter(v=>{
+    const cli=v.clienteNombre||DB.clientes.find(x=>x.id===v.clienteId)?.nombre||'';
+    return (v.patente||'').toLowerCase().includes(q)||(v.marca||'').toLowerCase().includes(q)||(v.modelo||'').toLowerCase().includes(q)||cli.toLowerCase().includes(q);
+  });
   $('cnt-vehs').textContent=`${lista.length} vehículo${lista.length!==1?'s':''}`;
   const el=$('lista-vehiculos');
   if(!lista.length){el.innerHTML='<div class="empty"><div class="empty-icon">🚗</div>No hay vehículos</div>';return;}
@@ -4763,6 +4779,8 @@ function renderVehiculos(){
     const histOT=DB.ordenes.filter(x=>x.vehiculoId===v.id);
     const ultimoKm=histOT.length?Math.max(...histOT.filter(o=>o.km).map(o=>o.km),v.km):v.km;
     const cli=DB.clientes.find(x=>x.id===v.clienteId);
+    const cliNom=v.clienteNombre||cli?.nombre||'Sin propietario';
+    const cliRut=v.clienteRut||cli?.rut||'—';
     return`
     <div class="exp-row">
       <div class="exp-hdr" onclick="toggle('vh-${v.id}')">
@@ -4773,14 +4791,14 @@ function renderVehiculos(){
           ${v.combustible?`<span class="badge b-gray">${v.combustible}</span>`:''}
         </div>
         <div style="text-align:right">
-          <div style="font-weight:500;font-size:13px">${v.clienteNombre}</div>
+          <div style="font-weight:500;font-size:13px">${cliNom}</div>
           <div style="font-size:11px;color:var(--text2)">${ultimoKm?fmtN(ultimoKm)+' km':''} · ${histVentas} visita${histVentas!==1?'s':''}</div>
         </div>
       </div>
       <div class="exp-body" id="vh-${v.id}">
         <div class="g4" style="margin:10px 0;font-size:12px">
-          <div><span style="color:var(--text2)">Propietario:</span> <strong>${v.clienteNombre}</strong></div>
-          <div><span style="color:var(--text2)">RUT:</span> ${v.clienteRut}</div>
+          <div><span style="color:var(--text2)">Propietario:</span> <strong>${cliNom}</strong></div>
+          <div><span style="color:var(--text2)">RUT:</span> ${cliRut}</div>
           <div><span style="color:var(--text2)">Color:</span> ${v.color||'—'}</div>
           <div><span style="color:var(--text2)">VIN/Motor:</span> ${v.vin||'—'}</div>
           ${cli?.tel?`<div><span style="color:var(--text2)">Teléfono:</span> ${cli.tel}</div>`:''}
@@ -4795,7 +4813,7 @@ function renderVehiculos(){
         <div style="font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;color:var(--text2)">Historial de servicios</div>
         ${renderHistVehiculo(v.id)}
         <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:10px">
-          ${cli?.tel?`<button class="btn btn-xs btn-green" onclick="event.stopPropagation();abrirModalWA('${cli.tel}','Hola ${v.clienteNombre}, te contactamos desde ${CFG.nombre||'el taller'}.')">💬 WhatsApp</button>`:''}
+          ${cli?.tel?`<button class="btn btn-xs btn-green" onclick="event.stopPropagation();abrirModalWA('${cli.tel}','Hola ${cliNom}, te contactamos desde ${CFG.nombre||'el taller'}.')">💬 WhatsApp</button>`:''}
           <button class="btn btn-xs btn-teal" onclick="event.stopPropagation();abrirEditVehiculo('${v.id}')">✏ Editar</button>
           <button class="btn btn-xs btn-red" onclick="event.stopPropagation();eliminarVehiculo('${v.id}')">Eliminar vehículo</button>
         </div>
@@ -7351,7 +7369,7 @@ function acSearchInfVeh(){
   const q=($('inf-veh-txt')?.value||'').trim().toLowerCase();
   const drop=$('inf-veh-drop');if(!drop)return;
   if(q.length<1){drop.style.display='none';return;}
-  const matches=DB.vehiculos.filter(v=>v.patente.toLowerCase().includes(q)||(v.marca||'').toLowerCase().includes(q)||(v.modelo||'').toLowerCase().includes(q)||v.clienteNombre.toLowerCase().includes(q)).slice(0,8);
+  const matches=DB.vehiculos.filter(v=>(v.patente||'').toLowerCase().includes(q)||(v.marca||'').toLowerCase().includes(q)||(v.modelo||'').toLowerCase().includes(q)||(v.clienteNombre||'').toLowerCase().includes(q)).slice(0,8);
   if(!matches.length){drop.style.display='none';return;}
   drop.innerHTML=matches.map(v=>`
     <div class="ac-item" onmousedown="selInfVeh('${v.id}')">
@@ -8378,9 +8396,13 @@ function guardarVehRapido(){
   const pat=$('qveh-pat').value.trim().toUpperCase();
   if(!pat){toast('⚠ Ingresa la patente');return;}
   if(DB.vehiculos.some(v=>(v.patente||'').toUpperCase()===pat)){toast('⚠ Esa patente ya está registrada');return;}
+  const cliId=$('qveh-cli').value||null;
+  const cli=cliId?DB.clientes.find(x=>x.id===cliId):null;
   const v={
     id:uid(),patente:pat,
-    clienteId:$('qveh-cli').value||null,
+    clienteId:cliId,
+    clienteNombre:cli?.nombre||'Sin propietario',
+    clienteRut:cli?.rut||'',
     marca:$('qveh-marca').value.trim(),modelo:$('qveh-modelo').value.trim(),
     anio:$('qveh-anio').value?parseInt($('qveh-anio').value):null,
     km:$('qveh-km').value?parseFloat($('qveh-km').value):0,
