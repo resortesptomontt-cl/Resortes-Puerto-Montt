@@ -1931,6 +1931,13 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
       </div>
       <div class="field"><label>Año</label><input id="ant-anio" type="number" placeholder="2025" min="2020"></div>
       <div class="field" style="grid-column:1/-1"><label>Descripción / motivo</label><input id="ant-desc" placeholder="Ej: Anticipo quincena, emergencia médica..."></div>
+      <div class="field" style="grid-column:1/-1"><label>Forma de pago</label>
+        <div style="display:flex;gap:8px">
+          <button type="button" id="ant-fp-efectivo" class="btn" style="flex:1;outline:2px solid var(--accent);background:var(--accent-light)" onclick="setAntFpago('Efectivo')">💵 Efectivo</button>
+          <button type="button" id="ant-fp-transferencia" class="btn" style="flex:1" onclick="setAntFpago('Transferencia')">🏦 Transferencia</button>
+        </div>
+        <input type="hidden" id="ant-fpago" value="Efectivo">
+      </div>
     </div>
     <div style="display:flex;gap:6px"><button class="btn btn-primary" onclick="guardarAnticipo()">✓ Registrar anticipo</button><button class="btn" onclick="limpiarAnt()">↺ Limpiar</button></div>
   </div>
@@ -9287,16 +9294,17 @@ function buildComprobanteIndividual(lista,forPrint){
 
     <div class="section-lbl">Detalle de anticipos — ${periodo}</div>
     <table>
-      <thead><tr><th>#</th><th>Fecha</th><th>Mes descuento</th><th>Descripción</th><th style="text-align:right">Monto</th></tr></thead>
+      <thead><tr><th>#</th><th>Fecha</th><th>Mes descuento</th><th>Descripción</th><th>Forma pago</th><th style="text-align:right">Monto</th></tr></thead>
       <tbody>
         ${lista.map((a,i)=>`<tr>
           <td style="color:#888">${i+1}</td>
           <td>${fmtF(a.fecha)||'—'}</td>
           <td>${a.mes} ${a.anio}</td>
           <td>${a.desc||'Anticipo'}</td>
+          <td style="font-size:10px">${a.fpago==='Efectivo'?'💵 Efectivo':a.fpago==='Transferencia'?'🏦 Transferencia':'—'}</td>
           <td style="text-align:right;font-family:monospace;font-weight:600">${fmt(a.monto)}</td>
         </tr>`).join('')}
-        <tr class="total-row"><td colspan="4">TOTAL RECIBIDO</td><td class="monto">${fmt(total)}</td></tr>
+        <tr class="total-row"><td colspan="5">TOTAL RECIBIDO</td><td class="monto">${fmt(total)}</td></tr>
       </tbody>
     </table>
 
@@ -10951,6 +10959,18 @@ function renderResumenAnt(){
               <span style="color:var(--amber)">− Anticipos del mes</span>
               <span style="font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--amber)">-${fmt(anticipos)}</span>
             </div>
+            ${(()=>{
+              const antsInd=(DB.anticipos||[]).filter(a=>a.mecanicoId===m.id&&a.mes===mes&&parseInt(a.anio)===parseInt(anio));
+              if(!antsInd.length)return'';
+              return`<div style="display:flex;flex-direction:column;gap:4px;padding-left:12px;margin:2px 0">
+                ${antsInd.map(a=>`<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)">
+                  <span>${fmtF(a.fecha)}</span>
+                  ${antFpBadge(a)}
+                  <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.desc||''}</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-weight:600">-${fmt(a.monto)}</span>
+                </div>`).join('')}
+              </div>`;
+            })()}
             <div style="border-top:1px dashed var(--border);margin:2px 0;padding-top:5px;display:flex;justify-content:space-between;font-weight:600;color:var(--text2);font-size:12px">
               <span>= Saldo disponible</span><span style="font-family:'JetBrains Mono',monospace">${fmt(bruto-anticipos)}</span>
             </div>`:''}
@@ -11192,6 +11212,39 @@ function imprimirLiquidacion(mecId, mes, anio){
 }
 
 // ─ Guardar anticipo ───────────────────────────────
+function setAntFpago(fp){
+  $('ant-fpago').value=fp;
+  const bE=$('ant-fp-efectivo'),bT=$('ant-fp-transferencia');
+  if(bE){bE.style.outline=fp==='Efectivo'?'2px solid var(--accent)':'';bE.style.background=fp==='Efectivo'?'var(--accent-light)':'';}
+  if(bT){bT.style.outline=fp==='Transferencia'?'2px solid var(--accent)':'';bT.style.background=fp==='Transferencia'?'var(--accent-light)':'';}
+}
+// Candado por anticipo: set de ids desbloqueados para editar forma de pago
+const _antFpUnlocked=new Set();
+function antFpToggleLock(antId){
+  if(_antFpUnlocked.has(antId))_antFpUnlocked.delete(antId);
+  else _antFpUnlocked.add(antId);
+  renderResumenAnt();renderHistAnt();
+}
+function antFpCambiar(antId){
+  if(!_antFpUnlocked.has(antId))return; // candado cerrado — protegido contra miss-click
+  const a=DB.anticipos.find(x=>x.id===antId);if(!a)return;
+  a.fpago=a.fpago==='Transferencia'?'Efectivo':'Transferencia';
+  _antFpUnlocked.delete(antId); // auto-cerrar candado tras el cambio
+  save();renderResumenAnt();renderHistAnt();
+  toast('✓ Forma de pago: '+a.fpago);
+}
+function antFpBadge(a){
+  const unlocked=_antFpUnlocked.has(a.id);
+  const fp=a.fpago||'';
+  const esEf=fp==='Efectivo',esTr=fp==='Transferencia';
+  const bg=esEf?'var(--green-light,#EAF3DE)':esTr?'var(--accent-light,#E6F1FB)':'var(--surface2)';
+  const col=esEf?'var(--green,#3B6D11)':esTr?'var(--accent,#0C447C)':'var(--text3)';
+  const label=esEf?'💵 Efectivo':esTr?'🏦 Transferencia':'— Sin especificar';
+  const extra=unlocked?'border:1.5px dashed '+col+';box-shadow:0 0 0 3px rgba(26,74,138,.12);cursor:pointer':'cursor:default';
+  return`<button class="btn btn-xs" style="width:22px;height:22px;padding:0;border-radius:50%;font-size:10px;${unlocked?'border-color:var(--accent);background:var(--accent-light)':''}" onclick="event.stopPropagation();antFpToggleLock('${a.id}')" title="${unlocked?'Cerrar candado':'Desbloquear para editar forma de pago'}">${unlocked?'🔓':'🔒'}</button>
+  <span onclick="event.stopPropagation();antFpCambiar('${a.id}')" title="${unlocked?'Clic para cambiar':'Bloqueado — abre el candado para editar'}"
+    style="font-size:10px;font-weight:600;padding:3px 10px;border-radius:12px;background:${bg};color:${col};white-space:nowrap;user-select:none;${extra}">${label}</span>`;
+}
 function guardarAnticipo(){
   const mid=$('ant-mec').value;
   if(!mid){toast('Selecciona un trabajador','err');return;}
@@ -11212,6 +11265,7 @@ function guardarAnticipo(){
     id:uid(),mecanicoId:mid,mecanicoNombre:m.nombre,mecanicoRut:m.rut||'',
     tipo:'Anticipo',monto,
     mes,anio,
+    fpago:$('ant-fpago')?.value||'Efectivo',
     desc:$('ant-desc').value.trim()||'Anticipo de sueldo',
     fecha:$('ant-fecha').value||today(),
     estado:'Pendiente',
@@ -11224,6 +11278,7 @@ function limpiarAnt(){
   ['ant-mec','ant-desc'].forEach(i=>{if($(i))$(i).value='';});
   if($('ant-monto'))$('ant-monto').value='';
   setToday('ant-fecha');
+  setAntFpago('Efectivo');
 }
 function onAntTipo(){} // kept for compatibility
 
@@ -11507,14 +11562,17 @@ function aplicarCuotasCredito(){
 function renderStatsAnt(){
   const mesActual=meses[new Date().getMonth()];
   const anio=new Date().getFullYear();
-  const totalAnticipado=(DB.anticipos||[]).filter(a=>a.mes===mesActual&&a.anio===anio).reduce((s,a)=>s+a.monto,0);
+  const antsDelMes=(DB.anticipos||[]).filter(a=>a.mes===mesActual&&a.anio===anio);
+  const totalAnticipado=antsDelMes.reduce((s,a)=>s+a.monto,0);
+  const totEfectivo=antsDelMes.filter(a=>a.fpago==='Efectivo').reduce((s,a)=>s+a.monto,0);
+  const totTransf=antsDelMes.filter(a=>a.fpago==='Transferencia').reduce((s,a)=>s+a.monto,0);
   const creditosActivos=(DB.creditosMec||[]).filter(c=>c.estado==='Activo').length;
   const totalCreditos=(DB.creditosMec||[]).filter(c=>c.estado==='Activo').reduce((s,c)=>s+c.saldo,0);
   const mecActivos=DB.mecanicos.filter(m=>m.estado==='Activo').length;
   const sc=$('ant-stats');
   if(sc)sc.innerHTML=`
     <div class="stat"><div class="stat-lbl">Mecánicos activos</div><div class="stat-val">${mecActivos}</div><div class="stat-sub">en nómina</div></div>
-    <div class="stat"><div class="stat-lbl">Anticipos ${mesActual}</div><div class="stat-val" style="color:var(--amber)">${fmt(totalAnticipado)}</div><div class="stat-sub">este mes</div></div>
+    <div class="stat"><div class="stat-lbl">Anticipos ${mesActual}</div><div class="stat-val" style="color:var(--amber)">${fmt(totalAnticipado)}</div><div class="stat-sub">💵 ${fmt(totEfectivo)} · 🏦 ${fmt(totTransf)}</div></div>
     <div class="stat"><div class="stat-lbl">Créditos activos</div><div class="stat-val" style="color:var(--red)">${creditosActivos}</div><div class="stat-sub">${fmt(totalCreditos)} pendiente</div></div>
     <div class="stat"><div class="stat-lbl">Sueldos base</div><div class="stat-val" style="color:var(--green)">${fmt(DB.mecanicos.filter(m=>m.estado==='Activo').reduce((s,m)=>s+(m.sueldoBase||0),0))}</div><div class="stat-sub">total mensual</div></div>`;
 }
@@ -11529,12 +11587,13 @@ function renderHistAnt(){
   lista.sort((a,b)=>b.fecha>a.fecha?1:-1);
   const el=$('ant-historial-tabla');if(!el)return;
   if(!lista.length){el.innerHTML='<div class="empty"><div class="empty-icon">📋</div>Sin anticipos registrados</div>';return;}
-  el.innerHTML='<div class="tw"><table><thead><tr><th>Fecha</th><th>Trabajador</th><th>Mes descuento</th><th>Descripción</th><th>Estado</th><th class="tr">Monto</th><th></th></tr></thead><tbody>'+
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Fecha</th><th>Trabajador</th><th>Mes descuento</th><th>Descripción</th><th>Forma pago</th><th>Estado</th><th class="tr">Monto</th><th></th></tr></thead><tbody>'+
     lista.map(a=>`<tr>
       <td style="font-size:11px">${a.fecha||'—'}</td>
       <td style="font-weight:500">${a.mecanicoNombre}</td>
       <td>${a.mes} ${a.anio}</td>
       <td style="font-size:11px;color:var(--text2)">${a.desc||'—'}</td>
+      <td><div style="display:flex;align-items:center;gap:5px;white-space:nowrap">${antFpBadge(a)}</div></td>
       <td><span class="badge ${a.estado==='Pendiente'?'b-amber':'b-gray'}">${a.estado}</span></td>
       <td class="tr" style="font-family:'JetBrains Mono',monospace;font-weight:600">${fmt(a.monto)}</td>
       <td><button class="btn btn-xs btn-red" onclick="eliminarAnticipo('${a.id}')">✕</button></td>
