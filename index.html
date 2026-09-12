@@ -9408,13 +9408,16 @@ function buildComprobanteHTML(lista,forPrint){
     <table>
       <thead><tr><th>Trabajador — Tipo — Detalle</th></tr></thead>
       <tbody>
-        ${lista.map(a=>`<tr>
+        ${lista.map(a=>{
+          const fpBadge=a.fpago==='Efectivo'?'<span style="display:inline-block;font-size:9px;font-weight:600;padding:2px 8px;border-radius:10px;background:#EAF3DE;color:#3B6D11;margin-left:6px">💵 Efectivo</span>':a.fpago==='Transferencia'?'<span style="display:inline-block;font-size:9px;font-weight:600;padding:2px 8px;border-radius:10px;background:#E6F1FB;color:#0C447C;margin-left:6px">🏦 Transferencia</span>':'';
+          return`<tr>
           <td>
             <div class="rt">
               <strong>${a.mecanicoNombre}</strong>
               ${a.mecanicoRut?`<span style="font-size:10px;color:#555;margin-left:6px">RUT: ${a.mecanicoRut}</span>`:''}
               &nbsp;<span class="tipo ${a.tipo==='Anticipo'?'ta':a.tipo==='Préstamo'?'tp':a.tipo==='Descuento'?'td':'to'}">${a.tipo}</span>
               &nbsp;<span style="font-size:10px;color:#888">${fmtF(a.fecha)}</span>
+              ${fpBadge}
               ${a.desc?`<br><span style="font-size:10px;color:#666">${a.desc}</span>`:''}
             </div>
             <div class="rb">
@@ -9432,7 +9435,20 @@ function buildComprobanteHTML(lista,forPrint){
               </div>
             </div>
           </td>
-        </tr>`).join('')}
+        </tr>`;}).join('')}
+        ${(()=>{
+          const ef=lista.filter(a=>a.fpago==='Efectivo').reduce((s,a)=>s+a.monto,0);
+          const tr=lista.filter(a=>a.fpago==='Transferencia').reduce((s,a)=>s+a.monto,0);
+          const sn=lista.filter(a=>!a.fpago).reduce((s,a)=>s+a.monto,0);
+          if(!ef&&!tr&&!sn)return'';
+          return`<tr><td style="padding:8px 12px;background:#F8F7F3;border-top:2px solid #ddd">
+            <div style="display:flex;gap:20px;font-size:11px;font-weight:600;flex-wrap:wrap">
+              ${ef?`<div>💵 Efectivo: <span style="font-family:monospace">${fmt(ef)}</span></div>`:''}
+              ${tr?`<div>🏦 Transferencia: <span style="font-family:monospace">${fmt(tr)}</span></div>`:''}
+              ${sn?`<div style="color:#888">— Sin especificar: <span style="font-family:monospace">${fmt(sn)}</span></div>`:''}
+            </div>
+          </td></tr>`;
+        })()}
         <tr class="total-row"><td><div class="rt"><span style="font-weight:700;font-size:12px;color:#fff">${lista.length} registro${lista.length!==1?'s':''} · TOTAL ENTREGADO</span><span style="font-size:16px;font-weight:700;font-family:monospace;color:#fff">${fmt(totalGeneral)}</span></div></td></tr>
       </tbody>
     </table>
