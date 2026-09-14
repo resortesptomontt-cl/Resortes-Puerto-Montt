@@ -3335,7 +3335,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
 // STATE
 // ══════════════════════════════════════════════════
 const CATS_DEFAULT=['Lubricantes','Filtros','Frenos','Suspensión','Electricidad','Neumáticos','Mano de obra','Refrigeración','Transmisión','Otros'];
-let DB={clientes:[],vehiculos:[],inventario:[],mecanicos:[],cotizaciones:[],ordenes:[],ventas:[],gastos:[],categorias:[],creditos:[],anticipos:[],notas:[],recordatorios:[],reservas:[],creditosMec:[],vacaciones:[],proveedores:[],compras:[],pedidos:[],comisionesAjustadas:{},liquidaciones:[]};
+let DB={clientes:[],vehiculos:[],inventario:[],mecanicos:[],cotizaciones:[],ordenes:[],ventas:[],gastos:[],categorias:[],creditos:[],anticipos:[],notas:[],recordatorios:[],reservas:[],creditosMec:[],vacaciones:[],proveedores:[],compras:[],pedidos:[],comisionesAjustadas:{},liquidaciones:[],bonos:[]};
 let lines={cot:[],ot:[],v:[],ped:[]};
 let excPend=[],excCols={};
 
@@ -11761,6 +11761,36 @@ function bonoFpBadge(b){
   <span onclick="event.stopPropagation();bonoFpCambiar('${b.id}')" title="${unlocked?'Clic para cambiar':'Bloqueado — abre el candado para editar'}"
     style="font-size:10px;font-weight:600;padding:3px 10px;border-radius:12px;background:${bg};color:${col};white-space:nowrap;user-select:none;${extra}">${label}</span>`;
 }
+const _bonosSeleccionados=new Set();
+function toggleBonoSel(id){
+  if(_bonosSeleccionados.has(id))_bonosSeleccionados.delete(id);
+  else _bonosSeleccionados.add(id);
+  actualizarAccionesGrupales();
+}
+function toggleTodosBonos(chk){
+  const visibles=document.querySelectorAll('.bono-chk');
+  if(chk.checked)visibles.forEach(c=>{c.checked=true;_bonosSeleccionados.add(c.dataset.id);});
+  else{visibles.forEach(c=>c.checked=false);_bonosSeleccionados.clear();}
+  actualizarAccionesGrupales();
+}
+function actualizarAccionesGrupales(){
+  const acciones=$('bonos-grupal-acciones');if(!acciones)return;
+  const filMot=$('bono-filtro-motivo')?.value||'';
+  const ids=[..._bonosSeleccionados];
+  if(ids.length>=2){
+    acciones.style.display='flex';
+    acciones.innerHTML=`<span style="font-size:11px;color:var(--text2);align-self:center">${ids.length} seleccionado${ids.length!==1?'s':''}</span>
+      <button class="btn" onclick="_bonosSeleccionados.clear();renderBonos()">Limpiar selección</button>
+      <button class="btn btn-primary" onclick='imprimirBonosGrupal(${JSON.stringify(ids)})'>🖨 Comprobante grupal (${ids.length})</button>`;
+  } else if(filMot){
+    // Fallback: si no hay selección manual pero sí filtro, mantener comportamiento anterior
+    const lista=(DB.bonos||[]).filter(b=>b.motivo===filMot);
+    if(lista.length>1){
+      acciones.style.display='flex';
+      acciones.innerHTML=`<button class="btn btn-primary" onclick='imprimirBonosGrupal(${JSON.stringify(lista.map(b=>b.id))})'>🖨 Comprobante grupal por motivo (${lista.length})</button>`;
+    } else acciones.style.display='none';
+  } else acciones.style.display='none';
+}
 function renderBonos(){
   const q=($('bono-search')?.value||'').toLowerCase();
   const filMot=$('bono-filtro-motivo')?.value||'';
@@ -11773,8 +11803,10 @@ function renderBonos(){
   const el=$('bonos-lista');if(!el)return;
   if(!lista.length){el.innerHTML='<div class="empty"><div class="empty-icon">🎁</div>Sin bonos registrados</div>';$('bonos-grupal-acciones').style.display='none';return;}
   const fmtF=d=>{if(!d)return'—';const[y,m,dd]=d.split('-');return`${dd}/${m}/${y}`;};
-  el.innerHTML='<div class="tw"><table><thead><tr><th>Fecha</th><th>Trabajador</th><th>Motivo</th><th>Forma pago</th><th class="tr">Monto</th><th></th></tr></thead><tbody>'+
+  const totalLista=lista.reduce((s,b)=>s+b.monto,0);
+  el.innerHTML='<div class="tw"><table><thead><tr><th style="width:32px"><input type="checkbox" onchange="toggleTodosBonos(this)" title="Seleccionar todos"></th><th>Fecha</th><th>Trabajador</th><th>Motivo</th><th>Forma pago</th><th class="tr">Monto</th><th></th></tr></thead><tbody>'+
     lista.map(b=>`<tr>
+      <td><input type="checkbox" class="bono-chk" data-id="${b.id}" ${_bonosSeleccionados.has(b.id)?'checked':''} onchange="toggleBonoSel('${b.id}')"></td>
       <td style="font-size:11px">${fmtF(b.fecha)}</td>
       <td style="font-weight:500">${b.mecanicoNombre}</td>
       <td>${b.motivo||'—'}</td>
@@ -11784,15 +11816,9 @@ function renderBonos(){
         <button class="btn btn-xs btn-teal" onclick="imprimirBonoIndividual('${b.id}')" title="Comprobante individual">🖨</button>
         <button class="btn btn-xs btn-red" onclick="eliminarBono('${b.id}')" title="Eliminar">✕</button>
       </td>
-    </tr>`).join('')+'</tbody></table></div>';
-  // Botón comprobante grupal si filtro por motivo activo
-  const acciones=$('bonos-grupal-acciones');
-  if(filMot&&lista.length>1){
-    acciones.style.display='flex';
-    acciones.innerHTML=`<button class="btn btn-primary" onclick='imprimirBonosGrupal(${JSON.stringify(lista.map(b=>b.id))})'>🖨 Comprobante grupal (${lista.length} trabajadores)</button>`;
-  } else {
-    acciones.style.display='none';
-  }
+    </tr>`).join('')+
+    `</tbody><tfoot><tr style="background:var(--surface2);font-weight:700"><td colspan="5" style="padding:8px 10px">Total mostrado (${lista.length} bono${lista.length!==1?'s':''})</td><td class="tr" style="font-family:'JetBrains Mono',monospace;font-size:14px;padding:8px 10px">${fmt(totalLista)}</td><td></td></tr></tfoot></table></div>`;
+  actualizarAccionesGrupales();
 }
 function renderStatsBonos(){
   const anio=new Date().getFullYear();
