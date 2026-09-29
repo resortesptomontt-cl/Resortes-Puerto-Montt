@@ -11569,7 +11569,8 @@ function renderCreditosMec(){
             </tfoot>
           </table>
         </div>
-        <div style="display:flex;justify-content:flex-end">
+        <div style="display:flex;justify-content:flex-end;gap:6px">
+          <button class="btn btn-xs btn-teal" onclick="event.stopPropagation();imprimirCreditoMec('${c.id}')">🖨 Comprobante / Pagaré</button>
           <button class="btn btn-xs btn-red" onclick="event.stopPropagation();eliminarCreditoMec('${c.id}')">🗑 Eliminar</button>
         </div>
       </div>
@@ -11580,6 +11581,201 @@ function eliminarCreditoMec(id){
   if(!confirm('¿Eliminar este crédito?'))return;
   DB.creditosMec=DB.creditosMec.filter(c=>c.id!==id);
   save();renderCreditosMec();renderResumenAnt();toast('Crédito eliminado');
+}
+
+function imprimirCreditoMec(id){
+  const c=(DB.creditosMec||[]).find(x=>x.id===id);if(!c)return;
+  const m=DB.mecanicos.find(x=>x.id===c.mecanicoId);
+  const cfg=CFG||{};
+  const fmtF=d=>{if(!d)return'—';const[y,mo,dd]=d.split('-');return`${dd}/${mo}/${y}`;};
+  const fechaEmision=c.creado?c.creado.slice(0,10):today();
+  const pagadas=c.cuotasPlan.filter(cu=>cu.pagado).length;
+  const numLetras=numeroALetras(c.monto);
+  // Fecha primera y última cuota
+  const primera=c.cuotasPlan[0];
+  const ultima=c.cuotasPlan[c.cuotasPlan.length-1];
+
+  const cuerpo=`<style>
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    body,div,td,th,p,span{font-family:Arial,sans-serif;font-size:12px;color:#111}
+    .doc{max-width:780px;margin:0 auto;padding:14px}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:10px;border-bottom:2.5px solid #1a3a5c;margin-bottom:14px}
+    .co-name{font-size:16px;font-weight:700;color:#1a3a5c}
+    .co-info{font-size:10px;color:#666;margin-top:2px}
+    .doc-title{text-align:right}
+    .doc-title .tipo{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#888}
+    .doc-title .nom{font-size:16px;font-weight:700;color:#B85C1A}
+    .doc-title .folio{font-size:11px;color:#555;margin-top:2px;font-family:monospace}
+    .worker-box{background:#f0f4f8;border-radius:6px;padding:10px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:flex-start}
+    .aviso{background:#FDF3E0;border:1px solid #E0C070;border-radius:5px;padding:8px 12px;font-size:10px;color:#7A4F10;margin-bottom:12px;line-height:1.5}
+    .resumen{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px}
+    .resumen .box{background:#fafafa;border:1px solid #ddd;border-radius:5px;padding:9px 11px}
+    .resumen .lbl{font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:#888;font-weight:600}
+    .resumen .val{font-size:14px;font-weight:700;font-family:monospace;color:#1a3a5c;margin-top:2px}
+    .resumen .sub{font-size:10px;color:#666;margin-top:1px}
+    table{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:11px}
+    th{background:#1a3a5c;color:#fff;text-align:left;padding:6px 8px;font-weight:600;font-size:10px;text-transform:uppercase}
+    td{padding:6px 8px;border-bottom:1px solid #eee}
+    tr.pagada td{background:#EAF3DE;color:#3B6D11}
+    .tr{text-align:right}
+    .mono{font-family:monospace}
+    .compromiso{background:#f0f4f8;border-left:3px solid #1a3a5c;border-radius:4px;padding:10px 13px;font-size:11px;line-height:1.55;color:#333;margin-bottom:14px}
+    .compromiso strong{color:#1a3a5c}
+    .firma-section{margin-top:22px;display:grid;grid-template-columns:1fr 1fr;gap:36px}
+    .firma-block .lbl{font-size:10px;color:#888;margin-bottom:4px}
+    .firma-line{border-top:1px solid #333;padding-top:6px;font-size:11px;color:#555}
+    .footer{margin-top:12px;padding-top:8px;border-top:1px solid #ddd;font-size:9px;color:#aaa;text-align:center}
+    .letras{background:#f5f5f5;border:1px dashed #aaa;border-radius:4px;padding:6px 10px;font-size:10px;color:#555;font-style:italic;margin-bottom:12px}
+  </style>
+  <div class="doc">
+    <div class="header">
+      <div>
+        ${cfg.logo?`<img src="${cfg.logo}" style="height:40px;max-width:90px;object-fit:contain;display:block;margin-bottom:4px">`:''}
+        <div class="co-name">${cfg.nombre||'Resortes Puerto Montt'}</div>
+        ${cfg.rut?`<div class="co-info">RUT: ${cfg.rut}</div>`:''}
+        ${cfg.dir?`<div class="co-info">${cfg.dir}${cfg.ciudad?', '+cfg.ciudad:''}</div>`:''}
+        ${cfg.fono?`<div class="co-info">Tel: ${cfg.fono}</div>`:''}
+      </div>
+      <div class="doc-title">
+        <div class="tipo">Comprobante · Pagaré</div>
+        <div class="nom">PRÉSTAMO A TRABAJADOR</div>
+        <div class="folio">Fecha emisión: ${fmtF(fechaEmision)}</div>
+      </div>
+    </div>
+
+    <div class="worker-box">
+      <div>
+        <div style="font-size:15px;font-weight:700">👷 ${c.mecanicoNombre}</div>
+        ${m?.rut?`<div style="font-size:11px;color:#666;margin-top:2px">RUT: ${m.rut}</div>`:''}
+        ${m?.especialidad?`<div style="font-size:11px;color:#666">${m.especialidad}</div>`:''}
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:10px;color:#888">MONTO DEL PRÉSTAMO</div>
+        <div style="font-size:22px;font-weight:700;font-family:monospace;color:#B85C1A">${fmt(c.monto)}</div>
+        <div style="font-size:10px;color:#666;margin-top:2px">${c.desc||'Crédito'}</div>
+      </div>
+    </div>
+
+    <div class="letras"><strong>Suma en letras:</strong> ${numLetras} pesos chilenos</div>
+
+    <div class="aviso">
+      ⚠ Este documento constituye <strong>constancia escrita</strong> del préstamo otorgado por el empleador al trabajador, y del acuerdo mutuo sobre el descuento mensual aplicado al sueldo hasta completar el pago total. Ambas partes declaran conocer y aceptar las condiciones aquí establecidas al firmar este documento.
+    </div>
+
+    <div class="resumen">
+      <div class="box">
+        <div class="lbl">Monto total</div>
+        <div class="val">${fmt(c.monto)}</div>
+        <div class="sub">Entregado al trabajador</div>
+      </div>
+      <div class="box">
+        <div class="lbl">N° de cuotas</div>
+        <div class="val">${c.ncuotas}</div>
+        <div class="sub">Cuota promedio: ${fmt(Math.round(c.monto/c.ncuotas))}</div>
+      </div>
+      <div class="box">
+        <div class="lbl">Período de pago</div>
+        <div class="val" style="font-size:12px">${primera?primera.mes+' '+primera.anio:'—'}</div>
+        <div class="sub">hasta ${ultima?ultima.mes+' '+ultima.anio:'—'}</div>
+      </div>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#555;margin-bottom:6px">📅 Calendario de descuentos mensuales</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:30px">#</th>
+          <th>Mes de descuento</th>
+          <th>Fecha de descuento</th>
+          <th class="tr">Cuota</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${c.cuotasPlan.map((cu,i)=>`
+          <tr class="${cu.pagado?'pagada':''}">
+            <td style="color:#888">${i+1}</td>
+            <td style="font-weight:600">${cu.mes} ${cu.anio}</td>
+            <td>${cu.fecha?fmtF(cu.fecha):'01/'+String(new Date(cu.anio,meses.indexOf(cu.mes),1).getMonth()+1).padStart(2,'0')+'/'+cu.anio+' (por defecto)'}</td>
+            <td class="tr mono" style="font-weight:600">${fmt(cu.monto)}</td>
+            <td>${cu.pagado?'✓ Pagada '+(cu.fechaPago?fmtF(cu.fechaPago):''):'Pendiente'}</td>
+          </tr>`).join('')}
+      </tbody>
+      <tfoot>
+        <tr style="background:#1a3a5c;color:#fff;font-weight:700">
+          <td colspan="3" style="padding:8px">TOTAL A DESCONTAR</td>
+          <td class="tr mono" style="padding:8px;font-size:13px">${fmt(c.monto)}</td>
+          <td style="padding:8px">${pagadas}/${c.ncuotas} pagadas</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div class="compromiso">
+      <strong>CONDICIONES DEL PRÉSTAMO:</strong><br>
+      1. El trabajador <strong>${c.mecanicoNombre}</strong>${m?.rut?', RUT '+m.rut+',':''} declara haber recibido de <strong>${cfg.nombre||'el empleador'}</strong> la suma de <strong>${fmt(c.monto)}</strong> (${numLetras} pesos) en calidad de préstamo.<br>
+      2. El trabajador autoriza expresamente al empleador a descontar de su sueldo mensual las cuotas indicadas en el calendario anterior, hasta completar el pago total del préstamo.<br>
+      3. Los descuentos se aplicarán durante el mes indicado en cada cuota, típicamente al procesar la liquidación de sueldos del período.<br>
+      4. En caso de término de la relación laboral antes de completar el pago, el saldo pendiente (<strong>${fmt(c.saldo)}</strong> a la fecha) será descontado del finiquito o de la liquidación final del trabajador, conforme a la legislación vigente.<br>
+      5. Este préstamo <strong>no genera intereses</strong>; el monto a devolver es exactamente el mismo entregado.<br>
+      6. Cualquier modificación al calendario de pagos deberá acordarse por escrito entre ambas partes.
+    </div>
+
+    <div class="firma-section">
+      <div class="firma-block">
+        <div class="lbl">Firma del trabajador — Recibí conforme</div>
+        <div style="height:36px"></div>
+        <div class="firma-line">${c.mecanicoNombre}<br>RUT: ${m?.rut||'___________________'}</div>
+      </div>
+      <div class="firma-block">
+        <div class="lbl">Firma empleador / Administrador</div>
+        <div style="height:36px"></div>
+        <div class="firma-line">${cfg.nombre||'Resortes Puerto Montt'}<br>${cfg.rut?'RUT: '+cfg.rut:''}</div>
+      </div>
+    </div>
+
+    <div class="footer">${cfg.nombre||'Resortes Puerto Montt'} · Comprobante emitido el ${fmtF(today())} · Crédito ID: ${c.id}</div>
+  </div>`;
+
+  _doPrint(`Comprobante préstamo — ${c.mecanicoNombre}`,
+    `<style>@page{margin:10mm}.copia-sep{page-break-after:always;break-after:page}.copia-lbl{font-size:9px;color:#aaa;text-align:right;font-family:Arial;padding:2px 0}</style>
+    <div class="copia-sep"><div class="copia-lbl">Copia 1 de 2 — Empleador</div>${cuerpo}</div>
+    <div><div class="copia-lbl">Copia 2 de 2 — Trabajador</div>${cuerpo}</div>`);
+}
+
+// Convertir número a letras (para el comprobante de préstamo)
+function numeroALetras(num){
+  if(!num||num<=0)return 'cero';
+  const unidades=['','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve','veinte'];
+  const decenas=['','','veinti','treinta','cuarenta','cincuenta','sesenta','setenta','ochenta','noventa'];
+  const centenas=['','ciento','doscientos','trescientos','cuatrocientos','quinientos','seiscientos','setecientos','ochocientos','novecientos'];
+  function menos1000(n){
+    if(n===0)return '';
+    if(n<=20)return unidades[n];
+    if(n<100){
+      const d=Math.floor(n/10),u=n%10;
+      if(d===2)return u===0?'veinte':'veinti'+unidades[u];
+      return decenas[d]+(u?' y '+unidades[u]:'');
+    }
+    if(n===100)return 'cien';
+    const c=Math.floor(n/100),r=n%100;
+    return centenas[c]+(r?' '+menos1000(r):'');
+  }
+  let n=Math.floor(num);
+  const millones=Math.floor(n/1000000);
+  n=n%1000000;
+  const miles=Math.floor(n/1000);
+  n=n%1000;
+  let out='';
+  if(millones>0){
+    out+=millones===1?'un millón':menos1000(millones)+' millones';
+    if(miles>0||n>0)out+=' ';
+  }
+  if(miles>0){
+    out+=miles===1?'mil':menos1000(miles)+' mil';
+    if(n>0)out+=' ';
+  }
+  if(n>0)out+=menos1000(n);
+  return out.trim();
 }
 
 function pagarCuotaCredito(creditoId, cuotaIdx){
