@@ -10196,8 +10196,18 @@ function buildDocCot(c,v){
       ${c.patente?`<div class="info-row"><span class="info-lbl">Patente:</span><span class="info-val" style="font-weight:700">${c.patente}</span></div>`:''}
       ${c.marca?`<div class="info-row"><span class="info-lbl">Vehículo:</span><span class="info-val">${c.marca} ${c.modelo}</span></div>`:''}
       ${v?.anio?`<div class="info-row"><span class="info-lbl">Año:</span><span class="info-val">${v.anio}</span></div>`:''}
+      ${(c.zonasVehiculo&&c.zonasVehiculo.length)?`<div class="info-row"><span class="info-lbl">Zona/Eje:</span><span class="info-val" style="font-weight:700;color:#5a2a7a">${c.zonasVehiculo.map(z=>zonaLabel(z.codigo,c.zonasVehiculo.map(x=>x.codigo))).join(' · ')}</span></div>`:''}
     </div>
   </div>
+  ${c.obs?`<div class="sec-hdr">Descripción del trabajo cotizado</div><div class="obs-box">${c.obs}</div>`:''}
+  ${(c.zonasVehiculo&&c.zonasVehiculo.length)?`<div class="sec-hdr">Detalle de trabajo por eje y lado</div>
+  <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+  ${c.zonasVehiculo.map(z=>{const allCods=c.zonasVehiculo.map(x=>x.codigo);return`<div style="background:#F3EAF9;border:1px solid #B592D0;border-radius:5px;padding:8px 12px;font-size:11px;display:flex;gap:8px;align-items:baseline">
+    <strong style="color:#5a2a7a;font-size:12px;white-space:nowrap">${zonaLabel(z.codigo,allCods)}</strong>
+    <span style="color:#8A5CA8;font-size:9px;font-family:monospace;white-space:nowrap">${z.codigo}</span>
+    ${z.detalle?`<span style="color:#555">— ${z.detalle}</span>`:`<span style="color:#bbb;font-style:italic">sin detalle escrito</span>`}
+  </div>`;}).join('')}
+  </div>`:''}
   <div class="sec-hdr">Servicios y repuestos cotizados</div>
   <table><thead><tr><th>#</th><th>Descripción</th><th>Cantidad</th><th>Unidad</th></tr></thead>
   <tbody>${c.items.map((it,i)=>{
@@ -10209,7 +10219,6 @@ function buildDocCot(c,v){
     return'';
   })()}
   <div class="total-box" style="background:#5a2a7a"><div><div class="lbl">Total cotización — IVA Incluido${c.descuento>0?' — descuento aplicado':''}</div></div><div class="amt">${fmt(c.total)}</div></div>
-  ${c.obs?`<div class="obs-box"><strong>Notas:</strong> ${c.obs}</div>`:''}
   ${bancoHtml()}
   ${CFG.pieCot?`<div class="pie-txt">${CFG.pieCot}</div>`:''}
   <div style="background:#fff3cd;border:1px solid #e0a800;border-radius:5px;padding:10px 13px;font-size:10px;color:#7a5f10;margin-top:10px">
