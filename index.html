@@ -14000,5 +14000,214 @@ const _nav=window.nav;window.nav=function(id){const r=_nav.apply(this,arguments)
 setTimeout(()=>{try{build('ot');build('cot');}catch(e){console.warn('wz',e);}},400);
 })();
 </script>
+<!-- ══ TALLERSYS FLUJO SIMPLE: OT entregada → venta + stock (aditivo) ══ -->
+<style>
+#fx-modal{position:fixed;inset:0;z-index:9500;background:rgba(8,8,8,.6);display:none;align-items:center;justify-content:center;padding:12px}
+#fx-modal.on{display:flex}
+#fx-modal .fx-box{background:var(--surface);color:var(--text);border-radius:16px;width:min(520px,100%);box-shadow:0 24px 70px rgba(0,0,0,.45);overflow:hidden}
+#fx-modal .fx-hd{background:#121214;color:#fff;padding:16px 20px;border-bottom:4px solid #B2121C;font-size:17px;font-weight:700}
+#fx-modal .fx-bd{padding:18px 20px}
+#fx-modal .fx-info{background:var(--surface2);border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:14px}
+#fx-modal .fx-pay{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#fx-modal .fx-pay button{padding:16px 10px;font-size:15px;font-weight:700;border-radius:12px;border:2px solid var(--border2);background:var(--surface);color:var(--text);cursor:pointer}
+#fx-modal .fx-pay button.sel{border-color:#E6282D;background:rgba(230,40,45,.1);box-shadow:0 0 0 2px rgba(230,40,45,.25)}
+#fx-modal .fx-ft{display:flex;gap:10px;justify-content:flex-end;padding:0 20px 18px}
+#fx-modal .fx-big{padding:14px 20px;font-size:15px;font-weight:700;border-radius:12px}
+#fx-modal .fx-wa{background:#16a34a!important;border-color:#16a34a!important;color:#fff!important}
+.fx-card{border-left:4px solid #E6282D}
+.fx-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
+.fx-row:last-child{border-bottom:0}
+.fx-row .grow{flex:1;min-width:0}
+.fx-num{display:inline-block;min-width:22px;padding:1px 8px;border-radius:99px;background:#E6282D;color:#fff;font-weight:700;font-size:12px;text-align:center}
+body.fx-simple-vend #sec-inventario>.tabs,body.fx-simple-vend #inv-tab-manual,body.fx-simple-vend #inv-tab-import,body.fx-simple-vend #inv-tab-cats,body.fx-simple-vend #sec-inventario .row-acts,body.fx-simple-vend #tsx2-inv td:nth-child(4),body.fx-simple-vend #tsx2-inv td:nth-child(5),body.fx-simple-vend #tsx2-inv th:nth-child(4),body.fx-simple-vend #tsx2-inv th:nth-child(5){display:none!important}
+</style>
+<div id="fx-modal"><div class="fx-box"><div class="fx-hd" id="fx-hd"></div><div id="fx-body"></div></div></div>
+<script>
+(function(){
+'use strict';
+const esc=window.tsxEsc||(s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])));
+const $i=id=>document.getElementById(id);
+const isEnt=e=>e==='Entregado'||e==='Entregado s/OC';
+const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+const ventaDeOT=f=>(DB.ventas||[]).find(v=>v.otOrigen===f);
+const PAGOS=[['Contado','💵 Efectivo'],['Transferencia','🏦 Transferencia'],['Tarjeta','💳 Tarjeta'],['Crédito','📒 Crédito']];
+
+/* fecha desde la que se controla el stock (no tocar ventas históricas) */
+if(typeof CFG!=='undefined'&&!CFG.flujoDesde){CFG.flujoDesde=new Date().toISOString();saveCfg(CFG);}
+const desde=()=>CFG.flujoDesde||'';
+
+/* ---------- stock ---------- */
+function prodDe(it){
+  const inv=DB.inventario||[];
+  let p=it.pid?inv.find(x=>String(x.id)===String(it.pid)):null;
+  if(!p&&it.nombre){const n=norm(it.nombre);p=inv.find(x=>norm(x.nombre)===n)||(it.codigo?inv.find(x=>x.codigo&&norm(x.codigo)===norm(it.codigo)):null);}
+  return p&&p.categoria!=='Mano de obra'?p:null;
+}
+/* soloLibres=true: el código original ya descontó los ítems con pid */
+function descontarStock(v,soloLibres){
+  const avisos=[];
+  (v.items||[]).forEach(it=>{
+    if(soloLibres&&it.pid&&!it.libre)return;
+    const p=prodDe(it);if(!p)return;
+    const q=+it.qty||0;if(!q)return;
+    p.stock=Math.max(0,(+p.stock||0)-q);
+    (p.histStock=p.histStock||[]).push({tipo:'salida',qty:q,motivo:'Venta '+v.folio,fecha:today(),creado:new Date().toISOString()});
+    if(p.stock===0)avisos.push(p.nombre+': sin stock');else if(p.smin>0&&p.stock<=p.smin)avisos.push(p.nombre+': stock bajo ('+p.stock+')');
+  });
+  v.stockDescontado=true;
+  if(avisos.length)setTimeout(()=>toast('⚠ '+esc(avisos.slice(0,2).join(' · '))+(avisos.length>2?' y más…':''),'warn'),900);
+}
+function itemsConStock(v){return (v.items||[]).filter(it=>prodDe(it)).length;}
+function nextVT(){const n=(DB.ventas||[]).map(v=>parseInt((v.folio||'').replace('VT-',''))||0);return 'VT-'+String((n.length?Math.max(...n):0)+1).padStart(4,'0');}
+
+/* ---------- crear venta desde OT ---------- */
+function crearVentaOT(folio,fpago){
+  const o=(DB.ordenes||[]).find(x=>x.folio===folio);if(!o)return null;
+  const ex=ventaDeOT(folio);if(ex)return ex;
+  const vf=nextVT(),fecha=today();
+  const v={folio:vf,fecha,clienteId:o.clienteId||null,clienteNombre:o.clienteNombre||'',clienteRut:o.clienteRut||'',tel:o.tel||'',
+    vehiculoId:o.vehiculoId||null,patente:o.patente||'',marca:o.marca||'',modelo:o.modelo||'',
+    items:(o.items||[]).map(i=>Object.assign({},i)),total:+o.total||0,descuento:+o.descuento||0,fpago,
+    obs:o.obs||o.diag||'',otOrigen:folio,pedidoOrigen:'',cotOrigen:o.cotizacionOrigen||'',numOC:'',
+    chequeNum:'',chequeBanco:'',chequeFecha:'',chequeEstado:'',autoDesdeOT:true,creado:new Date().toISOString()};
+  DB.ventas.unshift(v);
+  /* guardarOT original no descuenta (limpia lines.ot antes); se descuenta aquí, una sola vez. Si una OT trae stockDescontado (otra vía), solo ítems libres */
+  descontarStock(v,!!o.stockDescontado);
+  if(fpago==='Crédito'){
+    DB.creditos.unshift({id:uid(),clienteId:v.clienteId,clienteNombre:v.clienteNombre,clienteRut:v.clienteRut,
+      monto:v.total,saldo:v.total,abonos:[],fecha,vcto:'',desc:'Venta '+vf+' (OT: '+folio+')',ventaFolio:vf,estado:'Pendiente',creado:new Date().toISOString()});
+  }
+  o.ventaFolio=vf;
+  _save();
+  toast('Venta '+esc(vf)+' creada y stock actualizado');
+  try{renderOTs();}catch(e){} try{renderVentas();}catch(e){} try{renderInventario();}catch(e){} try{renderDashboard();}catch(e){} try{updateBadges();}catch(e){}
+  return v;
+}
+window.fxCrearVentaOT=crearVentaOT;
+
+/* ---------- modal ---------- */
+const M=$i('fx-modal');
+function open(t,html){$i('fx-hd').textContent=t;$i('fx-body').innerHTML=html;M.classList.add('on');}
+function close(){M.classList.remove('on');}
+window.fxClose=()=>{close();setTimeout(next,150);};
+let cola=[],ocupado=false;
+function next(){
+  if(M.classList.contains('on'))return;
+  const f=cola.shift();if(!f){ocupado=false;return;}ocupado=true;
+  const o=(DB.ordenes||[]).find(x=>x.folio===f);if(!o||!isEnt(o.estado))return next();
+  if(ventaDeOT(f))return askWA(f);
+  askPago(f);
+}
+let fpSel='Transferencia';
+function askPago(f){
+  const o=DB.ordenes.find(x=>x.folio===f);
+  fpSel=o.estado==='Entregado s/OC'?'Crédito':'Transferencia';
+  open('🏁 OT '+f+' entregada — registrar venta',`<div class="fx-bd">
+    <div class="fx-info"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>${esc(o.clienteNombre||'—')}</b><b style="font-family:'JetBrains Mono',monospace">${esc(fmt(+o.total||0))}</b></div>
+    <div style="color:var(--text2);margin-top:3px">${o.patente?'🚗 '+esc(o.patente)+' · ':''}${(o.items||[]).length} ítem(s)${o.estado==='Entregado s/OC'?' · <b style="color:#d97706">sin OC</b>':''}</div></div>
+    <div style="font-weight:700;margin-bottom:8px">¿Cómo pagó el cliente?</div>
+    <div class="fx-pay">${PAGOS.map(([v,l])=>`<button type="button" data-fp="${esc(v)}" class="${v===fpSel?'sel':''}">${l}</button>`).join('')}</div>
+    <div style="font-size:11px;color:var(--text2);margin-top:10px">Se crea la venta y se descuenta el stock de los repuestos automáticamente.</div></div>
+    <div class="fx-ft"><button class="btn fx-big" id="fx-skip">Ahora no</button><button class="btn btn-primary fx-big" id="fx-ok">✓ Registrar venta</button></div>`);
+  $i('fx-body').querySelectorAll('[data-fp]').forEach(b=>b.onclick=()=>{fpSel=b.dataset.fp;$i('fx-body').querySelectorAll('[data-fp]').forEach(x=>x.classList.toggle('sel',x===b));});
+  $i('fx-skip').onclick=()=>{close();toast('Venta pendiente — queda en el Dashboard como "OT entregada sin venta"','warn');setTimeout(()=>askWA(f),150);};
+  $i('fx-ok').onclick=()=>{close();crearVentaOT(f,fpSel);setTimeout(()=>askWA(f),150);};
+}
+function msgWA(o){
+  const t=CFG.nombre||'Resortes Puerto Montt';
+  return `Hola ${o.clienteNombre||''}, te confirmamos la entrega de tu vehículo ${o.patente?'('+o.patente+') ':''}✅\n\n📋 Orden: ${o.folio}\n💰 Total: ${fmt(+o.total||0)}\n\n¡Gracias por confiar en ${t}! Cualquier consulta, escríbenos. 🔧`;
+}
+function askWA(f){
+  const o=DB.ordenes.find(x=>x.folio===f);
+  const tel=(o&&(o.tel||(DB.clientes.find(c=>c.id===o.clienteId)||{}).tel))||'';
+  if(!o||!tel||typeof abrirModalWA!=='function'){ocupado=false;return next();}
+  open('💬 ¿Avisar al cliente?',`<div class="fx-bd" style="text-align:center">
+    <div style="font-size:44px;line-height:1">💬</div>
+    <div style="font-size:16px;font-weight:700;margin:8px 0 4px">¿Enviar WhatsApp a ${esc(o.clienteNombre||'el cliente')}?</div>
+    <div style="font-size:13px;color:var(--text2)">${esc(tel)} · podrás revisar el mensaje antes de enviarlo</div></div>
+    <div class="fx-ft" style="justify-content:center"><button class="btn fx-big" id="fx-wn">Omitir</button><button class="btn fx-big fx-wa" id="fx-wy">💬 Sí, avisar</button></div>`);
+  $i('fx-wn').onclick=()=>{close();setTimeout(next,150);};
+  $i('fx-wy').onclick=()=>{close();abrirModalWA(String(tel),msgWA(o));setTimeout(next,150);};
+}
+function encolar(f){if(!cola.includes(f))cola.push(f);if(!ocupado)setTimeout(next,350);}
+window.fxEntregaOT=encolar;
+
+/* ---------- detectar cambios a Entregado desde CUALQUIER camino ---------- */
+let snap={};
+function tomar(){snap={};(DB.ordenes||[]).forEach(o=>{snap[o.folio]=o.estado;});}
+tomar();
+const _orig=window.save;
+function _save(){tomar();return _orig.apply(this,arguments);}
+window.save=function(){
+  const nuevos=[];
+  (DB.ordenes||[]).forEach(o=>{if(isEnt(o.estado)&&!isEnt(snap[o.folio])&&snap[o.folio]!==undefined)nuevos.push(o.folio);});
+  // OT recién creada directamente como Entregado
+  (DB.ordenes||[]).forEach(o=>{if(snap[o.folio]===undefined&&isEnt(o.estado)&&Object.keys(snap).length)nuevos.push(o.folio);});
+  const r=_orig.apply(this,arguments);tomar();
+  nuevos.forEach(encolar);
+  return r;
+};
+if(typeof _aplicarUpdateFirebase==='function'){const _af=_aplicarUpdateFirebase;window._aplicarUpdateFirebase=function(){const r=_af.apply(this,arguments);tomar();return r;};}
+
+/* ventas manuales y "→ Registrar venta": marcar stock y descontar ítems libres que existen en inventario */
+function marcarNueva(antes){if((DB.ventas||[]).length>antes){const v=DB.ventas[0];if(v&&!v.stockDescontado){descontarStock(v,true);_save();}}}
+['guardarVenta','confirmarFpagoOT'].forEach(n=>{const f=window[n];if(typeof f!=='function')return;window[n]=function(){const a=(DB.ventas||[]).length;const r=f.apply(this,arguments);try{marcarNueva(a);}catch(e){console.warn('fx',e);}return r;};});
+
+/* ---------- Dashboard: alertas con arreglo en un clic ---------- */
+function pendientes(){
+  const sinVenta=(DB.ordenes||[]).filter(o=>isEnt(o.estado)&&!ventaDeOT(o.folio));
+  const sinStock=(DB.ventas||[]).filter(v=>!v.stockDescontado&&(v.creado||'')>=desde()&&itemsConStock(v)>0);
+  return {sinVenta,sinStock};
+}
+window.fxPendientes=pendientes;
+function dashCard(){
+  const sec=$i('sec-dashboard');if(!sec)return;
+  let el=$i('fx-dash');
+  const {sinVenta,sinStock}=pendientes();
+  if(!sinVenta.length&&!sinStock.length){if(el)el.remove();return;}
+  if(!el){el=document.createElement('div');el.id='fx-dash';el.className='card fx-card';el.style.marginBottom='14px';const a=$i('dash-alertas');(a||sec.firstElementChild).after(el);}
+  el.innerHTML=`<div class="card-title"><div class="card-title-left">🧾 Pendientes por registrar</div></div>
+   ${sinVenta.length?`<div style="display:flex;align-items:center;gap:8px;margin:2px 0 4px"><span class="fx-num">${sinVenta.length}</span><b style="font-size:13px">OT entregadas sin venta</b><span style="flex:1"></span><button class="btn btn-xs btn-primary" onclick="fxTodas()">⚡ Registrar todas (Transferencia)</button></div>
+    ${sinVenta.slice(0,6).map(o=>`<div class="fx-row"><span class="folio-tag">${esc(o.folio)}</span><div class="grow"><b>${esc(o.clienteNombre||'—')}</b> <span style="color:var(--text2)">${esc(o.patente||'')} · ${esc(o.estado)}${o.fechaEntregado?' · '+esc(o.fechaEntregado.split('-').reverse().join('/')):''}</span></div><b style="font-family:'JetBrains Mono',monospace">${esc(fmt(+o.total||0))}</b><button class="btn btn-xs btn-primary" onclick="fxEntregaOT('${esc(o.folio)}')">→ Crear venta</button></div>`).join('')}
+    ${sinVenta.length>6?`<div style="font-size:11px;color:var(--text2);padding-top:4px">…y ${sinVenta.length-6} más</div>`:''}`:''}
+   ${sinStock.length?`<div style="display:flex;align-items:center;gap:8px;margin:${sinVenta.length?'14px':'2px'} 0 4px"><span class="fx-num">${sinStock.length}</span><b style="font-size:13px">Ítems vendidos sin stock descontado</b><span style="flex:1"></span><button class="btn btn-xs btn-primary" onclick="fxStockTodas()">⚡ Descontar todo</button></div>
+    ${sinStock.slice(0,6).map(v=>`<div class="fx-row"><span class="folio-tag">${esc(v.folio)}</span><div class="grow"><b>${esc(v.clienteNombre||'—')}</b> <span style="color:var(--text2)">${(v.items||[]).filter(prodDe).map(i=>esc((+i.qty||0)+'× '+i.nombre)).join(', ')}</span></div><button class="btn btn-xs btn-primary" onclick="fxStock('${esc(v.folio)}')">📦 Descontar</button></div>`).join('')}`:''}`;
+}
+window.fxTodas=()=>{const {sinVenta}=pendientes();if(!sinVenta.length)return;if(!confirm('Se crearán '+sinVenta.length+' ventas con pago "Transferencia" (las "s/OC" quedan en Crédito) y se descontará el stock. ¿Continuar?'))return;
+  sinVenta.forEach(o=>crearVentaOT(o.folio,o.estado==='Entregado s/OC'?'Crédito':'Transferencia'));toast('✓ '+sinVenta.length+' ventas creadas y stock actualizado');};
+window.fxStock=f=>{const v=(DB.ventas||[]).find(x=>x.folio===f);if(!v||v.stockDescontado)return;descontarStock(v,false);_save();toast('📦 Stock descontado — '+esc(f));try{renderInventario();}catch(e){}try{renderDashboard();}catch(e){}};
+window.fxStockTodas=()=>{const {sinStock}=pendientes();sinStock.forEach(v=>descontarStock(v,false));_save();toast('📦 Stock descontado en '+sinStock.length+' venta(s)');try{renderInventario();}catch(e){}try{renderDashboard();}catch(e){}};
+const _rd=window.renderDashboard;window.renderDashboard=function(){const r=_rd.apply(this,arguments);try{dashCard();}catch(e){console.warn('fx dash',e);}return r;};
+
+/* ---------- Modo simple (solo rol Vendedor) ---------- */
+const SIMPLE_OK=['dashboard','agenda','clientes','vehiculos','lista-precios','cotizaciones','ordenes','ventas','inventario'];
+const vend=()=>sessionStorage.getItem('rpm_role')!=='admin';
+function aplicarSimple(){
+  const on=!!CFG.modoSimple&&vend();
+  document.body.classList.toggle('fx-simple-vend',on);
+  document.querySelectorAll('.sidebar .nav-item').forEach(b=>{
+    const m=(b.getAttribute('onclick')||'').match(/nav(?:ConRol)?\('([^']+)'/);if(!m)return;
+    if(on&&!SIMPLE_OK.includes(m[1]))b.dataset.fxHid='1',b.style.display='none';
+    else if(b.dataset.fxHid){delete b.dataset.fxHid;b.style.display=(typeof MODULES_BLOQUEADOS!=='undefined'&&MODULES_BLOQUEADOS.includes(m[1])&&vend())?'none':'';}
+  });
+  document.querySelectorAll('.sidebar .nav-group-label,.sidebar .nav-section').forEach(l=>{
+    if(!on){l.style.display='';return;}
+    let n=l.nextElementSibling,vis=false;while(n&&n.classList.contains('nav-item')){if(n.style.display!=='none')vis=true;n=n.nextElementSibling;}l.style.display=vis?'':'none';});
+}
+window.fxAplicarSimple=aplicarSimple;
+if(typeof aplicarRol==='function'){const _ar=aplicarRol;window.aplicarRol=function(){const r=_ar.apply(this,arguments);try{aplicarSimple();}catch(e){}return r;};}
+const _nv=window.nav;window.nav=function(id){if(CFG.modoSimple&&vend()&&id&&!SIMPLE_OK.includes(id)){toast('Modo simple: módulo oculto para Vendedor','warn');return;}return _nv.apply(this,arguments);};
+function cfgCard(){
+  const s=$i('sec-config');if(!s||$i('fx-cfg'))return;
+  s.insertAdjacentHTML('afterbegin',`<div class="card" id="fx-cfg" style="margin-bottom:14px"><div class="card-title"><div class="card-title-left">🧑‍🔧 Modo simple</div></div>
+   <label style="display:flex;gap:10px;align-items:center;font-size:13px;cursor:pointer"><input type="checkbox" id="fx-simple" ${CFG.modoSimple?'checked':''} style="width:18px;height:18px"> <b>Activar modo simple para el rol Vendedor</b></label>
+   <div style="font-size:11px;color:var(--text2);margin-top:6px">El Vendedor solo verá: Dashboard, Agenda, Clientes, Vehículos, Cotización Rápida, Cotizaciones, Órdenes, Ventas e Inventario (solo ver y ajustar stock con + / −). El Administrador sigue viendo todo.</div></div>`);
+  $i('fx-simple').onchange=e=>{CFG.modoSimple=e.target.checked;saveCfg(CFG);try{fbSave();}catch(x){}aplicarSimple();toast(CFG.modoSimple?'Modo simple activado para Vendedor':'Modo simple desactivado');};
+}
+const _nv2=window.nav;window.nav=function(id){const r=_nv2.apply(this,arguments);try{if(id==='config')cfgCard();}catch(e){}return r;};
+setTimeout(()=>{try{cfgCard();aplicarSimple();dashCard();}catch(e){console.warn('fx init',e);}},500);
+})();
+</script>
+
 </body>
 </html>
