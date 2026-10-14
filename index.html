@@ -14209,5 +14209,173 @@ setTimeout(()=>{try{cfgCard();aplicarSimple();dashCard();}catch(e){console.warn(
 })();
 </script>
 
+<!-- ══ TALLERSYS AYUDA + DUPLICADOS (aditivo) ══ -->
+<style>
+.hx-hint{font-size:10.5px;color:var(--text3);margin-top:3px;line-height:1.35}
+.hx-hint b{color:var(--text2)}
+.hx-live{font-size:11px;margin-top:3px;font-weight:600}
+.hx-live.warn{color:#d97706}.hx-live.err{color:#E6282D}.hx-live.ok{color:#16a34a}
+.hx-step{font-size:12.5px;background:linear-gradient(90deg,rgba(178,18,28,.10),transparent);border-left:4px solid #B2121C;border-radius:8px;padding:9px 12px;margin-bottom:10px;color:var(--text)}
+.hx-new{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+#hx-modal{position:fixed;inset:0;z-index:9600;background:rgba(8,8,8,.6);display:none;align-items:center;justify-content:center;padding:12px}
+#hx-modal.on{display:flex}
+#hx-modal .bx{background:var(--surface);color:var(--text);border-radius:16px;width:min(500px,100%);overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.45)}
+#hx-modal .hd{background:#121214;color:#fff;padding:15px 20px;border-bottom:4px solid #B2121C;font-weight:700;font-size:16px}
+#hx-modal .bd{padding:16px 20px;font-size:13px}
+#hx-modal .cand{border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-top:8px;background:var(--surface2)}
+#hx-modal .ft{display:flex;gap:8px;justify-content:flex-end;padding:0 20px 16px;flex-wrap:wrap}
+#hx-modal .ft .btn{padding:11px 16px;font-weight:700;border-radius:10px}
+</style>
+<div id="hx-modal"><div class="bx"><div class="hd" id="hx-hd"></div><div class="bd" id="hx-bd"></div><div class="ft" id="hx-ft"></div></div></div>
+<script>
+(function(){
+'use strict';
+const esc=window.tsxEsc;const $i=id=>document.getElementById(id);
+/* ---------- normalizadores ---------- */
+const normRut=r=>String(r||'').replace(/[^0-9kK]/g,'').toUpperCase();
+const normPat=p=>String(p||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+const STOP=new Set(['ltda','spa','sa','eirl','limitada','y','de','del','la','el','cia','sociedad','comercial']);
+const normNom=n=>String(n||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+const toks=n=>normNom(n).split(' ').filter(t=>t&&!STOP.has(t));
+function lev(a,b){const m=a.length,n=b.length;if(!m)return n;if(!n)return m;let p=Array.from({length:n+1},(_,j)=>j);for(let i=1;i<=m;i++){const c=[i];for(let j=1;j<=n;j++)c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1));p=c;}return p[n];}
+function sim(a,b){
+  const A=toks(a).join(' '),B=toks(b).join(' ');if(!A||!B)return 0;if(A===B)return 1;
+  const r=1-lev(A,B)/Math.max(A.length,B.length);
+  const ta=new Set(toks(a)),tb=new Set(toks(b));const inter=[...ta].filter(t=>tb.has(t)||[...tb].some(u=>u.length>3&&t.length>3&&lev(t,u)<=1)).length;
+  const jac=inter/Math.max(1,Math.min(ta.size,tb.size));
+  return Math.max(r,(Math.min(ta.size,tb.size)>=2?jac:0)*0.95);
+}
+window.hxNorm={normRut,normPat,normNom,sim};
+const rutDup=(r,exId)=>{const k=normRut(r);return k.length>=7?(DB.clientes||[]).find(c=>c.id!==exId&&normRut(c.rut)===k):null;};
+const nomDup=(n,exId)=>{let best=null,bs=0;(DB.clientes||[]).forEach(c=>{if(c.id===exId)return;const s=sim(n,c.nombre);if(s>bs){bs=s;best=c;}});return bs>=0.8?{c:best,s:bs,exact:toks(n).join(' ')===toks(best.nombre).join(' ')}:null;};
+const patDup=(p,exId)=>{const k=normPat(p);return k?(DB.vehiculos||[]).find(v=>v.id!==exId&&normPat(v.patente)===k):null;};
+const vehSimil=(cid,ma,mo,an)=>{if(!cid||!ma||!mo)return null;return (DB.vehiculos||[]).find(v=>v.clienteId===cid&&normNom(v.marca)===normNom(ma)&&normNom(v.modelo)===normNom(mo)&&String(v.anio||'')===String(an||''));};
+const cliTxt=c=>`<div class="cand"><b>${esc(c.nombre)}</b><div style="color:var(--text2);font-size:12px">${c.rut?'RUT '+esc(c.rut)+' · ':''}${c.tel?'📞 '+esc(c.tel)+' · ':''}${(DB.vehiculos||[]).filter(v=>v.clienteId===c.id).length} vehículo(s)</div></div>`;
+const vehTxt=v=>`<div class="cand"><b>🚗 ${esc(v.patente)}</b> ${esc([v.marca,v.modelo,v.anio].filter(Boolean).join(' '))}<div style="color:var(--text2);font-size:12px">Dueño: ${esc(v.clienteNombre||'Sin propietario')}</div></div>`;
+/* ---------- modal ---------- */
+function ask(t,html,btns){$i('hx-hd').textContent=t;$i('hx-bd').innerHTML=html;const ft=$i('hx-ft');ft.innerHTML='';
+  btns.forEach(([l,cls,fn])=>{const b=document.createElement('button');b.className='btn '+(cls||'');b.textContent=l;b.onclick=()=>{$i('hx-modal').classList.remove('on');fn&&fn();};ft.appendChild(b);});$i('hx-modal').classList.add('on');}
+window.hxClose=()=>$i('hx-modal').classList.remove('on');
+/* confirm automático para los diálogos originales cuando el usuario ya eligió "Crear igual" */
+function withConfirm(val,fn){const oc=window.confirm;window.confirm=()=>val;try{return fn();}finally{window.confirm=oc;}}
+
+/* ---------- CLIENTES ---------- */
+function usarCliCtx(c,ctx){
+  if(ctx==='form'){try{limpiarC();}catch(e){}try{verClienteRapido(c.id);}catch(e){}return;}
+  try{cerrarCliRapido();}catch(e){}
+  if(ctx==='ot'&&typeof acSelCliOT==='function')acSelCliOT(c.id);
+  else if(ctx==='cot'&&typeof acSelCliCot==='function')acSelCliCot(c.id);
+  else if(ctx==='v'&&typeof acSelectVCli==='function')acSelectVCli(c.id);
+  else {try{_asignarClienteExistenteCtx(c);}catch(e){}}
+  toast('✓ Usando cliente existente: '+esc(c.nombre));
+}
+function checkCli(nom,rut,ctx,orig,rutId){
+  if(!nom)return orig();
+  const d=rut&&rutDup(rut);
+  if(d){ask('⛔ Ese RUT ya está registrado',`El RUT <b>${esc(rut)}</b> ya pertenece a:${cliTxt(d)}<div style="margin-top:10px;color:var(--text2)">No se puede crear otro cliente con el mismo RUT.</div>`,
+    [['Corregir RUT','',()=>$i(rutId)?.focus()],['✓ Usar cliente existente','btn-primary',()=>usarCliCtx(d,ctx)]]);return;}
+  const n=nomDup(nom);
+  if(n){
+    const otroRut=rut&&n.c.rut&&normRut(rut)!==normRut(n.c.rut);
+    const puedeCrear=!n.exact||otroRut;
+    ask('🤔 ¿Es el mismo cliente?',`Ya existe un cliente con nombre ${n.exact?'igual':'muy parecido'}:${cliTxt(n.c)}${otroRut?'<div style="margin-top:8px;color:var(--text2)">Tiene un RUT distinto, puede ser otra persona.</div>':''}${puedeCrear?'':'<div style="margin-top:10px;color:#d97706;font-weight:600">Si es otra persona con el mismo nombre, escribe su RUT (distinto) para diferenciarlos.</div>'}`,
+      [[puedeCrear?'Crear igual':'Escribir RUT','',puedeCrear?()=>withConfirm(true,()=>{_bypass=true;try{orig();}finally{_bypass=false;}}):()=>$i(rutId)?.focus()],['✓ Usar existente','btn-primary',()=>usarCliCtx(n.c,ctx)]]);return;}
+  return orig();
+}
+let _bypass=false;
+const _gc=window.guardarCliente;
+window.guardarCliente=function(){if(_bypass)return _gc.apply(this,arguments);const a=arguments,t=this;return checkCli(($i('c-nom')?.value||'').trim(),($i('c-rut')?.value||'').trim(),'form',()=>_gc.apply(t,a),'c-rut');};
+const _gq=window.guardarCliRapido;
+window.guardarCliRapido=function(){if(_bypass)return _gq.apply(this,arguments);const a=arguments,t=this;let ctx='ot';try{ctx=_qCliCtx||'ot';}catch(e){}
+  return checkCli(($i('qcli-nom')?.value||'').trim(),($i('qcli-rut')?.value||'').trim(),ctx,()=>_gq.apply(t,a),'qcli-rut');};
+
+/* ---------- VEHÍCULOS ---------- */
+function usarVehCtx(v,ctx){
+  if(ctx==='form'){try{limpiarVH();}catch(e){}const s=$i('svh');if(s){s.value=v.patente;try{renderVehiculos();}catch(e){}}toast('Vehículo '+esc(v.patente)+' ya registrado — mostrado en la lista');return;}
+  if(String(ctx||'').startsWith('vhr:')){try{cerrarVHRapido();}catch(e){}ctx=ctx.slice(4);try{_qCliCtxAfterVH=null;}catch(e){}}
+  else{try{cerrarVehRapido();}catch(e){}}
+  if((ctx==='ot'||ctx==='cot')&&typeof acSelVeh==='function'){try{acSelVeh(ctx,v.id);}catch(e){}}
+  toast('✓ Usando vehículo existente '+esc(v.patente));
+}
+function checkVeh(pat,cid,ma,mo,an,ctx,orig,patId){
+  if(!pat)return orig();
+  const d=patDup(pat);
+  if(d){ask('⛔ Esa patente ya existe',`La patente <b>${esc(normPat(pat))}</b> ya está registrada:${vehTxt(d)}`,
+    [['Corregir patente','',()=>$i(patId)?.focus()],['✓ Usar existente','btn-primary',()=>usarVehCtx(d,ctx)]]);return;}
+  const s=vehSimil(cid,ma,mo,an);
+  if(s){ask('🤔 ¿Es el mismo vehículo?',`Este cliente ya tiene un vehículo igual (marca, modelo y año) con otra patente:${vehTxt(s)}<div style="margin-top:8px;color:var(--text2)">Si es otro vehículo de la flota, créalo igual.</div>`,
+    [['Crear igual','',()=>orig()],['✓ Usar existente','btn-primary',()=>usarVehCtx(s,ctx)]]);return;}
+  return orig();
+}
+const _gv=window.guardarVehiculo;
+window.guardarVehiculo=function(){const a=arguments,t=this;const p=$i('vh-pat');if(p)p.value=normPat(p.value);
+  return checkVeh(p?.value,$i('vh-cli-id')?.value,$i('vh-marca')?.value,$i('vh-mod')?.value,$i('vh-anio')?.value,'form',()=>_gv.apply(t,a),'vh-pat');};
+const _gvr=window.guardarVehRapido;
+window.guardarVehRapido=function(){const a=arguments,t=this;const p=$i('qveh-pat');if(p)p.value=normPat(p.value);let ctx=null;try{ctx=_vehRapidoCtx;}catch(e){}
+  return checkVeh(p?.value,$i('qveh-cli')?.value,$i('qveh-marca')?.value,$i('qveh-modelo')?.value,$i('qveh-anio')?.value,ctx,()=>_gvr.apply(t,a),'qveh-pat');};
+
+const _gvh=window.guardarVHRapido;
+if(typeof _gvh==='function')window.guardarVHRapido=function(){const a=arguments,t=this;const p=$i('vhr-pat');if(p)p.value=normPat(p.value);let ctx=null;try{ctx=_qCliCtxAfterVH;}catch(e){}
+  return checkVeh(p?.value,$i('vh-rapido-cli-id')?.value,$i('vhr-marca')?.value,$i('vhr-mod')?.value,$i('vhr-anio')?.value,'vhr:'+(ctx||''),()=>_gvh.apply(t,a),'vhr-pat');};
+/* ---------- ayudas en campos + aviso en vivo ---------- */
+const HINTS={
+ 'c-nom':'Nombre y apellido, o razón social. Ej: <b>Juan Pérez</b> / <b>Transportes Sur Ltda</b>',
+ 'c-rut':'Ej: <b>12.345.678-9</b> · sin puntos ni guión también vale',
+ 'c-tel':'Ej: <b>+56 9 1234 5678</b> — se usa para avisar por WhatsApp',
+ 'vh-pat':'Patente: <b>ABCD12</b> · sin guiones ni espacios (se corrige solo)',
+ 'vh-marca':'Ej: <b>Mercedes-Benz</b>, Volvo, Toyota',
+ 'vh-anio':'Año del vehículo, Ej: <b>2019</b>',
+ 'qcli-nom':'Nombre y apellido, o razón social',
+ 'qcli-rut':'Ej: <b>12.345.678-9</b> · sin puntos ni guión también vale',
+ 'qcli-tel':'Ej: <b>+56 9 1234 5678</b>',
+ 'qveh-pat':'Patente: <b>ABCD12</b> · sin guiones ni espacios',
+ 'qveh-anio':'Ej: <b>2019</b>',
+ 'vhr-pat':'Patente: <b>ABCD12</b> · sin guiones ni espacios',
+ 'vhr-anio':'Ej: <b>2019</b>',
+ 'ot-cli-txt':'Escribe nombre o RUT. Si no aparece, pulsa <b>➕ Nuevo cliente</b>',
+ 'cot-cli-txt':'Escribe nombre o RUT. Si no aparece, pulsa <b>➕ Nuevo cliente</b>',
+ 'ot-veh-txt':'Escribe la patente (Ej: ABCD12). Si no aparece, pulsa <b>➕ Nuevo vehículo</b>',
+ 'cot-veh-txt':'Escribe la patente (Ej: ABCD12). Si no aparece, pulsa <b>➕ Nuevo vehículo</b>'};
+const LIVE={'vhr-pat':'pat','c-rut':'rut','qcli-rut':'rut','vh-pat':'pat','qveh-pat':'pat','c-nom':'nom','qcli-nom':'nom'};
+function hintFor(id){
+  const el=$i(id);if(!el||el.dataset.hx)return;el.dataset.hx='1';
+  const host=el.closest('.field')||el.parentElement;
+  host.insertAdjacentHTML('beforeend',`<div class="hx-hint">${HINTS[id]}</div>`+(LIVE[id]?`<div class="hx-live" id="hxl-${id}"></div>`:''));
+  if(LIVE[id])el.addEventListener('input',()=>live(id));
+}
+function live(id){
+  const el=$i(id),o=$i('hxl-'+id);if(!el||!o)return;const v=el.value.trim();let h='',c='';
+  if(LIVE[id]==='rut'&&normRut(v).length>=7){const d=rutDup(v);if(d){h='⛔ RUT ya registrado: '+esc(d.nombre);c='err';}else{h='✓ RUT nuevo';c='ok';}}
+  if(LIVE[id]==='pat'&&normPat(v).length>=5){const d=patDup(v);if(d){h='⛔ Patente ya registrada ('+esc(d.clienteNombre||'')+')';c='err';}else{h='✓ Patente nueva';c='ok';}}
+  if(LIVE[id]==='nom'&&v.length>=4){const n=nomDup(v);if(n){h='⚠ Parecido a: '+esc(n.c.nombre);c='warn';}}
+  o.className='hx-live '+c;o.innerHTML=h;
+}
+function newBtns(ctx){
+  [['cli','➕ Nuevo cliente',()=>abrirCliRapido(ctx)],['veh','➕ Nuevo vehículo',()=>abrirVehRapido(ctx)]].forEach(([k,l,fn])=>{
+    const inp=$i(ctx+'-'+k+'-txt');if(!inp||$i('hxb-'+ctx+'-'+k))return;
+    const host=inp.closest('.field')||inp.parentElement;const w=document.createElement('div');w.className='hx-new';
+    const b=document.createElement('button');b.type='button';b.className='btn btn-xs btn-primary';b.id='hxb-'+ctx+'-'+k;b.textContent=l;b.onclick=fn;w.appendChild(b);host.appendChild(w);});
+}
+const TIPS={ot:['<b>Paso 1:</b> busca el cliente por nombre o RUT; si no existe, pulsa <b>➕ Nuevo cliente</b>. Luego la patente; si no existe, <b>➕ Nuevo vehículo</b>.',
+  '<b>Paso 2:</b> marca dónde se trabaja (ejes / lados). Si no aplica, pulsa <b>Siguiente →</b>.',
+  '<b>Paso 3:</b> agrega repuestos y mano de obra. Escribe el nombre, elige de la lista y pulsa Enter.',
+  '<b>Paso 4:</b> mecánico, fecha estimada y notas. El estado parte en <b>Recibido</b>.',
+  '<b>Paso 5:</b> revisa todo y pulsa <b>✓ Guardar</b>.'],
+ cot:['<b>Paso 1:</b> busca el cliente por nombre o RUT; si no existe, pulsa <b>➕ Nuevo cliente</b>. El vehículo es opcional.',
+  '<b>Paso 2:</b> marca ejes / lados a cotizar. Si no aplica, pulsa <b>Siguiente →</b>.',
+  '<b>Paso 3:</b> agrega los ítems. El cliente solo verá cantidades y el total.',
+  '<b>Paso 4:</b> validez y condiciones (se completan solas desde Configuración).',
+  '<b>Paso 5:</b> revisa y pulsa <b>✓ Guardar</b>. Después puedes enviarla por WhatsApp.']};
+function stepTips(ctx){
+  const w=$i('wz-'+ctx);if(!w)return;const f=w.closest('.card');if(!f)return;
+  f.querySelectorAll('.wz-pane').forEach(p=>{const i=+p.dataset.i;if(p.querySelector(':scope>.hx-step'))return;p.insertAdjacentHTML('afterbegin',`<div class="hx-step">${TIPS[ctx][i]||''}</div>`);});
+}
+function run(){Object.keys(HINTS).forEach(hintFor);['ot','cot'].forEach(c=>{newBtns(c);stepTips(c);});}
+const _nav=window.nav;window.nav=function(){const r=_nav.apply(this,arguments);setTimeout(run,450);return r;};
+['abrirCliRapido','abrirVehRapido'].forEach(n=>{const f=window[n];if(typeof f==='function')window[n]=function(){const r=f.apply(this,arguments);run();Object.keys(LIVE).forEach(id=>$i('hxl-'+id)&&live(id));return r;};});
+setTimeout(run,700);
+})();
+</script>
+
 </body>
 </html>
