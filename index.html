@@ -14377,5 +14377,115 @@ setTimeout(run,700);
 })();
 </script>
 
+<!-- ══ TALLERSYS KANBAN CUENTAS POR COBRAR (aditivo) ══ -->
+<style>
+.kc-kanban{display:grid;grid-template-columns:repeat(4,minmax(220px,1fr));gap:10px;overflow-x:auto;padding-bottom:6px;margin-bottom:14px}
+.kc-col{background:var(--surface2);border-radius:10px;padding:8px;min-height:240px;transition:background .15s,outline .15s;outline:2px dashed transparent}
+.kc-col.over{outline-color:#E6282D;background:var(--surface)}
+.kc-col h4{margin:2px 4px 4px;font-size:12px;display:flex;justify-content:space-between;text-transform:uppercase;letter-spacing:.04em}
+.kc-col h4 b{background:var(--surface);border-radius:999px;padding:0 8px;color:var(--text)}
+.kc-col .tot{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2);margin:0 4px 8px}
+.kc-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--kcc,#E6282D);border-radius:8px;padding:8px 10px;margin-bottom:7px;cursor:grab;font-size:12px;transition:transform .15s,box-shadow .15s;touch-action:none;user-select:none}
+.kc-card:hover{transform:translateY(-2px);box-shadow:0 6px 14px rgba(0,0,0,.1)}
+.kc-card.drag{opacity:.5}
+.kc-card .amt{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px}
+.kc-card .m{color:var(--text2);font-size:11px;margin-top:2px}
+.kc-chip{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:99px;margin-right:4px}
+.kc-ghost{position:fixed;pointer-events:none;z-index:99999;opacity:.85;transform:rotate(2deg);width:220px}
+.kc-hint{font-size:11px;color:var(--text2);margin:-6px 0 12px}
+@media(max-width:900px){.kc-kanban{grid-template-columns:repeat(4,minmax(78vw,1fr))}}
+</style>
+<script>
+(function(){
+'use strict';
+const esc=window.tsxEsc;const $i=id=>document.getElementById(id);
+const COLS=[['Pendiente','Al día / pendiente','#787E86'],['Pagado parcial','Pago parcial','#d97706'],['Vencido','Vencido','#E6282D'],['Pagado','Pagado','#16a34a']];
+let on=localStorage.getItem('tsx_kcred')==='1';
+const fF=d=>d?String(d).slice(0,10).split('-').reverse().join('/'):'—';
+const age=c=>Math.max(0,Math.round((new Date(today()+'T12:00:00')-new Date(String(c.fecha||c.creado||today()).slice(0,10)+'T12:00:00'))/864e5));
+const agingCol=a=>a<=30?['0-30','#787E86']:a<=60?['31-60','#d97706']:a<=90?['61-90','#E6282D']:['+90','#B2121C'];
+const addD=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);};
+function est(c){try{return estadoCredito(c);}catch(e){return c.estado||'Pendiente';}}
+function ensure(){
+  const sec=$i('sec-creditos');if(!sec||$i('kc-kanban'))return;
+  const listCard=$i('lista-creditos')?.closest('div[style*="border-radius:var(--radius-lg)"]');if(listCard)listCard.id='kc-listcard';
+  const b=document.createElement('button');b.id='kc-toggle';b.className='btn btn-xs btn-primary';b.style.marginRight='8px';
+  b.onclick=()=>{on=!on;localStorage.setItem('tsx_kcred',on?'1':'0');try{renderCreditos();}catch(e){paint();}};
+  const bar=document.createElement('div');bar.style.cssText='display:flex;justify-content:flex-end;margin-bottom:10px';bar.appendChild(b);
+  const sb=sec.querySelector('.sbar');(sb||sec.firstElementChild).after(bar);
+  const k=document.createElement('div');k.id='kc-kanban';k.className='kc-kanban';bar.after(k);
+  const h=document.createElement('div');h.id='kc-hint';h.className='kc-hint';h.innerHTML='Arrastra una tarjeta: <b>→ Pagado</b> salda la deuda · <b>→ Pago parcial</b> registra un abono · <b>→ Al día</b> reprograma el vencimiento · <b>Pagado → otra columna</b> reabre un pago marcado a mano. Doble clic = abono.';k.after(h);
+}
+function paint(){
+  ensure();const k=$i('kc-kanban'),b=$i('kc-toggle');if(!k)return;
+  const listCard=$i('kc-listcard');
+  b.textContent=on?'☰ Vista lista':'▦ Vista Kanban';
+  k.style.display=on?'grid':'none';$i('kc-hint').style.display=on?'':'none';
+  if(listCard)listCard.style.display=on?'none':'';const cp=$i('cheques-panel');if(cp&&on)cp.style.display='none';
+  // the original renderCreditos re-shows cheques panel; when list view active, nothing to restore beyond re-render
+  if(!on)return;
+  const q=($i('scr')?.value||'').toLowerCase();const mesAtras=addD(-60);
+  const all=(DB.creditos||[]).filter(c=>!q||[c.clienteNombre,c.desc,c.chequeNum,c.chequeBanco,c.ventaFolio].join(' ').toLowerCase().includes(q));
+  k.innerHTML=COLS.map(([s,l,col])=>{
+    let its=all.filter(c=>est(c)===s);
+    if(s==='Pagado'&&!q)its=its.filter(c=>{const ab=(c.abonos||[]).slice(-1)[0];return String((ab&&ab.fecha)||c.fecha||'')>=mesAtras;});
+    its.sort((a,b)=>s==='Pagado'?String(b.fecha).localeCompare(a.fecha):age(b)-age(a));
+    const tot=its.reduce((x,c)=>x+(s==='Pagado'?(+c.monto||0):(+c.saldo||0)),0);
+    return `<div class="kc-col" data-est="${esc(s)}"><h4 style="color:${col}">${esc(l)} <b>${its.length}</b></h4><div class="tot">${s==='Pagado'?'Cobrado':'Por cobrar'}: ${esc(fmt(tot))}${s==='Pagado'&&!q?' · últimos 60 días':''}</div>${its.map(c=>{
+      const a=age(c),[ag,agc]=agingCol(a);const ch=c.tipo==='Cheque';const pag=(+c.monto||0)-(+c.saldo||0);
+      return `<div class="kc-card" draggable="true" data-id="${esc(c.id)}" style="--kcc:${col}">
+        <div style="display:flex;justify-content:space-between;gap:6px"><b style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.clienteNombre||'—')}</b><span class="amt" style="color:${s==='Pagado'?'#16a34a':'var(--text)'}">${esc(fmt(s==='Pagado'?+c.monto||0:+c.saldo||0))}</span></div>
+        <div class="m">${esc((c.desc||'').slice(0,60))}</div>
+        <div class="m">${c.vcto?(s!=='Pagado'&&c.vcto<today()?'⚠️ ':'📅 ')+'Vence '+esc(fF(c.vcto)):'Sin vencimiento'}${pag>0&&s!=='Pagado'?' · abonado '+esc(fmt(pag)):''}</div>
+        ${ch?`<div class="m">🏦 Cheque N°${esc(c.chequeNum||'?')} · ${esc(c.chequeBanco||'—')} · cobro ${esc(fF(c.chequeFecha))}${c.chequeEstado?` · <b style="color:${c.chequeEstado==='Rechazado'?'#E6282D':c.chequeEstado==='Cobrado'?'#16a34a':'inherit'}">${esc(c.chequeEstado)}</b>`:''}</div>`:''}
+        <div style="margin-top:5px">${s!=='Pagado'?`<span class="kc-chip" style="background:${agc}22;color:${agc}">${ag} días · ${a}d</span>`:''}${c.ventaFolio?`<span class="kc-chip" style="background:var(--surface2);color:var(--text2)">${esc(c.ventaFolio)}</span>`:''}</div></div>`;}).join('')||'<div class="m" style="text-align:center;padding:24px 0;opacity:.6">Arrastra aquí</div>'}</div>`;}).join('');
+}
+window.kcRender=paint;
+/* ---------- mover ---------- */
+function mover(id,dest){
+  const c=(DB.creditos||[]).find(x=>String(x.id)===String(id));if(!c)return;const src=est(c);if(src===dest)return;
+  if(src==='Pagado'){
+    const ab=(c.abonos||[]).slice(-1)[0];
+    if(c.tipo==='Cheque'&&c.chequeEstado==='Cobrado'){if(!confirm('¿Reabrir el cheque N°'+(c.chequeNum||'?')+' como pendiente de cobro?'))return;c.chequeEstado='Pendiente';c.saldo=+c.monto||0;}
+    else if(ab&&/manualmente|kanban/i.test(ab.obs||'')){if(!confirm('¿Reabrir la cuenta de '+c.clienteNombre+'? Se anula el último pago de '+fmt(ab.monto)+'.'))return;c.abonos.pop();c.saldo=Math.min(+c.monto||0,(+c.saldo||0)+(+ab.monto||0));}
+    else{toast('Este pago tiene abonos registrados; para corregir usa la vista lista','warn');return;}
+    c.estado=est(c);save();after();toast('↩ Cuenta reabierta — '+esc(c.clienteNombre));return;
+  }
+  if(dest==='Pagado'){
+    if(c.tipo==='Cheque'){if(!confirm('¿Marcar el cheque N°'+(c.chequeNum||'?')+' como COBRADO?'))return;marcarCheque(c.id,'Cobrado');after();return;}
+    if(!confirm('¿Marcar como PAGADA la cuenta de '+c.clienteNombre+' ('+fmt(c.saldo)+' de saldo)?'))return;
+    c.abonos=c.abonos||[];if(c.saldo>0)c.abonos.push({monto:c.saldo,fecha:today(),obs:'Marcado como pagado desde Kanban',creado:new Date().toISOString()});
+    c.saldo=0;c.estado='Pagado';save();after();toast('✅ '+esc(c.clienteNombre)+' — cuenta pagada');return;
+  }
+  if(dest==='Pagado parcial'){abrirAbono(c.id);return;}
+  if(dest==='Pendiente'){
+    if((+c.saldo||0)<(+c.monto||0)){toast('Tiene abonos: queda en "Pago parcial". Puedes cambiar el vencimiento igual.','warn');}
+    const nv=prompt('Nueva fecha de vencimiento (AAAA-MM-DD) para '+c.clienteNombre+':',c.vcto&&c.vcto>=today()?c.vcto:addD(30));
+    if(!nv)return;if(!/^\d{4}-\d{2}-\d{2}$/.test(nv)||nv<today()){toast('Fecha inválida — debe ser hoy o posterior','err');return;}
+    (c.reprogramaciones=c.reprogramaciones||[]).push({de:c.vcto||'',a:nv,fecha:today()});c.vcto=nv;c.estado=est(c);save();after();toast('📅 Vencimiento reprogramado al '+esc(fF(nv)));return;
+  }
+  if(dest==='Vencido'){toast('"Vencido" se calcula solo según la fecha de vencimiento','warn');return;}
+}
+function after(){try{renderCreditos();}catch(e){}try{updateBadges();}catch(e){}try{renderDashboard();}catch(e){}paint();}
+window.kcMover=mover;
+/* abono modal: refrescar kanban al confirmar */
+const _ca=window.confirmarAbono;if(_ca)window.confirmarAbono=function(){const r=_ca.apply(this,arguments);try{paint();}catch(e){}return r;};
+/* DnD */
+document.addEventListener('dragstart',e=>{const c=e.target.closest&&e.target.closest('.kc-card');if(!c)return;e.dataTransfer.setData('text/kc',c.dataset.id);c.classList.add('drag');});
+document.addEventListener('dragend',e=>{const c=e.target.closest&&e.target.closest('.kc-card');if(c)c.classList.remove('drag');document.querySelectorAll('.kc-col.over').forEach(x=>x.classList.remove('over'));});
+document.addEventListener('dragover',e=>{const col=e.target.closest&&e.target.closest('.kc-col');if(!col)return;e.preventDefault();document.querySelectorAll('.kc-col.over').forEach(x=>x!==col&&x.classList.remove('over'));col.classList.add('over');});
+document.addEventListener('drop',e=>{const col=e.target.closest&&e.target.closest('.kc-col');if(!col)return;e.preventDefault();col.classList.remove('over');const id=e.dataTransfer.getData('text/kc');if(id)mover(id,col.dataset.est);});
+document.addEventListener('dblclick',e=>{const c=e.target.closest&&e.target.closest('.kc-card');if(c){const cr=DB.creditos.find(x=>String(x.id)===c.dataset.id);if(cr&&est(cr)!=='Pagado')abrirAbono(cr.id);}});
+let tg=null,tc=null,tm=false;
+document.addEventListener('touchstart',e=>{const c=e.target.closest&&e.target.closest('.kc-card');if(!c)return;tc=c;tm=false;},{passive:true});
+document.addEventListener('touchmove',e=>{if(!tc)return;e.preventDefault();const t=e.touches[0];if(!tg){tg=tc.cloneNode(true);tg.classList.add('kc-ghost');document.body.appendChild(tg);tc.classList.add('drag');}
+  tm=true;tg.style.left=(t.clientX-110)+'px';tg.style.top=(t.clientY-20)+'px';document.querySelectorAll('.kc-col.over').forEach(x=>x.classList.remove('over'));const col=document.elementFromPoint(t.clientX,t.clientY)?.closest('.kc-col');if(col)col.classList.add('over');},{passive:false});
+document.addEventListener('touchend',e=>{if(!tc)return;const t=e.changedTouches[0];if(tm){const col=document.elementFromPoint(t.clientX,t.clientY)?.closest('.kc-col');if(col)mover(tc.dataset.id,col.dataset.est);}
+  tg&&tg.remove();tc.classList.remove('drag');document.querySelectorAll('.kc-col.over').forEach(x=>x.classList.remove('over'));tg=null;tc=null;});
+const _rc=window.renderCreditos;window.renderCreditos=function(){const r=_rc.apply(this,arguments);try{paint();}catch(e){console.warn('kc',e);}return r;};
+setTimeout(()=>{try{if($i('sec-creditos')?.classList.contains('active'))paint();else ensure(),paint();}catch(e){}},600);
+})();
+</script>
+
 </body>
 </html>
