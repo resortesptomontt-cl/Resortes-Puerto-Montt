@@ -13467,7 +13467,7 @@ function ensureKanbanDom(){
 function moveOT(folio,estado){
   const o=(D().ordenes||[]).find(x=>x.folio===folio);if(!o||o.estado===estado)return;
   const prev=o.estado;o.estado=estado;
-  if(estado==='Entregado'&&!o.fechaEntrega)o.fechaEntrega=today();
+  if(/^Entregado/.test(estado)&&!o.fechaEntregado)o.fechaEntregado=today();
   save();
   try{renderOTs();}catch(e){} try{if(typeof updateBadges==='function')updateBadges();}catch(e){}
   toast(`OT ${esc(folio)}: ${esc(prev)} → <strong>${esc(estado)}</strong>`,'ok');
@@ -13480,7 +13480,7 @@ function renderKanban(){
   if(!kanbanOn)return;
   const q=(document.getElementById('s-ot')?.value||'').toLowerCase(),hoy=today();
   const ots=(D().ordenes||[]).filter(o=>{
-    if(o.estado==='Entregado'&&(o.fechaEntrega||o.fechaIn||'').slice(0,7)!==hoy.slice(0,7)&&!q)return false;
+    if(o.estado==='Entregado'&&(o.fechaEntregado||o.fechaIn||'').slice(0,7)!==hoy.slice(0,7)&&!q)return false;
     return !q||[o.folio,o.clienteNombre,o.patente,o.mecanico,o.marca,o.modelo].join(' ').toLowerCase().includes(q);});
   k.innerHTML=COLS.map(([s,c])=>{const its=ots.filter(o=>(o.estado||'Recibido')===s);
     return `<div class="tsx-col" data-est="${esc(s)}"><h4 style="color:${c}">${esc(s)} <b>${its.length}</b></h4>${its.map(o=>{
@@ -13545,6 +13545,333 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLower
 
 /* initial */
 setTimeout(()=>{try{ensureKanbanDom();renderKanban();if(document.getElementById('sec-dashboard')?.classList.contains('active')){enhanceStats();drawCharts();}}catch(e){console.warn('tsx init',e);}},300);
+})();
+</script>
+<!-- ══ TALLERSYS PRO+ LOTE 2 (aditivo) ══════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<style>
+.tsx2-modal{position:fixed;inset:0;z-index:8000;background:rgba(8,8,8,.55);display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:4vh 10px}
+.tsx2-modal.on{display:flex;animation:tsxFade .15s}
+.tsx2-box{background:var(--surface);color:var(--text);border-radius:14px;width:min(760px,100%);box-shadow:0 20px 60px rgba(0,0,0,.4);overflow:hidden;animation:tsxIn .2s}
+.tsx2-hd{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:#121214;color:#fff;border-bottom:3px solid #B2121C}
+.tsx2-hd b{font-size:15px}.tsx2-hd button{background:transparent;border:0;color:#fff;font-size:20px;cursor:pointer}
+.tsx2-bd{padding:16px 18px}
+.tsx2-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px 12px}
+.tsx2-grid label{display:flex;gap:6px;align-items:center;font-size:12px;cursor:pointer}
+.tsx2-sig{border:2px dashed var(--border2);border-radius:10px;background:#fff;touch-action:none;width:100%;height:160px;display:block;cursor:crosshair}
+.tsx2-sigimg{max-height:90px;border:1px solid var(--border);border-radius:8px;background:#fff}
+.tsx2-h{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin:14px 0 6px}
+.tsx2-fotos{display:flex;gap:6px;flex-wrap:wrap}.tsx2-fotos img{width:78px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border)}
+.tsx2-tl{position:relative;margin-left:10px;padding-left:18px;border-left:2px solid var(--border)}
+.tsx2-tl .ev{position:relative;margin-bottom:12px;animation:tsxIn .3s both}
+.tsx2-tl .ev::before{content:"";position:absolute;left:-25px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--evc,#B2121C);box-shadow:0 0 0 3px var(--surface)}
+.tsx2-tl .ev .d{font-size:11px;color:var(--text2)}.tsx2-tl .ev .t{font-weight:600;font-size:13px}.tsx2-tl .ev .x{font-size:12px;color:var(--text2)}
+.tsx2-bar{height:8px;border-radius:99px;background:var(--surface2);overflow:hidden}.tsx2-bar>i{display:block;height:100%;border-radius:99px;transition:width .8s cubic-bezier(.2,.7,.2,1)}
+.tsx2-aging{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.tsx2-ag{border-radius:10px;padding:10px 12px;border:1px solid var(--border);cursor:pointer;transition:transform .15s}.tsx2-ag:hover{transform:translateY(-2px)}
+.tsx2-ag .v{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:16px}.tsx2-ag .l{font-size:11px;color:var(--text2)}
+.tsx2-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.tsx2-cal .dh{font-size:10px;font-weight:700;text-align:center;color:var(--text2);text-transform:uppercase}
+.tsx2-day{min-height:86px;border:1px solid var(--border);border-radius:8px;padding:4px;background:var(--surface);font-size:11px;transition:background .15s}
+.tsx2-day.out{opacity:.45}.tsx2-day.today{border-color:#E6282D;box-shadow:inset 0 0 0 1px #E6282D}
+.tsx2-day.over{background:var(--accent2-light);outline:2px dashed #E6282D}
+.tsx2-day .n{font-weight:700;font-size:11px;margin-bottom:2px}
+.tsx2-ev{border-radius:5px;padding:2px 5px;margin-bottom:2px;font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:grab;color:#fff;touch-action:none}
+.tsx2-ev.res{background:#1E1F24}.tsx2-ev.chq{background:#B2121C;cursor:default}.tsx2-ev.rea{background:#d97706;cursor:default}.tsx2-ev.rec{background:#787E86;cursor:default}
+.tsx2-inv td{padding:6px 8px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:middle}
+.tsx2-inv input{width:90px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px}
+.tsx2-inv .pm{width:26px;height:26px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);cursor:pointer;font-weight:700}
+.tsx2-inv .pm:hover{background:#B2121C;color:#fff}
+.tsx2-flash{animation:tsx2fl .8s}@keyframes tsx2fl{from{background:rgba(22,163,74,.25)}}
+.tsx2-delta{font-size:10px;font-weight:700;margin-left:6px;padding:1px 6px;border-radius:99px;vertical-align:middle}
+.tsx2-delta.up{background:rgba(22,163,74,.14);color:#16a34a}.tsx2-delta.dn{background:rgba(230,40,45,.13);color:#E6282D}
+@media(max-width:700px){.tsx2-aging{grid-template-columns:1fr 1fr}.tsx2-day{min-height:60px}}
+</style>
+<div class="tsx2-modal" id="tsx2-modal"><div class="tsx2-box"><div class="tsx2-hd"><b id="tsx2-mt"></b><button onclick="tsx2Close()">×</button></div><div class="tsx2-bd" id="tsx2-mb"></div></div></div>
+<script>
+(function(){
+'use strict';
+const esc=window.tsxEsc;
+const D=()=>(typeof DB!=='undefined'?DB:{});
+const money=n=>fmt(+n||0);
+const hoy=()=>today();
+const fF=d=>d?String(d).slice(0,10).split('-').reverse().join('/'):'—';
+const dd=(a,b)=>Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/86400000);
+const addD=(d,n)=>{const x=new Date(d+'T12:00:00');x.setDate(x.getDate()+n);return x.toISOString().slice(0,10);};
+function wrap(name,after){const f=window[name];if(typeof f!=='function')return;window[name]=function(){const r=f.apply(this,arguments);try{after.apply(this,arguments);}catch(e){console.warn('tsx2 '+name,e);}return r;};}
+const M=document.getElementById('tsx2-modal');
+function openM(t,html){document.getElementById('tsx2-mt').textContent=t;document.getElementById('tsx2-mb').innerHTML=html;M.classList.add('on');}
+window.tsx2Close=()=>M.classList.remove('on');
+M.addEventListener('click',e=>{if(e.target===M)tsx2Close();});
+function card(id,title,html,extra=''){return `<div class="card" id="${id}" style="margin-bottom:14px"><div class="card-title"><div class="card-title-left">${title}</div>${extra}</div>${html}</div>`;}
+function inject(secId,id,html,where='afterbegin'){if(document.getElementById(id))return document.getElementById(id);const s=document.getElementById(secId);if(!s)return null;s.insertAdjacentHTML(where,html);return document.getElementById(id);}
+
+/* ========== 0. FIX navTitles ventas ========== */
+try{if(typeof navTitles!=='undefined'&&!navTitles.ventas)navTitles.ventas=['Ventas','Ventas directas e historial'];}catch(e){}
+
+/* ========== A1. ÓRDENES: recepción/entrega + firmas ========== */
+const CHECK=['Rayones / abolladuras','Parabrisas trizado','Luces OK','Espejos OK','Neumáticos OK','Fugas de aceite/aire','Gata','Llave de ruedas','Extintor','Triángulos','Radio / accesorios','Documentos en cabina','Carga en el vehículo','Barro excesivo (lavado)'];
+let sigCtx={};
+function sigPad(id){
+  const c=document.getElementById(id);if(!c)return;const r=c.getBoundingClientRect(),dpr=window.devicePixelRatio||1;
+  c.width=r.width*dpr;c.height=r.height*dpr;const x=c.getContext('2d');x.scale(dpr,dpr);x.lineWidth=2.2;x.lineCap='round';x.strokeStyle='#121214';
+  let dn=false,used=false;const P=e=>{const b=c.getBoundingClientRect();return[e.clientX-b.left,e.clientY-b.top];};
+  c.onpointerdown=e=>{dn=true;used=true;c.setPointerCapture(e.pointerId);const[a,b]=P(e);x.beginPath();x.moveTo(a,b);};
+  c.onpointermove=e=>{if(!dn)return;const[a,b]=P(e);x.lineTo(a,b);x.stroke();};
+  c.onpointerup=c.onpointercancel=()=>{dn=false;};
+  sigCtx[id]={c,used:()=>used,clear:()=>{x.clearRect(0,0,c.width,c.height);used=false;}};
+}
+window.tsx2SigClear=id=>sigCtx[id]&&sigCtx[id].clear();
+function sigData(id){const s=sigCtx[id];if(!s||!s.used())return null;
+  const t=document.createElement('canvas');t.width=420;t.height=Math.round(420*s.c.height/s.c.width);const x=t.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,t.width,t.height);x.drawImage(s.c,0,0,t.width,t.height);return t.toDataURL('image/jpeg',.7);}
+let _fotos=[];
+function compress(file){return new Promise(res=>{const r=new FileReader();r.onload=e=>{const im=new Image();im.onload=()=>{const k=Math.min(1,900/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.72));};im.src=e.target.result;};r.readAsDataURL(file);});}
+window.tsx2AddFotos=async inp=>{for(const f of inp.files){if(f.type.startsWith('image/'))_fotos.push(await compress(f));}inp.value='';paintFotos();};
+function paintFotos(){const w=document.getElementById('tsx2-fotos');if(w)w.innerHTML=_fotos.map((f,i)=>`<span style="position:relative"><img src="${f}"><button onclick="tsx2DelFoto(${i})" style="position:absolute;top:1px;right:1px;border:0;background:#B2121C;color:#fff;border-radius:4px;font-size:10px;cursor:pointer">×</button></span>`).join('');}
+window.tsx2DelFoto=i=>{_fotos.splice(i,1);paintFotos();};
+window.tsx2Recepcion=function(folio){
+  const o=(D().ordenes||[]).find(x=>x.folio===folio);if(!o)return;
+  const r=o.recepcion||{},f=o.tsxFirmas||{},en=o.entrega||{};_fotos=[...(o.tsxFotosRec||[])];
+  openM('Recepción y entrega — '+folio,`
+   <div style="font-size:12px;color:var(--text2)">${esc(o.clienteNombre||'')} · 🚗 ${esc(o.patente||'')} ${esc(o.marca||'')} ${esc(o.modelo||'')} · Estado: <b>${esc(o.estado||'')}</b></div>
+   <div class="tsx2-h">Checklist de recepción</div>
+   <div class="tsx2-grid">${CHECK.map((c,i)=>`<label><input type="checkbox" data-ck="${esc(c)}" ${(r.check||{})[c]?'checked':''}> ${esc(c)}</label>`).join('')}</div>
+   <div class="g4" style="margin-top:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+    <div class="field"><label>Combustible</label><select id="tsx2-comb">${['','Reserva','1/4','1/2','3/4','Lleno'].map(v=>`<option ${r.combustible===v?'selected':''}>${v}</option>`).join('')}</select></div>
+    <div class="field"><label>Km / horómetro</label><input id="tsx2-km" type="number" value="${esc(r.km||o.km||'')}"></div>
+    <div class="field"><label>Recibido por (taller)</label><input id="tsx2-recpor" value="${esc(r.recibidoPor||'')}"></div></div>
+   <div class="field"><label>Daños / observaciones de ingreso</label><textarea id="tsx2-danos" rows="2">${esc(r.danos||'')}</textarea></div>
+   <div class="tsx2-h">Fotos de ingreso</div>
+   <div class="tsx2-fotos" id="tsx2-fotos"></div>
+   <label class="btn btn-sm" style="margin-top:6px;display:inline-flex">📷 Agregar fotos<input type="file" accept="image/*" capture="environment" multiple hidden onchange="tsx2AddFotos(this)"></label>
+   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div><div class="tsx2-h">✍ Firma cliente — recepción</div>${f.recepcion?`<img class="tsx2-sigimg" src="${f.recepcion}"><div style="font-size:11px;color:var(--text2)">Firmado ${fF(r.fechaFirma)} · ${esc(r.firmante||'')}</div><div style="font-size:11px">Volver a firmar:</div>`:''}
+      <canvas class="tsx2-sig" id="tsx2-sig1"></canvas><div style="display:flex;gap:6px;margin-top:4px"><input id="tsx2-n1" placeholder="Nombre de quien firma" value="${esc(r.firmante||o.clienteNombre||'')}" style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text)"><button class="btn btn-xs" onclick="tsx2SigClear('tsx2-sig1')">Borrar</button></div></div>
+    <div><div class="tsx2-h">✍ Firma cliente — entrega</div>${f.entrega?`<img class="tsx2-sigimg" src="${f.entrega}"><div style="font-size:11px;color:var(--text2)">Entregado ${fF(en.fecha)} · ${esc(en.firmante||'')}</div><div style="font-size:11px">Volver a firmar:</div>`:''}
+      <canvas class="tsx2-sig" id="tsx2-sig2"></canvas><div style="display:flex;gap:6px;margin-top:4px"><input id="tsx2-n2" placeholder="Nombre de quien retira" value="${esc(en.firmante||'')}" style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text)"><button class="btn btn-xs" onclick="tsx2SigClear('tsx2-sig2')">Borrar</button></div>
+      <label style="font-size:12px;display:flex;gap:6px;margin-top:6px"><input type="checkbox" id="tsx2-entregar"> Marcar OT como <b>Entregado</b> al guardar firma de entrega</label></div>
+   </div>
+   <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button class="btn" onclick="tsx2Close()">Cancelar</button><button class="btn btn-primary" onclick="tsx2GuardarRec('${esc(folio)}')">✓ Guardar recepción / entrega</button></div>`);
+  paintFotos();setTimeout(()=>{sigPad('tsx2-sig1');sigPad('tsx2-sig2');},50);
+};
+window.tsx2GuardarRec=function(folio){
+  const o=(D().ordenes||[]).find(x=>x.folio===folio);if(!o)return;
+  const check={};document.querySelectorAll('#tsx2-mb [data-ck]').forEach(c=>{if(c.checked)check[c.dataset.ck]=true;});
+  const r=Object.assign({},o.recepcion||{},{check,combustible:document.getElementById('tsx2-comb').value,km:document.getElementById('tsx2-km').value,
+    danos:document.getElementById('tsx2-danos').value.trim(),recibidoPor:document.getElementById('tsx2-recpor').value.trim(),fecha:(o.recepcion||{}).fecha||hoy()});
+  const s1=sigData('tsx2-sig1'),s2=sigData('tsx2-sig2');o.tsxFirmas=Object.assign({},o.tsxFirmas||{});
+  if(s1){o.tsxFirmas.recepcion=s1;r.firmado=true;r.fechaFirma=hoy();r.firmante=document.getElementById('tsx2-n1').value.trim();}
+  if(s2){o.tsxFirmas.entrega=s2;o.entrega={firmado:true,fecha:hoy(),firmante:document.getElementById('tsx2-n2').value.trim()};
+    if(document.getElementById('tsx2-entregar').checked&&o.estado!=='Entregado'){o.estado='Entregado';if(!o.fechaEntregado)o.fechaEntregado=hoy();}}
+  o.recepcion=r;o.tsxFotosRec=[..._fotos];
+  save();tsx2Close();try{renderOTs();}catch(e){}toast('✓ Recepción/entrega guardada — OT '+esc(folio));
+};
+function badgeRec(o){const r=o.recepcion||{},e=o.entrega||{};return (r.firmado?'✍':'')+(e.firmado?'✅':'');}
+// buttons in list + kanban
+wrap('renderOTs',()=>{
+  document.querySelectorAll('#lista-ots [onclick^="abrirEditOT("]').forEach(b=>{
+    if(b.nextElementSibling&&b.nextElementSibling.classList.contains('tsx2-recbtn'))return;
+    const m=b.getAttribute('onclick').match(/abrirEditOT\('([^']+)'/);if(!m)return;
+    const o=(D().ordenes||[]).find(x=>x.folio===m[1]);
+    const n=document.createElement('button');n.className=b.className+' tsx2-recbtn';n.title='Checklist, fotos y firmas';n.textContent='✍'+((o&&o.recepcion&&o.recepcion.firmado)?'✓':'');
+    n.onclick=ev=>{ev.stopPropagation();tsx2Recepcion(m[1]);};b.after(n);});
+  document.querySelectorAll('.tsx-card').forEach(c=>{if(c.querySelector('.tsx2-kr'))return;const o=(D().ordenes||[]).find(x=>x.folio===c.dataset.folio);
+    c.insertAdjacentHTML('beforeend',`<div class="tsx2-kr" style="display:flex;justify-content:space-between;align-items:center;margin-top:5px"><span style="font-size:11px">${o?badgeRec(o):''}</span><button class="btn btn-xs" onclick="event.stopPropagation();tsx2Recepcion(this.closest('.tsx-card').dataset.folio)">✍ Recepción</button></div>`);});
+});
+// Firestore: keep heavy images local only (same policy as imgs)
+try{
+  const _fsn=fbSaveNow;
+  // eslint-disable-next-line no-global-assign
+  fbSaveNow=async function(){
+    const keep=(DB.ordenes||[]).map(o=>[o,o.tsxFirmas,o.tsxFotosRec]);
+    keep.forEach(([o])=>{if(o.tsxFirmas)o.tsxFirmas={};if(o.tsxFotosRec)o.tsxFotosRec=[];});
+    // restore synchronously right after the data object is built inside fbSaveNow
+    const p=_fsn.apply(this,arguments);keep.forEach(([o,f,ph])=>{if(f)o.tsxFirmas=f;if(ph)o.tsxFotosRec=ph;});return p;
+  };
+}catch(e){console.warn('tsx2 fbSaveNow',e);}
+
+/* ========== A2. VEHÍCULOS: timeline + QR ========== */
+function vehCard(){
+  inject('sec-vehiculos','tsx2-veh',card('tsx2-veh','📜 Historial por patente y QR',`
+   <div class="sbar" style="margin-bottom:8px"><input id="tsx2-vq" placeholder="Escribe una patente (ej. ABCD12)…" list="tsx2-vl" oninput="tsx2VehHist(this.value)"><datalist id="tsx2-vl"></datalist></div>
+   <div id="tsx2-vh" style="font-size:12px;color:var(--text2)">Busca una patente para ver su línea de tiempo: órdenes, ventas, cotizaciones, hojas/paquetes cambiados, ejes y km.</div>`),'afterbegin');
+  const dl=document.getElementById('tsx2-vl');if(dl)dl.innerHTML=(D().vehiculos||[]).map(v=>`<option value="${esc(v.patente)}">${esc((v.marca||'')+' '+(v.modelo||'')+' · '+(v.clienteNombre||''))}</option>`).join('');
+}
+const norm=p=>String(p||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+window.tsx2VehHist=function(pat){
+  const w=document.getElementById('tsx2-vh');const P=norm(pat);if(!w)return;if(P.length<4){return;}
+  const db=D();const v=(db.vehiculos||[]).find(x=>norm(x.patente)===P);
+  const ev=[];
+  (db.ordenes||[]).filter(o=>norm(o.patente)===P).forEach(o=>ev.push({f:o.fechaIn||o.creado,c:'#B2121C',t:`🔧 ${o.folio} · ${o.estado||''}`,x:[(o.items||[]).map(i=>`${i.cant||i.cantidad||1}× ${i.nombre||''}`).join(', '),o.ejeFront||o.ejeRear?`Ejes: del ${o.ejeFront||'-'} / tras ${o.ejeRear||'-'}`:'',(o.zonasVehiculo||[]).length?'Zonas: '+o.zonasVehiculo.map(z=>z.codigo+(z.detalle?' ('+z.detalle+')':'')).join(', '):'',o.km||(o.recepcion||{}).km?'Km: '+(o.km||o.recepcion.km):'',o.mecanico?'Mecánico: '+o.mecanico:'',o.reapriete&&o.reapriete.fecha?'Reapriete '+fF(o.reapriete.fecha):''].filter(Boolean),m:o.total,folio:o.folio}));
+  (db.ventas||[]).filter(s=>norm(s.patente)===P||(v&&s.vehiculoId===v.id)).forEach(s=>ev.push({f:s.fecha,c:'#16a34a',t:`💰 Venta ${s.folio||''}`,x:[(s.items||[]).map(i=>`${i.cant||1}× ${i.nombre||''}`).join(', ')],m:s.total}));
+  (db.cotizaciones||[]).filter(c=>norm(c.patente)===P).forEach(c=>ev.push({f:c.fecha,c:'#787E86',t:`📝 Cotización ${c.folio||''} · ${c.estado||''}`,x:[(c.items||[]).map(i=>i.nombre).join(', ')],m:c.total}));
+  ev.sort((a,b)=>String(b.f).localeCompare(String(a.f)));
+  const tot=ev.reduce((s,e)=>s+(e.t.startsWith('📝')?0:(+e.m||0)),0);
+  w.innerHTML=`<div style="display:grid;grid-template-columns:1fr 190px;gap:16px;align-items:start">
+   <div><div style="font-size:15px;font-weight:700;color:var(--text)">🚗 ${esc(v?v.patente:P)} <span style="font-weight:400;color:var(--text2);font-size:12px">${esc(v?(v.marca||'')+' '+(v.modelo||'')+' · '+(v.clienteNombre||''):'(no registrado)')}</span></div>
+   <div style="margin:4px 0 12px">${ev.length} eventos · Total facturado ${money(tot)}</div>
+   <div class="tsx2-tl">${ev.map((e,i)=>`<div class="ev" style="--evc:${e.c};animation-delay:${i*40}ms"><div class="d">${fF(e.f)}${e.m?' · '+money(e.m):''}</div><div class="t">${esc(e.t)}${e.folio?` <button class="btn btn-xs" onclick="verOTRapido('${esc(e.folio)}')">Ver</button>`:''}</div>${e.x.map(l=>`<div class="x">${esc(l)}</div>`).join('')}</div>`).join('')||'<div>Sin movimientos.</div>'}</div></div>
+   <div style="text-align:center"><div id="tsx2-qr" style="display:inline-block;padding:8px;background:#fff;border-radius:10px"></div><div style="font-size:11px;margin-top:4px">QR de la patente: abre este historial</div><button class="btn btn-xs" style="margin-top:6px" onclick="tsx2PrintQR('${esc(P)}')">🖨 Imprimir etiqueta</button></div></div>`;
+  qr('tsx2-qr',P,150);
+};
+function qrText(P){return location.href.split('#')[0]+'#veh='+encodeURIComponent(P);}
+function qr(id,P,s){const el=document.getElementById(id);if(!el)return;el.innerHTML='';if(window.QRCode){new QRCode(el,{text:qrText(P),width:s,height:s,colorDark:'#121214',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}else el.textContent='QR no disponible (sin conexión)';}
+window.tsx2PrintQR=function(P){const img=document.querySelector('#tsx2-qr img,#tsx2-qr canvas');const src=img?(img.tagName==='CANVAS'?img.toDataURL():img.src):'';
+  const w=window.open('','_blank');if(!w)return;w.document.write(`<html><body style="font-family:sans-serif;text-align:center;padding:30px"><h2 style="margin:0">Resortes Puerto Montt</h2><img src="${src}" style="width:220px;margin:14px"><div style="font-size:28px;font-weight:800;letter-spacing:2px">${esc(P)}</div><div>Escanea para ver el historial del vehículo</div><script>setTimeout(()=>print(),300)<\/script></body></html>`);w.document.close();};
+wrap('renderVehiculos',vehCard);
+function hashVeh(){const m=location.hash.match(/^#veh=(.+)/);if(!m||document.getElementById('pin-overlay'))return false;const P=decodeURIComponent(m[1]);nav('vehiculos',null);setTimeout(()=>{const i=document.getElementById('tsx2-vq');if(i){i.value=P;tsx2VehHist(P);document.getElementById('tsx2-veh').scrollIntoView({behavior:'smooth'});}},300);return true;}
+window.addEventListener('hashchange',hashVeh);
+const hv=setInterval(()=>{if(!location.hash.startsWith('#veh=')){clearInterval(hv);return;}if(hashVeh())clearInterval(hv);},700);
+
+/* ========== B1. CUENTAS POR COBRAR ========== */
+let agingChart=null,agingFilter=null;
+function credCard(){
+  inject('sec-creditos','tsx2-cxc',card('tsx2-cxc','📊 Antigüedad de deuda y calendario de cheques',`
+   <div id="tsx2-chqhoy"></div>
+   <div class="tsx2-aging" id="tsx2-aging"></div>
+   <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:14px;margin-top:12px"><div><canvas id="tsx2-agc" height="190"></canvas></div><div id="tsx2-chqcal"></div></div>
+   <div class="tsx2-h">Avance de pago por crédito <span id="tsx2-agf" style="text-transform:none;font-weight:400"></span></div><div id="tsx2-prog"></div>`),'afterbegin');
+  const db=D(),h=hoy();const act=(db.creditos||[]).filter(c=>c.estado!=='Pagado'&&(+c.saldo||0)>0);
+  const B=[['0-30',0,30,'#787E86'],['31-60',31,60,'#d97706'],['61-90',61,90,'#E6282D'],['+90',91,1e9,'#B2121C']];
+  const age=c=>Math.max(0,dd(c.fecha||c.creado||h,h));
+  const sums=B.map(b=>act.filter(c=>{const a=age(c);return a>=b[1]&&a<=b[2];}));
+  document.getElementById('tsx2-aging').innerHTML=B.map((b,i)=>`<div class="tsx2-ag" style="border-left:4px solid ${b[3]};${agingFilter===i?'background:var(--surface2)':''}" onclick="tsx2Aging(${i})"><div class="l">${b[0]} días</div><div class="v">${money(sums[i].reduce((s,c)=>s+(+c.saldo||0),0))}</div><div class="l">${sums[i].length} documento(s)</div></div>`).join('');
+  const cv=document.getElementById('tsx2-agc');
+  if(window.Chart&&cv){if(agingChart)agingChart.destroy();agingChart=new Chart(cv,{type:'bar',data:{labels:B.map(b=>b[0]+' d'),datasets:[{data:sums.map(s=>s.reduce((a,c)=>a+(+c.saldo||0),0)),backgroundColor:B.map(b=>b[3]),borderRadius:6}]},options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>money(c.raw)}}},scales:{y:{ticks:{callback:v=>money(v)}}}}});}
+  // cheques
+  const chq=(db.creditos||[]).filter(c=>c.tipo==='Cheque'&&c.chequeEstado!=='Cobrado'&&c.chequeEstado!=='Rechazado');
+  const hoyC=chq.filter(c=>(c.chequeFecha||c.vcto)<=h);
+  document.getElementById('tsx2-chqhoy').innerHTML=hoyC.length?`<div style="background:var(--accent2-light);border:1px solid #E6282D;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:13px">🏦 <b>${hoyC.length} cheque(s) para depositar hoy o atrasados</b> — ${money(hoyC.reduce((s,c)=>s+(+c.saldo||+c.monto||0),0))}: ${hoyC.map(c=>esc(c.clienteNombre)+' N°'+esc(c.chequeNum||'?')).join(', ')}</div>`:'';
+  const base=new Date(h+'T12:00:00');const y=base.getFullYear(),m=base.getMonth();const first=new Date(y,m,1),start=new Date(first);start.setDate(1-((first.getDay()+6)%7));
+  let cells='';for(let i=0;i<35;i++){const d=new Date(start);d.setDate(start.getDate()+i);const k=d.toISOString().slice(0,10);const its=chq.filter(c=>(c.chequeFecha||c.vcto)===k);
+    cells+=`<div class="tsx2-day${d.getMonth()!==m?' out':''}${k===h?' today':''}" style="min-height:44px"><div class="n">${d.getDate()}</div>${its.map(c=>`<div class="tsx2-ev chq" title="${esc(c.clienteNombre)} ${esc(c.chequeBanco||'')}">${money(c.saldo||c.monto)}</div>`).join('')}</div>`;}
+  document.getElementById('tsx2-chqcal').innerHTML=`<div style="font-size:12px;font-weight:700;margin-bottom:4px">📅 Cheques — ${base.toLocaleDateString('es-CL',{month:'long',year:'numeric'})}</div><div class="tsx2-cal">${['Lu','Ma','Mi','Ju','Vi','Sá','Do'].map(x=>`<div class="dh">${x}</div>`).join('')}${cells}</div>`;
+  const list=(agingFilter==null?act:sums[agingFilter]).slice().sort((a,b)=>age(b)-age(a)).slice(0,30);
+  document.getElementById('tsx2-agf').textContent=agingFilter==null?'':'· filtro '+B[agingFilter][0]+' días (clic de nuevo para quitar)';
+  document.getElementById('tsx2-prog').innerHTML=list.map(c=>{const pag=Math.max(0,(+c.monto||0)-(+c.saldo||0)),p=c.monto?Math.round(pag/c.monto*100):0;const venc=c.vcto&&c.vcto<h;
+    return `<div style="display:grid;grid-template-columns:1.6fr 3fr 1fr;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px"><div><b>${esc(c.clienteNombre)}</b><div style="color:var(--text2);font-size:11px">${esc((c.desc||'').slice(0,50))} · ${age(c)} días${venc?' · <span style="color:var(--red)">vencido '+fF(c.vcto)+'</span>':''}</div></div>
+    <div><div class="tsx2-bar"><i style="width:${p}%;background:${p>=75?'#16a34a':p>=35?'#d97706':'#E6282D'}"></i></div><div style="font-size:10px;color:var(--text2);margin-top:2px">${p}% pagado · ${money(pag)} de ${money(c.monto)}</div></div><div style="text-align:right;font-family:'JetBrains Mono',monospace;font-weight:700">${money(c.saldo)}</div></div>`;}).join('')||'<div style="font-size:12px;color:var(--text2)">Sin créditos pendientes 🎉</div>';
+}
+window.tsx2Aging=i=>{agingFilter=agingFilter===i?null:i;credCard();};
+wrap('renderCreditos',credCard);
+
+/* ========== B2. INVENTARIO ========== */
+function provOf(p){const db=D();if(p.proveedorNombre)return p.proveedorNombre;const c=(db.compras||[]).find(c=>(c.items||[]).some(i=>i.id===p.id||i.nombre===p.nombre)||(c.desc||'').toLowerCase().includes((p.nombre||'').toLowerCase()));return c?c.proveedorNombre:'Sin proveedor asignado';}
+let invQ='';
+function invCard(){
+  inject('sec-inventario','tsx2-inv',card('tsx2-inv','⚡ Control rápido de stock',`
+   <div class="sbar" style="margin-bottom:8px"><input id="tsx2-iq" placeholder="Filtrar producto o código…" value="${esc(invQ)}" oninput="tsx2InvQ(this.value)"><label style="font-size:12px;display:flex;gap:6px;align-items:center;white-space:nowrap"><input type="checkbox" id="tsx2-ibajo" onchange="tsx2InvPaint()"> Solo bajo mínimo</label></div>
+   <div style="overflow:auto;max-height:420px"><table class="tsx2-inv" style="width:100%;border-collapse:collapse"><thead><tr style="font-size:10px;text-transform:uppercase;color:var(--text2);text-align:left"><th>Producto</th><th>Stock</th><th style="min-width:150px">Nivel vs mínimo</th><th>Precio</th><th>Proveedor</th></tr></thead><tbody id="tsx2-ib"></tbody></table></div>
+   <div class="tsx2-h">🛒 Lista de compra sugerida (por proveedor)</div><div id="tsx2-buy"></div>`),'beforeend');
+  tsx2InvPaint();
+}
+window.tsx2InvQ=q=>{invQ=q;tsx2InvPaint();};
+window.tsx2InvPaint=function(){
+  const tb=document.getElementById('tsx2-ib');if(!tb)return;const db=D();const q=invQ.toLowerCase(),bajo=document.getElementById('tsx2-ibajo')?.checked;
+  const provs=(db.proveedores||[]).map(p=>p.nombre).filter(Boolean);
+  const list=(db.inventario||[]).filter(p=>!q||((p.nombre||'')+' '+(p.codigo||'')).toLowerCase().includes(q)).filter(p=>!bajo||(+p.smin>0&&+p.stock<=+p.smin)).slice(0,150);
+  tb.innerHTML=list.map(p=>{const s=+p.stock||0,mn=+p.smin||0,pct=mn?Math.min(100,Math.round(s/(mn*2)*100)):100,col=!mn?'#787E86':s<=mn*.5?'#E6282D':s<=mn?'#d97706':'#16a34a';
+    return `<tr data-id="${esc(p.id)}"><td><b>${esc(p.nombre)}</b><div style="font-size:10px;color:var(--text2)">${esc(p.codigo||'')} ${esc(p.unidad||'')}</div></td>
+    <td style="white-space:nowrap"><button class="pm" onclick="tsx2Stock('${esc(p.id)}',-1)">−</button> <input type="number" value="${s}" onchange="tsx2Set('${esc(p.id)}','stock',this.value)" style="width:64px;text-align:center"> <button class="pm" onclick="tsx2Stock('${esc(p.id)}',1)">+</button></td>
+    <td><div class="tsx2-bar"><i style="width:${pct}%;background:${col}"></i></div><div style="font-size:10px;color:${col};margin-top:2px">${mn?(s<=mn?'⚠ bajo mínimo ('+mn+')':'OK · mín '+mn):'sin mínimo'}</div></td>
+    <td><input type="number" value="${+p.precio||0}" onchange="tsx2Set('${esc(p.id)}','precio',this.value)"></td>
+    <td><select onchange="tsx2Set('${esc(p.id)}','proveedorNombre',this.value)" style="max-width:150px;padding:4px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:11px"><option value="">${esc(provOf(p))}</option>${provs.map(n=>`<option ${p.proveedorNombre===n?'selected':''}>${esc(n)}</option>`).join('')}</select></td></tr>`;}).join('')||'<tr><td colspan="5" style="color:var(--text2)">Sin productos</td></tr>';
+  const need=(db.inventario||[]).filter(p=>+p.smin>0&&+p.stock<=+p.smin);const g={};need.forEach(p=>{(g[provOf(p)]=g[provOf(p)]||[]).push(p);});
+  document.getElementById('tsx2-buy').innerHTML=Object.keys(g).sort().map(k=>`<div style="border:1px solid var(--border);border-radius:10px;padding:8px 12px;margin-bottom:8px"><div style="font-weight:700;font-size:13px">🏭 ${esc(k)} <span style="color:var(--text2);font-weight:400;font-size:11px">${g[k].length} ítem(s)</span></div>${g[k].map(p=>{const sug=Math.max(1,Math.ceil(+p.smin*2-(+p.stock||0)));return `<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px dashed var(--border)"><span>${esc(p.nombre)} <span style="color:var(--text2)">(stock ${+p.stock||0} / mín ${+p.smin})</span></span><b>Pedir ${sug} ${esc(p.unidad||'')}</b></div>`;}).join('')}</div>`).join('')||'<div style="font-size:12px;color:var(--text2)">Nada bajo mínimo ✓</div>';
+};
+function setInv(id,f,v,flash=true){const p=(D().inventario||[]).find(x=>String(x.id)===String(id));if(!p)return;p[f]=f==='proveedorNombre'?v:(parseFloat(v)||0);if(f==='stock'&&p.stock<0)p.stock=0;save();
+  try{renderInventario();}catch(e){} tsx2InvPaint();if(flash){const tr=document.querySelector(`#tsx2-ib tr[data-id="${CSS.escape(String(id))}"]`);if(tr){tr.classList.add('tsx2-flash');}}}
+window.tsx2Set=(id,f,v)=>setInv(id,f,v);
+window.tsx2Stock=(id,d)=>{const p=(D().inventario||[]).find(x=>String(x.id)===String(id));if(p)setInv(id,'stock',(+p.stock||0)+d);};
+wrap('renderInventario',()=>{if(!document.getElementById('tsx2-inv'))invCard();});
+
+/* ========== C1. AGENDA: calendario + recordatorios automáticos ========== */
+let calMode='mes',calRef=null;
+function autoRem(){
+  const db=D(),h=hoy(),out=[];
+  (db.ordenes||[]).forEach(o=>{let r=null;try{r=reaprieteEstado(o);}catch(e){}
+    if(r&&(r.tipo==='pendiente'||r.tipo==='porVencer'||(r.tipo==='vencido'&&r.vence>=addD(h,-30))))out.push({k:'rea',f:r.vence,t:`Reapriete ${o.folio} · ${o.patente||''}`,s:`${o.clienteNombre||''} — ${r.tipo==='vencido'?'garantía caducada':r.tipo==='porVencer'?'vence pronto':'en '+r.dias+' días hábiles'}`,o,tipo:r.tipo});});
+  const last={};(db.ordenes||[]).forEach(o=>{const P=norm(o.patente);if(!P)return;const f=o.fechaEntregado||o.fechaIn||'';if(!last[P]||f>last[P].f)last[P]={f,o};});
+  Object.values(last).forEach(({f,o})=>{if(!f||!/Entregado/.test(o.estado||''))return;const due=addD(f.slice(0,10),180);if(due<=addD(h,30))out.push({k:'man',f:due,t:`Mantención sugerida ${o.patente}`,s:`${o.clienteNombre||''} — 6 meses desde ${o.folio} (${fF(f)})`,o});});
+  return out.sort((a,b)=>String(a.f).localeCompare(String(b.f)));
+}
+function agendaCard(){
+  inject('sec-agenda','tsx2-ag',card('tsx2-ag','🗓 Calendario del taller',`
+   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><button class="btn btn-sm" onclick="tsx2Cal(-1)">←</button><b id="tsx2-cl" style="min-width:170px;text-align:center"></b><button class="btn btn-sm" onclick="tsx2Cal(1)">→</button><button class="btn btn-sm" onclick="tsx2Cal(0)">Hoy</button>
+    <div class="tsx-period" style="margin-left:auto"><button data-m="mes" onclick="tsx2CalMode('mes')">Mes</button><button data-m="semana" onclick="tsx2CalMode('semana')">Semana</button></div></div>
+   <div id="tsx2-calg"></div>
+   <div style="font-size:11px;color:var(--text2);margin-top:6px">Arrastra una <span class="tsx2-ev res" style="display:inline">reserva</span> a otro día para moverla. <span class="tsx2-ev rea" style="display:inline">reapriete</span> <span class="tsx2-ev chq" style="display:inline">cheque</span> <span class="tsx2-ev rec" style="display:inline">recordatorio</span></div>
+   <div class="tsx2-h">🤖 Recordatorios automáticos (reapriete y mantención)</div><div id="tsx2-auto"></div>`),'afterbegin');
+  paintCal();
+}
+function paintCal(){
+  const g=document.getElementById('tsx2-calg');if(!g)return;const db=D(),h=hoy();calRef=calRef||h;
+  document.querySelectorAll('#tsx2-ag .tsx-period button').forEach(b=>b.classList.toggle('on',b.dataset.m===calMode));
+  const ref=new Date(calRef+'T12:00:00');let start,n;
+  if(calMode==='mes'){const f=new Date(ref.getFullYear(),ref.getMonth(),1,12);start=new Date(f);start.setDate(1-((f.getDay()+6)%7));n=42;document.getElementById('tsx2-cl').textContent=ref.toLocaleDateString('es-CL',{month:'long',year:'numeric'});}
+  else{start=new Date(ref);start.setDate(ref.getDate()-((ref.getDay()+6)%7));n=7;const e=new Date(start);e.setDate(start.getDate()+6);document.getElementById('tsx2-cl').textContent=fF(start.toISOString().slice(0,10))+' – '+fF(e.toISOString().slice(0,10));}
+  const auto=autoRem();let cells='';
+  for(let i=0;i<n;i++){const d=new Date(start);d.setDate(start.getDate()+i);const k=d.toISOString().slice(0,10);
+    const res=(db.reservas||[]).filter(r=>r.fecha===k&&r.estado!=='cancelada').sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
+    const rec=(db.recordatorios||[]).filter(r=>r.fecha===k&&r.estado!=='completado');
+    const chq=(db.creditos||[]).filter(c=>c.tipo==='Cheque'&&c.chequeFecha===k&&c.chequeEstado!=='Cobrado');
+    const au=auto.filter(a=>a.f===k);
+    cells+=`<div class="tsx2-day${calMode==='mes'&&d.getMonth()!==ref.getMonth()?' out':''}${k===h?' today':''}" data-day="${k}" style="${calMode==='semana'?'min-height:220px':''}"><div class="n">${calMode==='semana'?d.toLocaleDateString('es-CL',{weekday:'short'})+' ':''}${d.getDate()}</div>
+     ${res.map(r=>`<div class="tsx2-ev res" draggable="true" data-res="${esc(r.id)}" title="${esc((r.hora||'')+' '+r.clienteNombre+' · '+(r.servicio||'')+' · '+(r.patente||''))}">${esc(r.hora||'')} ${esc(r.clienteNombre||'')}${calMode==='semana'?'<br>'+esc(r.servicio||'')+' '+esc(r.patente||''):''}</div>`).join('')}
+     ${au.map(a=>`<div class="tsx2-ev rea" title="${esc(a.s)}">${a.k==='rea'?'🔧':'🛠'} ${esc(a.o.patente||'')}</div>`).join('')}
+     ${chq.map(c=>`<div class="tsx2-ev chq">🏦 ${money(c.saldo||c.monto)}</div>`).join('')}
+     ${rec.map(r=>`<div class="tsx2-ev rec" title="${esc(r.desc||'')}">🔔 ${esc(r.titulo||'')}</div>`).join('')}</div>`;}
+  g.innerHTML=`<div class="tsx2-cal">${['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(x=>`<div class="dh">${x}</div>`).join('')}${cells}</div>`;
+  document.getElementById('tsx2-auto').innerHTML=auto.slice(0,25).map(a=>{const col=a.tipo==='vencido'?'#B2121C':a.tipo==='porVencer'?'#E6282D':a.k==='man'?'#787E86':'#d97706';
+    return `<div style="display:flex;gap:10px;align-items:center;padding:7px 10px;border-left:3px solid ${col};background:var(--surface2);border-radius:8px;margin-bottom:6px;font-size:12px;flex-wrap:wrap"><div style="flex:1;min-width:200px"><b>${esc(a.t)}</b><div style="color:var(--text2)">${esc(a.s)} · ${fF(a.f)}</div></div>
+     ${a.k==='rea'?`<button class="btn btn-xs btn-primary" onclick="abrirReapriete('${esc(a.o.folio)}')">✓ Registrar reapriete</button>`:''}<button class="btn btn-xs" onclick="tsx2MkRec(${auto.indexOf(a)})">🔔 Crear recordatorio</button></div>`;}).join('')||'<div style="font-size:12px;color:var(--text2)">Sin pendientes automáticos ✓</div>';
+  window._tsx2Auto=auto;
+}
+window.tsx2MkRec=i=>{const a=(window._tsx2Auto||[])[i];if(!a)return;const db=D();db.recordatorios=db.recordatorios||[];
+  if(db.recordatorios.some(r=>r.titulo===a.t&&r.fecha===a.f)){toast('Ya existe ese recordatorio','info');return;}
+  db.recordatorios.unshift({id:uid(),titulo:a.t,fecha:a.f<hoy()?hoy():a.f,hora:'',desc:a.s,prioridad:a.tipo==='vencido'||a.tipo==='porVencer'?'alta':'normal',clienteId:a.o.clienteId||null,clienteNombre:a.o.clienteNombre||'',otFolio:a.o.folio||'',estado:'pendiente',creado:new Date().toISOString()});
+  save();try{renderRecordatorios();renderAgendaStats();updateBadges();}catch(e){}paintCal();toast('🔔 Recordatorio creado');};
+window.tsx2Cal=d=>{const r=new Date((calRef||hoy())+'T12:00:00');if(d===0)calRef=hoy();else{if(calMode==='mes')r.setMonth(r.getMonth()+d,1);else r.setDate(r.getDate()+7*d);calRef=r.toISOString().slice(0,10);}paintCal();};
+window.tsx2CalMode=m=>{calMode=m;paintCal();};
+function moveRes(id,day){const r=(D().reservas||[]).find(x=>String(x.id)===String(id));if(!r||r.fecha===day)return;const prev=r.fecha;r.fecha=day;save();try{renderReservas();renderAgendaStats();updateBadges();}catch(e){}paintCal();toast(`📅 Reserva de ${esc(r.clienteNombre||'')} movida ${fF(prev)} → <b>${fF(day)}</b>`);}
+document.addEventListener('dragstart',e=>{const el=e.target.closest&&e.target.closest('[data-res]');if(el)e.dataTransfer.setData('text/res',el.dataset.res);});
+document.addEventListener('dragover',e=>{const d=e.target.closest&&e.target.closest('#tsx2-calg [data-day]');if(!d)return;e.preventDefault();document.querySelectorAll('.tsx2-day.over').forEach(x=>x!==d&&x.classList.remove('over'));d.classList.add('over');});
+document.addEventListener('drop',e=>{const d=e.target.closest&&e.target.closest('#tsx2-calg [data-day]');if(!d)return;e.preventDefault();d.classList.remove('over');const id=e.dataTransfer.getData('text/res');if(id)moveRes(id,d.dataset.day);});
+let tR=null,tG=null;
+document.addEventListener('touchstart',e=>{const el=e.target.closest&&e.target.closest('[data-res]');if(el)tR=el;},{passive:true});
+document.addEventListener('touchmove',e=>{if(!tR)return;e.preventDefault();const t=e.touches[0];if(!tG){tG=tR.cloneNode(true);tG.style.cssText='position:fixed;z-index:99999;pointer-events:none;opacity:.85';document.body.appendChild(tG);}tG.style.left=t.clientX-30+'px';tG.style.top=t.clientY-10+'px';},{passive:false});
+document.addEventListener('touchend',e=>{if(!tR)return;const t=e.changedTouches[0];if(tG){const d=document.elementFromPoint(t.clientX,t.clientY)?.closest('#tsx2-calg [data-day]');if(d)moveRes(tR.dataset.res,d.dataset.day);tG.remove();}tR=null;tG=null;});
+wrap('initAgenda',agendaCard);
+['renderReservas','renderRecordatorios'].forEach(n=>wrap(n,()=>paintCal()));
+
+/* ========== C2. DASHBOARD: % vs período anterior + meta ========== */
+function prevMes(m){const[y,mm]=m.split('-').map(Number);const d=new Date(y,mm-2,1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+function dashExtra(){
+  const db=D(),cur=(typeof _dashMes!=='undefined'?_dashMes:hoy().slice(0,7)),pm=prevMes(cur);
+  const sum=(arr,f,m,v)=>(arr||[]).filter(x=>(x[f]||'').slice(0,7)===m).reduce((s,x)=>s+(v?(+x[v]||0):1),0);
+  const vals={Ingresos:[sum(db.ventas,'fecha',cur,'total'),sum(db.ventas,'fecha',pm,'total'),1],Gastos:[sum(db.gastos,'fecha',cur,'monto'),sum(db.gastos,'fecha',pm,'monto'),-1],
+    'Órdenes':[sum(db.ordenes,'fechaIn',cur),sum(db.ordenes,'fechaIn',pm),1],Cotizaciones:[sum(db.cotizaciones,'fecha',cur),sum(db.cotizaciones,'fecha',pm),1]};
+  vals.Utilidad=[vals.Ingresos[0]-vals.Gastos[0],vals.Ingresos[1]-vals.Gastos[1],1];
+  document.querySelectorAll('#stats-bar .stat').forEach(st=>{const l=(st.querySelector('.stat-lbl')?.textContent||'').trim();const v=vals[l];const sub=st.querySelector('.stat-sub');if(!v||!sub||sub.querySelector('.tsx2-delta'))return;
+    const[c,p,dir]=v;let txt,cls;if(!p){if(!c)return;txt='nuevo';cls='up';}else{const pc=Math.round((c-p)/Math.abs(p)*100);txt=(pc>=0?'▲ ':'▼ ')+Math.abs(pc)+'%';cls=(pc>=0)===(dir>0)?'up':'dn';}
+    sub.insertAdjacentHTML('beforeend',`<span class="tsx2-delta ${cls}" title="vs ${pm}">${txt}</span>`);});
+  // meta
+  const meta=+((typeof CFG!=='undefined'&&CFG.metaVentasMes)||0);const sb=document.getElementById('stats-bar');if(!sb)return;
+  let mb=document.getElementById('tsx2-meta');if(!mb){sb.insertAdjacentHTML('afterend','<div id="tsx2-meta" class="card" style="margin-bottom:14px;padding:12px 16px"></div>');mb=document.getElementById('tsx2-meta');}
+  const ing=vals.Ingresos[0];const h=hoy();const[y,m]=cur.split('-').map(Number);const dim=new Date(y,m,0).getDate();const isCur=cur===h.slice(0,7);const dia=isCur?+h.slice(8,10):dim;
+  const proj=isCur?Math.round(ing/dia*dim):ing;
+  if(!meta){mb.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;gap:10px;flex-wrap:wrap"><span>🎯 Define una <b>meta mensual de ventas</b> para ver avance y proyección.</span><button class="btn btn-xs btn-primary" onclick="tsx2Meta()">Definir meta</button></div>`;return;}
+  const p=Math.round(ing/meta*100),pp=Math.round(proj/meta*100),col=pp>=100?'#16a34a':pp>=80?'#d97706':'#E6282D';
+  mb.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:8px"><div style="font-weight:700;font-size:13px">🎯 Meta del mes: ${money(meta)} <button class="btn btn-xs" onclick="tsx2Meta()" title="Cambiar meta">✎</button></div>
+   <div style="font-size:12px">Vendido <b>${money(ing)}</b> (${p}%) · ${isCur?`Proyección fin de mes: <b style="color:${col}">${money(proj)}</b> (${pp}%) · Faltan ${money(Math.max(0,meta-ing))} en ${dim-dia} días → ${money(Math.round(Math.max(0,meta-ing)/Math.max(1,dim-dia)))}/día`:'mes cerrado'}</div></div>
+   <div class="tsx2-bar" style="height:14px;position:relative"><i style="width:${Math.min(100,pp)}%;background:${col};opacity:.25;position:absolute;left:0;top:0"></i><i style="width:${Math.min(100,p)}%;background:${col};position:relative"></i></div>`;
+}
+window.tsx2Meta=function(){const v=prompt('Meta mensual de ventas (CLP, solo números):',(typeof CFG!=='undefined'&&CFG.metaVentasMes)||'');if(v===null)return;const n=parseInt(String(v).replace(/\D/g,''))||0;CFG.metaVentasMes=n;saveCfg(CFG);save();renderDashboard();const i=document.getElementById('tsx2-cfgmeta');if(i)i.value=n||'';toast('🎯 Meta actualizada');};
+wrap('renderDashboard',dashExtra);
+// Config field
+function cfgCard(){inject('sec-config','tsx2-cfg',card('tsx2-cfg','🎯 Meta mensual de ventas',`<div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap"><div class="field" style="margin:0"><label>Meta (CLP)</label><input id="tsx2-cfgmeta" type="number" min="0" value="${esc((typeof CFG!=='undefined'&&CFG.metaVentasMes)||'')}"></div><button class="btn btn-primary" onclick="CFG.metaVentasMes=parseInt(document.getElementById('tsx2-cfgmeta').value)||0;saveCfg(CFG);save();toast('🎯 Meta guardada')">✓ Guardar meta</button><span style="font-size:11px;color:var(--text2)">Se muestra en el Dashboard con avance y proyección a fin de mes.</span></div>`),'afterbegin');}
+const _nav=window.nav;window.nav=function(id){const r=_nav.apply(this,arguments);try{if(id==='config')cfgCard();if(id==='creditos'&&!document.getElementById('tsx2-cxc'))credCard();if(id==='vehiculos'&&!document.getElementById('tsx2-veh'))vehCard();}catch(e){console.warn(e);}return r;};
+setTimeout(()=>{try{dashExtra();}catch(e){}},600);
 })();
 </script>
 </body>
