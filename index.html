@@ -2147,6 +2147,11 @@ body.dark .folio-tag,body.dark .pill-val,body.dark .pill-lbl{color:#B0B8C0}
     <div class="field" style="margin-bottom:12px"><label>Nota legal (pie de todos los documentos)</label>
       <textarea id="cfg-nota-legal" style="min-height:50px" placeholder="Ej: Los precios incluyen IVA..."></textarea>
     </div>
+    <div class="field" style="margin-bottom:12px"><label>⭐ Mensaje para pedir reseña por WhatsApp</label>
+      <textarea id="cfg-msg-resena" style="min-height:130px"></textarea>
+      <div class="hx-hint">Se envía al entregar una OT. Usa <b>{cliente}</b> y <b>{patente}</b>: se reemplazan solos con el nombre del cliente y la patente.</div>
+      <div><button type="button" class="btn btn-xs" style="margin-top:6px" onclick="$('cfg-msg-resena').value=CFG_DEFAULT.msgResena">↺ Restaurar mensaje original</button></div>
+    </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-primary" onclick="guardarConfig()">✓ Guardar</button>
       <button class="btn btn-sm" onclick="previsualizarDoc('ot')">👁 Vista previa OT</button>
@@ -3246,6 +3251,22 @@ body.dark .folio-tag,body.dark .pill-val,body.dark .pill-lbl{color:#B0B8C0}
 </div>
 
 <!-- MODAL FORMA DE PAGO — OT A VENTA -->
+<div id="modal-resena" class="modal-overlay" style="display:none" onclick="if(event.target===this)cerrarResena()">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-hdr"><h3>⭐ Pedir reseña al cliente</h3><button class="btn btn-ghost btn-sm" onclick="cerrarResena()">✕</button></div>
+    <div class="modal-body">
+      <div id="resena-info" style="background:var(--surface2);border-radius:var(--radius);padding:10px 14px;font-size:12px;margin-bottom:12px"></div>
+      <div class="field" style="margin-bottom:8px"><label>Teléfono WhatsApp</label><input id="resena-tel" placeholder="+56 9 1234 5678" oninput="actResenaTel()"><div class="hx-hint">Celular chileno, ej: <b>9 1234 5678</b>. Si no tiene, copia el mensaje y envíalo a mano.</div></div>
+      <div class="field" style="margin-bottom:10px"><label>Mensaje</label><textarea id="resena-msg" style="min-height:170px;font-size:12px"></textarea><div class="hx-hint">Puedes cambiar el texto base en <b>Configuración → Documentos PDF</b>.</div></div>
+      <div id="resena-estado" style="font-size:11px;color:var(--text3);margin-bottom:10px"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+        <button class="btn btn-sm" onclick="cerrarResena()">Ahora no</button>
+        <button class="btn btn-sm" onclick="copiarResena()">📋 Copiar mensaje</button>
+        <button class="btn btn-sm btn-primary" id="resena-wa-btn" style="background:#B2121C;border-color:#B2121C;color:#fff;font-weight:600" onclick="enviarResenaWA()">💬 Pedir reseña por WhatsApp</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div id="modal-fpago-ot" class="modal-overlay" style="display:none" onclick="if(event.target===this)cerrarFpagoOT()">
   <div class="modal" style="max-width:440px">
     <div class="modal-hdr">
@@ -5861,6 +5882,60 @@ function actualizarEstadoOT(folio,est){
     }
   }
 }
+
+// ── Pedir reseña por WhatsApp al entregar OT ─────────────
+function _escR(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function fmtFechaRes(f){return f?String(f).slice(0,10).split('-').reverse().join('-'):'';}
+function telWA(t){
+  let d=String(t||'').replace(/\D/g,'');
+  if(!d)return'';
+  if(d.startsWith('00'))d=d.slice(2);
+  if(d.startsWith('56'))d=d.slice(2);
+  if(d.length===8)d='9'+d;          // 1234 5678 → 9 1234 5678
+  if(d.length===9&&d[0]==='9')return'56'+d;
+  if(d.length===9)return'56'+d;      // fijo con código de área
+  return d.length>=10?d:'';
+}
+function msgResenaOT(o){
+  const tpl=CFG.msgResena||CFG_DEFAULT.msgResena;
+  const nom=(o.clienteNombre||'').trim()||'cliente';
+  return tpl.replace(/\{cliente\}/g,nom).replace(/\{patente\}/g,(o.patente||'').toUpperCase()||'—');
+}
+let _resenaFolio=null;
+function abrirResena(folio,auto){
+  const o=DB.ordenes.find(x=>x.folio===folio);if(!o)return;
+  _resenaFolio=folio;
+  const cli=(DB.clientes||[]).find(c=>c.id===o.clienteId);
+  const tel=o.tel||cli?.tel||cli?.contactoTel||'';
+  $('resena-info').innerHTML=`<div style="display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap"><div><strong>${_escR(o.clienteNombre)}</strong>${o.patente?` · <span class="badge b-orange">${_escR(o.patente)}</span>`:''}</div><div style="color:var(--text2)">${o.folio}</div></div>`+
+    (auto?`<div style="margin-top:4px;color:var(--green);font-weight:600">✓ OT entregada. ¿Le pedimos una reseña al cliente?</div>`:'');
+  $('resena-tel').value=tel;
+  $('resena-msg').value=msgResenaOT(o);
+  $('resena-estado').innerHTML=o.resenaEnviada?`⭐ Reseña ya pedida el <b>${fmtFechaRes(o.resenaEnviada)}</b>. Puedes volver a enviarla.`:'Aún no se ha pedido reseña para esta OT.';
+  actResenaTel();
+  $('modal-resena').style.display='flex';document.body.style.overflow='hidden';
+}
+function actResenaTel(){
+  const ok=!!telWA($('resena-tel').value);const b=$('resena-wa-btn');
+  b.disabled=!ok;b.style.opacity=ok?'1':'.45';
+  b.title=ok?'Abre WhatsApp con el mensaje listo':'Sin teléfono válido: usa Copiar mensaje';
+}
+function cerrarResena(){$('modal-resena').style.display='none';document.body.style.overflow='';_resenaFolio=null;const cb=window._resenaOnClose;window._resenaOnClose=null;if(cb)cb();}
+function urlResenaWA(){const t=telWA($('resena-tel').value);return t?`https://wa.me/${t}?text=${encodeURIComponent($('resena-msg').value)}`:'';}
+function marcarResena(via){
+  const o=DB.ordenes.find(x=>x.folio===_resenaFolio);if(!o)return;
+  o.resenaEnviada=today();o.resenaVia=via;save();renderOTs();
+}
+function enviarResenaWA(){
+  const url=urlResenaWA();if(!url){toast('Falta un teléfono válido — copia el mensaje','warn');return;}
+  window.open(url,'_blank');marcarResena('WhatsApp');toast('⭐ Reseña pedida por WhatsApp');cerrarResena();
+}
+function copiarResena(){
+  const txt=$('resena-msg').value;
+  const done=()=>{marcarResena('Copiado');toast('📋 Mensaje copiado — pégalo en WhatsApp');cerrarResena();};
+  if(navigator.clipboard?.writeText)navigator.clipboard.writeText(txt).then(done).catch(()=>{$('resena-msg').select();document.execCommand('copy');done();});
+  else{$('resena-msg').select();document.execCommand('copy');done();}
+}
 function eliminarOT(folio){
   if(!confirm('¿Eliminar esta orden?'))return;
   DB.ordenes=DB.ordenes.filter(o=>o.folio!==folio);
@@ -6008,6 +6083,7 @@ function renderOTs(){
         <div style="display:flex;gap:4px" onclick="event.stopPropagation()">
           <button class="btn btn-xs" onclick="imprimirOT('${o.folio}')" title="Imprimir PDF">🖨</button>
           <button class="btn btn-xs" onclick="imprimirHojaTrabajo('${o.folio}')" title="Hoja de trabajo (sin precios)">👷</button>
+          ${(o.estado==='Entregado'||o.estado==='Entregado s/OC')?`<button class="btn btn-xs ${o.resenaEnviada?'':'btn-primary'}" onclick="abrirResena('${o.folio}')" title="${o.resenaEnviada?'Reseña pedida el '+fmtFechaRes(o.resenaEnviada)+' — volver a enviar':'Pedir reseña por WhatsApp'}">${o.resenaEnviada?'⭐✓':'⭐'}</button>`:''}
           <select style="padding:3px 6px;border:1px solid var(--border);border-radius:var(--radius);font-size:10px;font-family:'Inter',sans-serif;background:var(--surface);color:var(--text)" onchange="actualizarEstadoOT('${o.folio}',this.value)">
             ${['Recibido','En proceso','Listo','Entregado s/OC','Entregado'].map(s=>`<option ${o.estado===s?'selected':''}>${s}</option>`).join('')}
           </select>
@@ -6144,6 +6220,7 @@ function renderOTs(){
           <button class="btn btn-xs" onclick="event.stopPropagation();imprimirOT('${o.folio}')">🖨 PDF</button>
           <button class="btn btn-xs" onclick="event.stopPropagation();imprimirHojaTrabajo('${o.folio}')" title="Hoja de trabajo sin precios">👷 Hoja</button>
           ${(o.tel||o.clienteNombre)?`<button class="btn btn-xs btn-green" onclick="event.stopPropagation();waOT('${o.folio}')" title="WhatsApp">💬</button>`:''}
+          ${(o.estado==='Entregado'||o.estado==='Entregado s/OC')?`<button class="btn btn-xs ${o.resenaEnviada?'':'btn-primary'}" onclick="event.stopPropagation();abrirResena('${o.folio}')" title="${o.resenaEnviada?'Reseña pedida el '+fmtFechaRes(o.resenaEnviada):'Pedir reseña por WhatsApp'}">⭐ ${o.resenaEnviada?'Reseña pedida '+fmtFechaRes(o.resenaEnviada):'Pedir reseña'}</button>`:''}
           <button class="btn btn-xs" onclick="event.stopPropagation();abrirEditOT('${o.folio}')">✏ Editar</button>
           <button class="btn btn-xs ${o.docTipo?'btn-teal':'btn-ghost'}" onclick="event.stopPropagation();abrirDocOT('${o.folio}')" title="${o.docTipo?'Doc: '+o.docTipo:'Asignar documento'}">
             🧾 ${o.docTipo?o.docTipo.replace('electrónica','e.').replace('Boleta','Bol.').replace('Factura','Fact.'):'Doc.'}
@@ -9581,10 +9658,11 @@ const CFG_DEFAULT={
   nombre:'Resortes Puerto Montt',rut:'',fono:'',email:'',dir:'',ciudad:'Puerto Montt',
   region:'Los Lagos',web:'',slogan:'',logo:'',
   banco:'',tipoCuenta:'',numCuenta:'',rutTitular:'',nomTitular:'',emailBanco:'',
-  validez:30,pieOT:'',pieCot:'',notaLegal:''
+  validez:30,pieOT:'',pieCot:'',notaLegal:'',
+  msgResena:'¡Hola {cliente}! Gracias por confiar en Resortes Puerto Montt 🙌 Tu vehículo patente {patente} ya está listo.\nSi quedaste conforme, nos ayudarías mucho siguiéndonos y dejando tu reseña ⭐:\n📸 Instagram: https://www.instagram.com/resortespuertomontt\n👍 Facebook: https://www.facebook.com/resortespuertomontt\n⭐ Reseña: https://www.facebook.com/resortespuertomontt/reviews\n¡Gracias y buen viaje! 🚚'
 };
 function loadCfg(){
-  try{return Object.assign({},CFG_DEFAULT,JSON.parse(localStorage.getItem('rpm_config')||'{}'));}
+  try{const c=Object.assign({},CFG_DEFAULT,JSON.parse(localStorage.getItem('rpm_config')||'{}'));if(!c.msgResena)c.msgResena=CFG_DEFAULT.msgResena;return c;}
   catch(e){return{...CFG_DEFAULT};}
 }
 function saveCfg(c){localStorage.setItem('rpm_config',JSON.stringify(c));}
@@ -9613,6 +9691,7 @@ function guardarConfig(){
   CFG.pieOT=($('cfg-pie-ot')?.value||'').trim();
   CFG.pieCot=($('cfg-pie-cot')?.value||'').trim();
   CFG.notaLegal=($('cfg-nota-legal')?.value||'').trim();
+  CFG.msgResena=($('cfg-msg-resena')?.value||'').trim()||CFG_DEFAULT.msgResena;
   saveCfg(CFG);
   fbSave();
   const lt=document.querySelector('.logo-title');
@@ -9643,6 +9722,7 @@ function poblarFormConfig(){
   Object.entries(campos).forEach(([k,id])=>{const el=$(id);if(el)el.value=CFG[k]||'';});
   if($('cfg-tipo-cuenta'))$('cfg-tipo-cuenta').value=CFG.tipoCuenta||'';
   if($('cfg-validez'))$('cfg-validez').value=CFG.validez||30;
+  if($('cfg-msg-resena'))$('cfg-msg-resena').value=CFG.msgResena||CFG_DEFAULT.msgResena;
   actualizarLogoPreview();
   // Backup stats
   const sc=$('cfg-bk-stats');
@@ -14119,6 +14199,8 @@ function msgWA(o){
 }
 function askWA(f){
   const o=DB.ordenes.find(x=>x.folio===f);
+  /* Al entregar: pedir reseña por WhatsApp (reemplaza el aviso de entrega; el mensaje ya dice que está listo) */
+  if(o&&!o.resenaEnviada&&typeof abrirResena==='function'){window._resenaOnClose=()=>setTimeout(next,150);abrirResena(f,true);return;}
   const tel=(o&&(o.tel||(DB.clientes.find(c=>c.id===o.clienteId)||{}).tel))||'';
   if(!o||!tel||typeof abrirModalWA!=='function'){ocupado=false;return next();}
   open('💬 ¿Avisar al cliente?',`<div class="fx-bd" style="text-align:center">
