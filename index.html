@@ -15124,5 +15124,71 @@ setTimeout(()=>{try{init();}catch(e){console.warn('guiado init',e);}},800);
 })();
 </script>
 
+<!-- ══ TALLERSYS VENTAS: LISTA PRIMERO + MODAL NUEVA VENTA (aditivo) ══ -->
+<style>
+.nv-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.nv-bar .t{font-size:13px;color:var(--text2)}
+.nv-btn{display:inline-flex;align-items:center;gap:10px;font:inherit;font-size:18px;font-weight:800;letter-spacing:.01em;color:#fff;background:linear-gradient(135deg,#B2121C,#E6282D);border:0;border-radius:14px;padding:16px 30px;cursor:pointer;box-shadow:0 8px 22px rgba(178,18,28,.38);animation:nvPulse 2.4s ease-in-out infinite;transition:transform .12s}
+.nv-btn:hover{transform:translateY(-2px) scale(1.02)}.nv-btn:active{transform:scale(.98)}
+.nv-btn .pl{font-size:26px;line-height:1;font-weight:900}
+@keyframes nvPulse{0%,100%{box-shadow:0 8px 22px rgba(178,18,28,.38),0 0 0 0 rgba(230,40,45,.45)}50%{box-shadow:0 8px 22px rgba(178,18,28,.38),0 0 0 10px rgba(230,40,45,0)}}
+@media(prefers-reduced-motion:reduce){.nv-btn{animation:none}}
+#nv-modal{position:fixed;inset:0;z-index:8000;background:rgba(10,10,12,.6);display:none;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto}
+#nv-modal.on{display:flex}
+#nv-modal .nv-box{width:min(1100px,100%);background:var(--surface);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.45);position:relative}
+#nv-modal .nv-box>.card{margin:0;border:0;box-shadow:none;background:transparent}
+.nv-x{position:absolute;top:10px;right:12px;background:none;border:0;font-size:24px;cursor:pointer;color:var(--text2);z-index:2}
+body.nv-lock{overflow:hidden}
+@media(max-width:700px){.nv-bar{flex-direction:column;align-items:stretch}.nv-btn{justify-content:center;width:100%;font-size:19px;padding:18px}
+ #nv-modal{padding:0}#nv-modal .nv-box{border-radius:0;min-height:100%}}
+</style>
+<script>
+(function(){
+const $i=id=>document.getElementById(id);
+const sec=$i('sec-ventas');if(!sec)return;
+const form=[...sec.children].find(c=>c.classList.contains('card')&&/Nueva venta directa/.test(c.querySelector('.card-title')?.textContent||''));if(!form)return;
+form.id='nv-form';
+sec.insertAdjacentHTML('afterbegin',`<div class="nv-bar"><div class="t">Historial de ventas · toca el botón para registrar una venta nueva</div><button type="button" class="nv-btn" id="nv-open" onclick="nvAbrir()"><span class="pl">＋</span>Nueva venta</button></div>`);
+document.body.insertAdjacentHTML('beforeend',`<div id="nv-modal" role="dialog" aria-modal="true" aria-label="Nueva venta"><div class="nv-box"><button class="nv-x" onclick="nvCerrar()" aria-label="Cerrar">✕</button></div></div>`);
+$i('nv-modal').querySelector('.nv-box').appendChild(form);
+const bt=form.querySelector('button[onclick="limpiarV()"]');
+if(bt)bt.insertAdjacentHTML('afterend',`<button class="btn" onclick="nvCerrar()" style="margin-left:auto">Cancelar</button>`);
+window.nvAbrir=function(){$i('nv-modal').classList.add('on');document.body.classList.add('nv-lock');$i('nv-modal').scrollTop=0;
+  try{if(!$i('v-fecha').value)$i('v-fecha').value=today();}catch(e){}
+  setTimeout(()=>{const c=$i('v-cli-txt');if(c&&!('ontouchstart' in window))c.focus();},60);};
+window.nvCerrar=function(){$i('nv-modal').classList.remove('on');document.body.classList.remove('nv-lock');};
+$i('nv-modal').addEventListener('mousedown',e=>{if(e.target.id==='nv-modal')nvCerrar();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$i('nv-modal').classList.contains('on')&&!document.querySelector('.ac-dropdown[style*="block"]'))nvCerrar();});
+/* cerrar al guardar con éxito */
+const _gv=window.guardarVenta;window.guardarVenta=function(){const n=(DB.ventas||[]).length;const r=_gv.apply(this,arguments);if((DB.ventas||[]).length>n)nvCerrar();return r;};
+/* si otro módulo manda ítems a Ventas (p.ej. Cotización Rápida → Venta), abrir el modal */
+const _nv=window.nav;window.nav=function(id){const r=_nv.apply(this,arguments);if(id==='ventas')setTimeout(()=>{try{if(lines.v&&lines.v.length)nvAbrir();}catch(e){}},350);else nvCerrar();return r;};
+})();
+</script>
+
+<!-- ══ TALLERSYS BOTÓN INICIO EN BARRA SUPERIOR + SINCRONÍA MODO GUIADO (aditivo) ══ -->
+<style>
+#gd-home-btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 16px;border-radius:999px;border:0;background:linear-gradient(135deg,#B2121C,#E6282D);color:#fff;font:inherit;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 4px 12px rgba(178,18,28,.35);margin-right:6px;white-space:nowrap}
+#gd-home-btn:hover{filter:brightness(1.08)}
+@media(max-width:700px){#gd-home-btn{padding:0;width:30px;height:30px;justify-content:center;margin-right:2px;box-shadow:0 2px 6px rgba(178,18,28,.3)}#gd-home-btn .t{display:none}#gd-home-btn .i{font-size:15px}.topbar-left{min-width:0!important;flex:1 1 0!important;overflow:hidden!important}.topbar-left>div{min-width:0!important;overflow:hidden!important}#tb-title,#tb-sub{display:block!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;max-width:100%!important}.topbar-right{flex:0 0 auto!important}}
+body.gd-on:not(.gd-more-open) .sidebar #nav-inicio-ext{display:none}
+</style>
+<script>
+(function(){
+const $i=id=>document.getElementById(id);
+function boton(){if($i('gd-home-btn'))return;const tr=document.querySelector('.topbar-right');if(!tr)return;
+  tr.insertAdjacentHTML('afterbegin',`<button id="gd-home-btn" title="Ir al inicio" onclick="gdIrInicio()"><span class="i">🏠</span><span class="t">Inicio</span></button>`);}
+window.gdIrInicio=function(){try{return gdInicio();}catch(e){nav('dashboard',null);}};
+(function(){const g=document.querySelector('.sidebar-nav .nav-sec');if(g&&!$i('nav-inicio-ext'))g.insertAdjacentHTML('beforebegin',`<button class="nav-item" id="nav-inicio-ext" title="Inicio" onclick="gdInicio();this.classList.add('active')"><span class="ni">🏠</span><span>Inicio</span></button>`);})();
+/* El modo guiado se evaluaba una sola vez al cargar (antes del PIN y antes de bajar la configuración de Firebase),
+   así que si la opción llegaba después, el menú y la pantalla de inicio guiada no aparecían. Ahora se re-evalúa. */
+let prev=null;
+function sync(){boton();if(!window.gdOn||!window.gdAplicar)return;const on=gdOn();
+  if(on!==prev){gdAplicar();if(on&&!document.getElementById('pin-overlay')){const a=document.querySelector('.section.active');if(!a||a.id==='sec-dashboard')gdInicio();}prev=on;}}
+if(typeof aplicarRol==='function'){const _ar=window.aplicarRol;window.aplicarRol=function(){const r=_ar.apply(this,arguments);try{boton();prev=null;sync();}catch(e){}return r;};}
+setTimeout(()=>{prev=window.gdOn?gdOn():null;boton();setInterval(()=>{try{sync()}catch(e){}},1500);},1200);
+})();
+</script>
+
 </body>
 </html>
