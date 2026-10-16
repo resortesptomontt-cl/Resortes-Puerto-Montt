@@ -14578,6 +14578,10 @@ setTimeout(run,700);
 .kc-ghost{position:fixed;pointer-events:none;z-index:99999;opacity:.85;transform:rotate(2deg);width:220px}
 .kc-hint{font-size:11px;color:var(--text2);margin:-6px 0 12px}
 @media(max-width:900px){.kc-kanban{grid-template-columns:repeat(4,minmax(78vw,1fr))}}
+.kc-res{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg,12px);margin-bottom:14px;overflow:hidden}
+.kc-res-hd{width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;background:none;border:0;cursor:pointer;font:inherit;font-weight:700;font-size:14px;color:var(--text);text-align:left}
+.kc-res-bd{display:none;padding:0 12px 12px}.kc-res.abierto .kc-res-bd{display:block}
+.kc-res:not(.abierto) #kc-res-chev{transform:rotate(-90deg)}
 .kc-clis{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-bottom:14px}
 .kc-clis-hd{grid-column:1/-1;font-size:13px;color:var(--text2)}
 .kc-cli{background:var(--surface);border:1px solid var(--border);border-left:4px solid #787E86;border-radius:10px;padding:12px 14px;cursor:pointer;transition:transform .15s,box-shadow .15s}
@@ -14610,8 +14614,16 @@ function ensure(){
   const k=document.createElement('div');k.id='kc-kanban';k.className='kc-kanban';bar.after(k);
   const h=document.createElement('div');h.id='kc-hint';h.className='kc-hint';h.innerHTML='Arrastra una tarjeta: <b>→ Pagado</b> salda la deuda · <b>→ Pago parcial</b> registra un abono · <b>→ Al día</b> reprograma el vencimiento · <b>Pagado → otra columna</b> reabre un pago marcado a mano. Doble clic = abono.';k.after(h);
 }
+function resumen(){
+  const sec=$i('sec-creditos');if(!sec)return;let w=$i('kc-resumen');
+  if(!w){sec.insertAdjacentHTML('beforeend',`<div id="kc-resumen" class="kc-res"><button type="button" class="kc-res-hd" onclick="kcResToggle()"><span>📊 Resumen y estadísticas <small style="font-weight:500;color:var(--text2)">(totales, antigüedad de deuda, calendario de cheques)</small></span><span class="nav-chev" id="kc-res-chev">▾</span></button><div class="kc-res-bd" id="kc-res-bd"></div></div>`);w=$i('kc-resumen');}
+  const bd=$i('kc-res-bd');['cred-stats','tsx2-cxc'].forEach(id=>{const e=$i(id);if(e&&e.parentNode!==bd)bd.appendChild(e);});
+  const anchor=on?$i('kc-hint'):$i('kc-listcard');if(anchor&&anchor.nextElementSibling!==w)anchor.after(w);
+  const ab=localStorage.getItem('kc_resumen_abierto')==='1';w.classList.toggle('abierto',ab);
+}
+window.kcResToggle=()=>{const ab=localStorage.getItem('kc_resumen_abierto')!=='1';localStorage.setItem('kc_resumen_abierto',ab?'1':'0');resumen();if(ab){try{renderCreditos();}catch(e){}}};
 function paint(){
-  ensure();const k=$i('kc-kanban'),b=$i('kc-toggle');if(!k)return;
+  ensure();try{resumen();}catch(e){console.warn('kc res',e);}const k=$i('kc-kanban'),b=$i('kc-toggle');if(!k)return;
   const listCard=$i('kc-listcard');
   b.textContent=on?'☰ Vista lista':'▦ Vista por cliente';
   k.style.display=on?'':'none';$i('kc-hint').style.display=on?'':'none';
