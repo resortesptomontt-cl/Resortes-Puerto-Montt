@@ -530,37 +530,50 @@ body.dark .folio-tag,body.dark .pill-val,body.dark .pill-lbl{color:#B0B8C0}
     <div class="logo-sub">Sistema de Gestión</div>
   </div>
   <div class="sidebar-nav">
-    <div class="nav-group">General</div>
+    <div class="nav-sec" data-g="ops">
+    <button type="button" class="nav-group nav-gh" onclick="navGrpToggle('ops')" aria-expanded="true"><span>Operación diaria</span><span class="nav-chev">▾</span></button>
+    <div class="nav-sec-items">
     <button class="nav-item active" title="Dashboard" onclick="nav('dashboard',this)"><span class="ni">📊</span><span>Dashboard</span></button>
     <button class="nav-item" title="Agenda" onclick="nav('agenda',this)"><span class="ni">📅</span><span>Agenda</span><span class="nav-badge" id="badge-agenda" style="display:none">0</span></button>
-
-    <div class="nav-group">Maestros</div>
-    <button class="nav-item" title="Clientes" onclick="nav('clientes',this)"><span class="ni">👤</span><span>Clientes</span></button>
-    <button class="nav-item" title="Vehículos" onclick="nav('vehiculos',this)"><span class="ni">🚗</span><span>Vehículos</span></button>
-    <button class="nav-item" title="Inventario" onclick="nav('inventario',this)"><span class="ni">📦</span><span>Inventario</span></button>
-    <button class="nav-item" title="Mecánicos" onclick="nav('mecanicos',this)"><span class="ni">👷</span><span>Mecánicos</span></button>
-
-    <div class="nav-group">Operaciones</div>
+    <button class="nav-item" title="Órdenes de Trabajo" onclick="nav('ordenes',this)"><span class="ni">🔧</span><span>Órdenes de Trabajo</span></button>
     <button class="nav-item" title="Cotización Rápida" onclick="nav('lista-precios',this)"><span class="ni">💲</span><span>Cotización Rápida</span></button>
     <button class="nav-item" title="Cotización Formal" id="nav-cot" onclick="nav('cotizaciones',this)"><span class="ni">📝</span><span>Cotización Formal</span><span class="nav-badge" id="badge-cot" style="display:none">0</span></button>
-    <button class="nav-item" title="Órdenes de Trabajo" onclick="nav('ordenes',this)"><span class="ni">🔧</span><span>Órdenes de Trabajo</span></button>
     <button class="nav-item" title="Pedidos de Fabricación" onclick="nav('pedidos',this)"><span class="ni">🏭</span><span>Pedidos Fabricación</span><span class="nav-badge" id="badge-ped" style="display:none">0</span></button>
+    </div></div>
+    <div class="nav-sec" data-g="ven">
+    <button type="button" class="nav-group nav-gh" onclick="navGrpToggle('ven')" aria-expanded="true"><span>Ventas y cobros</span><span class="nav-chev">▾</span></button>
+    <div class="nav-sec-items">
     <button class="nav-item" title="Ventas" onclick="nav('ventas',this)"><span class="ni">🧾</span><span>Ventas</span></button>
-
-    <div class="nav-group">Informes</div>
-    <button class="nav-item" title="Historial Clientes/Veh." onclick="nav('informes',this)"><span class="ni">🔍</span><span>Historial Clientes/Veh.</span></button>
-
-    <div class="nav-group">Finanzas</div>
     <button class="nav-item" title="Cuentas por Cobrar" onclick="nav('creditos',this)"><span class="ni">💳</span><span>Cuentas por Cobrar</span><span class="nav-badge" id="badge-cred" style="display:none">0</span></button>
+    <button class="nav-item" title="Clientes" onclick="nav('clientes',this)"><span class="ni">👤</span><span>Clientes</span></button>
+    <button class="nav-item" title="Vehículos" onclick="nav('vehiculos',this)"><span class="ni">🚗</span><span>Vehículos</span></button>
+    </div></div>
+    <div class="nav-sec" data-g="inv">
+    <button type="button" class="nav-group nav-gh" onclick="navGrpToggle('inv')" aria-expanded="true"><span>Inventario y compras</span><span class="nav-chev">▾</span></button>
+    <div class="nav-sec-items">
+    <button class="nav-item" title="Inventario" onclick="nav('inventario',this)"><span class="ni">📦</span><span>Inventario</span></button>
+    <button class="nav-item" title="Proveedores" onclick="nav('proveedores',this)"><span class="ni">🏭</span><span>Proveedores</span></button>
+    <button class="nav-item" title="Gastos" onclick="navConRol('gastos',this)"><span class="ni">💸</span><span>Gastos</span></button>
+    </div></div>
+    <div class="nav-sec" data-g="per">
+    <button type="button" class="nav-group nav-gh" onclick="navGrpToggle('per')" aria-expanded="true"><span>Personal</span><span class="nav-chev">▾</span></button>
+    <div class="nav-sec-items">
+    <button class="nav-item" title="Mecánicos" onclick="nav('mecanicos',this)"><span class="ni">👷</span><span>Mecánicos</span></button>
     <button class="nav-item" title="Anticipos / Préstamos" onclick="navConRol('anticipos',this)"><span class="ni">💼</span><span>Anticipos / Préstamos</span><span class="nav-badge" id="badge-ant" style="display:none">0</span></button>
     <button class="nav-item" title="Bonos y Aguinaldos" onclick="navConRol('bonos',this)"><span class="ni">🎁</span><span>Bonos y Aguinaldos</span></button>
     <button class="nav-item" title="Vacaciones" onclick="navConRol('vacaciones',this)"><span class="ni">🏖️</span><span>Vacaciones</span></button>
-    <button class="nav-item" title="Gastos" onclick="navConRol('gastos',this)"><span class="ni">💸</span><span>Gastos</span></button>
+    </div></div>
+    <div class="nav-sec" data-g="rep">
+    <button type="button" class="nav-group nav-gh" onclick="navGrpToggle('rep')" aria-expanded="true"><span>Reportes</span><span class="nav-chev">▾</span></button>
+    <div class="nav-sec-items">
     <button class="nav-item" title="Reportes" onclick="navConRol('reportes',this)"><span class="ni">📈</span><span>Reportes</span></button>
-
-    <div class="nav-group">Sistema</div>
-    <button class="nav-item" title="Proveedores" onclick="nav('proveedores',this)"><span class="ni">🏭</span><span>Proveedores</span></button>
+    <button class="nav-item" title="Historial Clientes/Veh." onclick="nav('informes',this)"><span class="ni">🔍</span><span>Historial Clientes/Veh.</span></button>
+    </div></div>
+    <div class="nav-sec" data-g="sis">
+    <button type="button" class="nav-group nav-gh" onclick="navGrpToggle('sis')" aria-expanded="true"><span>Sistema</span><span class="nav-chev">▾</span></button>
+    <div class="nav-sec-items">
     <button class="nav-item" title="Configuración" onclick="navConRol('config',this)"><span class="ni">⚙️</span><span>Configuración</span></button>
+    </div></div>
   </div>
   <div class="sidebar-footer">
     <button class="pwa-install-btn" onclick="pwaInstalar()" style="display:none;width:100%;margin-bottom:8px;padding:7px;border-radius:8px;border:1px solid #B2121C;background:#B2121C;color:#fff;font-weight:700;cursor:pointer;font-size:12px">📲 Instalar app</button>
@@ -14655,6 +14668,418 @@ document.addEventListener('touchend',e=>{if(!tc)return;const t=e.changedTouches[
   tg&&tg.remove();tc.classList.remove('drag');document.querySelectorAll('.kc-col.over').forEach(x=>x.classList.remove('over'));tg=null;tc=null;});
 const _rc=window.renderCreditos;window.renderCreditos=function(){const r=_rc.apply(this,arguments);try{paint();}catch(e){console.warn('kc',e);}return r;};
 setTimeout(()=>{try{if($i('sec-creditos')?.classList.contains('active'))paint();else ensure(),paint();}catch(e){}},600);
+})();
+</script>
+
+<style>
+.nav-sec{margin:0}
+.nav-gh{display:flex!important;width:100%;align-items:center;justify-content:space-between;background:none;border:0;border-top:1px solid rgba(255,255,255,.08);cursor:pointer;text-align:left;font-family:inherit}
+.nav-sec:first-child .nav-gh{border-top:none;margin-top:0;padding-top:8px}
+.nav-gh:hover{color:rgba(255,255,255,.75)}
+.nav-chev{font-size:11px;transition:transform .15s;display:inline-block}
+.nav-sec.cerrado .nav-chev{transform:rotate(-90deg)}
+.nav-sec.cerrado .nav-sec-items{display:none}
+.nav-sec.cerrado:has(.nav-item.active) .nav-gh{color:#E6282D}
+</style>
+<script>
+(function(){const K='rpm_nav_grupos';let S={};try{S=JSON.parse(localStorage.getItem(K)||'{}')}catch(e){}
+function pinta(){document.querySelectorAll('.sidebar .nav-sec').forEach(s=>{const c=!!S[s.dataset.g];s.classList.toggle('cerrado',c);s.querySelector('.nav-gh').setAttribute('aria-expanded',String(!c));});}
+window.navGrpToggle=g=>{S[g]=!S[g];localStorage.setItem(K,JSON.stringify(S));pinta();};
+/* si se navega a un módulo de un grupo cerrado, se abre */
+const _n=window.nav;window.nav=function(id,btn){const r=_n.apply(this,arguments);try{const it=[...document.querySelectorAll('.sidebar .nav-sec .nav-item')].find(b=>new RegExp("nav(?:ConRol)?\\('"+id+"'").test(b.getAttribute('onclick')||''));const s=it&&it.closest('.nav-sec');if(s&&S[s.dataset.g]&&!document.body.classList.contains('gd-on')){S[s.dataset.g]=false;localStorage.setItem(K,JSON.stringify(S));pinta();}}catch(e){}return r;};
+pinta();})();
+</script>
+<!-- ══ TALLERSYS MODO GUIADO (aditivo) ══ -->
+<style>
+.gd-home{max-width:1100px;margin:0 auto}
+.gd-hello{font-size:22px;font-weight:800;margin:4px 0 2px}
+.gd-hello-sub{color:var(--text2);font-size:14px;margin-bottom:16px}
+.gd-tasks{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:22px}
+.gd-task{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;padding:18px 18px 16px;border-radius:14px;border:1px solid var(--border);background:var(--surface);cursor:pointer;min-height:132px;transition:.15s;color:var(--text);font:inherit}
+.gd-task:hover{border-color:#E6282D;transform:translateY(-2px);box-shadow:0 6px 18px rgba(178,18,28,.18)}
+.gd-task .gi{font-size:34px;line-height:1}
+.gd-task b{font-size:17px}
+.gd-task span{font-size:12.5px;color:var(--text2);line-height:1.35}
+.gd-task.prim{background:linear-gradient(135deg,#B2121C,#E6282D);border-color:#B2121C;color:#fff}
+.gd-task.prim span{color:rgba(255,255,255,.85)}
+.gd-h2{font-size:15px;font-weight:800;margin:6px 0 10px;display:flex;align-items:center;gap:8px}
+.gd-today{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.gd-tc{border:1px solid var(--border);border-left:5px solid #787E86;border-radius:12px;background:var(--surface);padding:14px;display:flex;flex-direction:column;gap:8px}
+.gd-tc.warn{border-left-color:#E6282D}.gd-tc.ok{border-left-color:#2e9d5b}
+.gd-tc .n{font-size:30px;font-weight:800;line-height:1}
+.gd-tc .t{font-weight:700;font-size:14px}
+.gd-tc .d{font-size:12px;color:var(--text2);line-height:1.4}
+.gd-tc button{align-self:flex-start}
+.gd-allok{padding:18px;border:1px dashed var(--border);border-radius:12px;color:var(--text2);text-align:center}
+#gd-wiz{position:fixed;inset:0;z-index:9000;background:rgba(10,10,12,.62);display:none;align-items:center;justify-content:center;padding:14px}
+#gd-wiz.on{display:flex}
+.gd-box{background:var(--surface);color:var(--text);width:min(640px,100%);max-height:96vh;border-radius:16px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.45)}
+.gd-hd{padding:16px 20px 10px;border-bottom:1px solid var(--border)}
+.gd-hd .ttl{font-size:18px;font-weight:800;display:flex;justify-content:space-between;align-items:center}
+.gd-hd .x{background:none;border:0;font-size:22px;cursor:pointer;color:var(--text2)}
+.gd-prog{margin-top:8px;font-size:12px;color:var(--text2);display:flex;justify-content:space-between}
+.gd-bar{height:8px;background:var(--surface2,#2a2a2e);border-radius:5px;margin-top:5px;overflow:hidden}
+.gd-bar i{display:block;height:100%;background:linear-gradient(90deg,#B2121C,#E6282D);transition:width .25s}
+.gd-bd{padding:18px 20px;overflow:auto;flex:1}
+.gd-q{font-size:20px;font-weight:800;margin-bottom:6px}
+.gd-help{font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.45}
+.gd-bd input,.gd-bd select,.gd-bd textarea{width:100%;font-size:18px;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg,#fff);color:var(--text);box-sizing:border-box}
+.gd-bd textarea{min-height:110px;font-size:16px}
+.gd-bd label.l{display:block;font-size:13px;font-weight:700;margin:12px 0 5px}
+.gd-opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.gd-opt{padding:14px;border:2px solid var(--border);border-radius:12px;cursor:pointer;background:var(--surface);color:var(--text);font:inherit;text-align:left}
+.gd-opt b{display:block;font-size:15px}.gd-opt small{color:var(--text2);font-size:12px}
+.gd-opt.sel{border-color:#E6282D;background:rgba(230,40,45,.08)}
+.gd-list{display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow:auto}
+.gd-row{display:flex;gap:10px;align-items:center;padding:12px;border:2px solid var(--border);border-radius:10px;cursor:pointer;background:var(--surface)}
+.gd-row.sel{border-color:#E6282D;background:rgba(230,40,45,.08)}
+.gd-row .g{flex:1;min-width:0}.gd-row .s{font-size:12px;color:var(--text2)}
+.gd-row input[type=checkbox]{width:22px;height:22px;flex:none}
+.gd-card{border:1px solid var(--border);border-radius:12px;padding:12px 14px;background:var(--surface2,rgba(0,0,0,.03));margin-bottom:10px}
+.gd-sum{width:100%;border-collapse:collapse;font-size:14px}.gd-sum td{padding:7px 4px;border-bottom:1px solid var(--border)}.gd-sum td:first-child{color:var(--text2);width:40%}
+.gd-err{color:#E6282D;font-weight:700;font-size:13px;margin-top:10px;min-height:18px}
+.gd-ft{display:flex;gap:10px;padding:12px 20px 16px;border-top:1px solid var(--border)}
+.gd-ft button{flex:1;font-size:16px;padding:14px;border-radius:10px;font-weight:800;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text)}
+.gd-ft .go{background:#B2121C;border-color:#B2121C;color:#fff}.gd-ft .go.fin{background:#2e9d5b;border-color:#2e9d5b}
+.gd-items .it{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:14px}
+.gd-items .it .g{flex:1}
+.gd-ac{border:1px solid var(--border);border-radius:10px;margin-top:4px;max-height:200px;overflow:auto}
+.gd-ac div{padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:14px}.gd-ac div:hover{background:rgba(230,40,45,.08)}
+.gd-more{width:100%;text-align:left}
+body.gd-on .sidebar .nav-sec{display:none}
+body.gd-on.gd-more-open .sidebar .nav-sec{display:block}
+body.gd-on .sidebar #gd-more{border-top:1px solid rgba(255,255,255,.08);margin-top:6px}
+.nav-item.gd-only{display:none}body.gd-on .nav-item.gd-only{display:flex}
+#gd-help-btn{width:34px;height:34px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--text);font-weight:800;font-size:16px;cursor:pointer}
+#gd-tour-bub{position:fixed;z-index:9600;max-width:300px;background:#121214;color:#fff;border:2px solid #E6282D;border-radius:12px;padding:14px;font-size:14px;line-height:1.45;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+#gd-tour-bub .ft{display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px}
+#gd-tour-bub button{background:#B2121C;color:#fff;border:0;border-radius:8px;padding:7px 12px;font-weight:700;cursor:pointer}
+#gd-tour-bub button.sk{background:transparent;color:#B0B8C0}
+.gd-tour-hl{position:relative;z-index:9500!important;outline:3px solid #E6282D!important;outline-offset:3px;border-radius:10px}
+#gd-tour-shade{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9400}
+@media(max-width:700px){.gd-tasks{grid-template-columns:1fr 1fr;gap:10px}.gd-task{min-height:118px;padding:14px}.gd-task b{font-size:15px}.gd-task .gi{font-size:28px}.gd-box{max-height:100vh;border-radius:12px}.gd-hello{font-size:19px}}
+</style>
+<div id="gd-wiz"><div class="gd-box"><div class="gd-hd"><div class="ttl"><span id="gd-ttl"></span><button class="x" onclick="gdCerrar()" aria-label="Cerrar">✕</button></div>
+<div class="gd-prog"><span id="gd-paso"></span><span id="gd-pnom"></span></div><div class="gd-bar"><i id="gd-bari"></i></div></div>
+<div class="gd-bd" id="gd-bd"></div><div class="gd-ft"><button id="gd-back" onclick="gdAtras()">← Atrás</button><button id="gd-next" class="go" onclick="gdSig()">Siguiente →</button></div></div></div>
+<script>
+(function(){
+const $i=id=>document.getElementById(id);
+const E=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const F=d=>d?String(d).slice(0,10).split('-').reverse().join('/'):'—';
+const normPat=p=>String(p||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+const normRut=r=>String(r||'').replace(/[^0-9kK]/g,'').toUpperCase();
+const addDias=(f,n)=>{const d=new Date(f+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);};
+const esAdm=()=>sessionStorage.getItem('rpm_role')==='admin';
+const isEnt=e=>e==='Entregado'||e==='Entregado s/OC';
+const MEDIOS=[['Contado','💵 Efectivo','Pagó en billetes'],['Transferencia','🏦 Transferencia','Depósito al banco'],['Débito','💳 Tarjeta','Débito o crédito en máquina'],['Crédito','📒 A crédito','Paga después (cuenta por cobrar)']];
+function guiadoOn(){if(CFG.modoGuiado===undefined)CFG.modoGuiado='vendedor';return CFG.modoGuiado==='todos'||(CFG.modoGuiado==='vendedor'&&!esAdm());}
+window.gdOn=guiadoOn;
+
+/* ---------- sección Inicio ---------- */
+const first=$i('sec-dashboard');
+if(first&&!$i('sec-inicio')){const s=document.createElement('div');s.id='sec-inicio';s.className='section';first.before(s);}
+if(typeof navTitles!=='undefined')navTitles['inicio']=['Inicio','¿Qué necesitas hacer?'];
+const navWrap=document.querySelector('.sidebar-nav');
+if(navWrap){
+  const sc=(id,ic,t)=>`<button class="nav-item gd-only" title="${t}" onclick="nav('${id}',this);try{if(isMobile())closeMobMenu()}catch(e){}"><span class="ni">${ic}</span><span>${t}</span></button>`;
+  navWrap.insertAdjacentHTML('afterbegin',sc('creditos','💳','Cobros'));navWrap.insertAdjacentHTML('afterbegin',sc('ordenes','🔧','Trabajos (OT)'));navWrap.insertAdjacentHTML('afterbegin',sc('clientes','👤','Clientes'));
+  navWrap.insertAdjacentHTML('afterbegin',`<button class="nav-item gd-only" id="gd-nav-inicio" title="Inicio" onclick="gdInicio(this)"><span class="ni">🏠</span><span>Inicio</span></button>`);
+  const gp=navWrap.querySelector('.nav-sec');gp&&gp.insertAdjacentHTML('beforebegin',`<button class="nav-item gd-only" title="Ayuda" onclick="gdTour(true)"><span class="ni">❓</span><span>Ayuda / Tour</span></button>
+   <button class="nav-item gd-only gd-more" id="gd-more" onclick="gdMas()"><span class="ni">➕</span><span id="gd-more-t">Más opciones</span></button>`);
+}
+const GD_KEEP=['ordenes','clientes','creditos'];
+function aplicarGuiado(){
+  const on=guiadoOn();document.body.classList.toggle('gd-on',on);
+  if(!$i('gd-help-btn')){const tr=document.querySelector('.topbar-right');if(tr)tr.insertAdjacentHTML('afterbegin',`<button id="gd-help-btn" title="Ayuda: ver el recorrido" onclick="gdTour(true)">?</button>`);}
+}
+window.gdAplicar=aplicarGuiado;
+window.gdMas=()=>{const o=document.body.classList.toggle('gd-more-open');$i('gd-more-t').textContent=o?'Menos opciones':'Más opciones';try{localStorage.setItem('gd_mas',o?'1':'')}catch(e){}};
+window.gdInicio=function(btn){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  $i('sec-inicio').classList.add('active');($i('gd-nav-inicio')).classList.add('active');
+  $i('tb-title').textContent='Inicio';$i('tb-sub').textContent='¿Qué necesitas hacer?';
+  renderInicio();try{closeMobMenu();}catch(e){}
+};
+const _nvG=window.nav;window.nav=function(id){if(id==='inicio')return gdInicio();return _nvG.apply(this,arguments);};
+
+function tareasHoy(){
+  const hoy=today();const T=[];
+  const listas=(DB.ordenes||[]).filter(o=>o.estado==='Listo');
+  T.push({k:'listas',warn:listas.length>0,n:listas.length,t:'Trabajos listos para entregar',d:listas.length?listas.slice(0,3).map(o=>E(o.patente||o.folio)+' · '+E(o.clienteNombre||'')).join('<br>'):'Ninguno por ahora',b:'🚚 Entregar',f:"gdWiz('entregar')"});
+  const sinV=(DB.ordenes||[]).filter(o=>isEnt(o.estado)&&!(DB.ventas||[]).some(v=>v.otOrigen===o.folio));
+  if(sinV.length)T.push({k:'sinventa',warn:true,n:sinV.length,t:'Entregados sin venta registrada',d:sinV.slice(0,3).map(o=>E(o.folio)+' · '+E(o.clienteNombre||'')).join('<br>'),b:'🧾 Registrar',f:"nav('dashboard')"});
+  const cr=(DB.creditos||[]).filter(c=>(+c.saldo||0)>0&&c.vcto&&c.vcto<=hoy);
+  const venc=cr.filter(c=>c.vcto<hoy).length;
+  T.push({k:'cobros',warn:cr.length>0,n:cr.length,t:'Cobros vencidos o que vencen hoy',d:cr.length?`${venc} vencido(s) · ${cr.length-venc} vence(n) hoy · ${fmt(cr.reduce((s,c)=>s+(+c.saldo||0),0))}`:'Nada por cobrar hoy',b:'💰 Registrar pago',f:"gdWiz('pago')"});
+  const cot=(DB.cotizaciones||[]).filter(c=>c.estado==='Pendiente');
+  T.push({k:'cot',warn:false,n:cot.length,t:'Cotizaciones esperando respuesta',d:cot.length?cot.slice(0,3).map(c=>E(c.folio)+' · '+E(c.clienteNombre||'')).join('<br>'):'Ninguna pendiente',b:'📝 Ver cotizaciones',f:"nav('cotizaciones')"});
+  const mes=hoy.slice(0,7);
+  const sf=(DB.ventas||[]).filter(v=>(v.fecha||'').startsWith(mes)&&!v.docFolio);
+  T.push({k:'sinfact',warn:sf.length>0,n:sf.length,t:'Ventas del mes sin N° de boleta/factura',d:sf.length?sf.slice(0,3).map(v=>E(v.folio)+' · '+E(v.clienteNombre||'')+' · '+fmt(v.total)).join('<br>'):'Todas tienen documento',b:'🧾 Revisar ventas',f:"nav('ventas')"});
+  return T;
+}
+window.gdTareasHoy=tareasHoy;
+function renderInicio(){
+  const s=$i('sec-inicio');if(!s)return;
+  const h=new Date().getHours();const sal=h<12?'Buenos días':h<20?'Buenas tardes':'Buenas noches';
+  const T=tareasHoy();
+  s.innerHTML=`<div class="gd-home">
+   <div class="gd-hello">${sal} 👋</div><div class="gd-hello-sub">Elige lo que vas a hacer. El sistema te guía paso a paso y al final te muestra un resumen antes de guardar.</div>
+   <div class="gd-tasks" id="gd-tasks">
+    <button class="gd-task prim" id="gd-t-camion" onclick="gdWiz('camion')"><div class="gi">🚚</div><b>Llegó un camión</b><span>Recibir un vehículo y abrir su orden de trabajo</span></button>
+    <button class="gd-task" id="gd-t-entregar" onclick="gdWiz('entregar')"><div class="gi">✅</div><b>Entregar un trabajo</b><span>Cobrar, registrar la venta y descontar repuestos</span></button>
+    <button class="gd-task" id="gd-t-pago" onclick="gdWiz('pago')"><div class="gi">💰</div><b>Registrar un pago</b><span>Un cliente pagó algo que debía</span></button>
+    <button class="gd-task" id="gd-t-cot" onclick="gdWiz('cot')"><div class="gi">📝</div><b>Hacer cotización</b><span>Presupuesto para un cliente</span></button>
+    <button class="gd-task" id="gd-t-meson" onclick="gdWiz('meson')"><div class="gi">🛒</div><b>Vender en mesón</b><span>Venta de repuestos sin orden de trabajo</span></button>
+   </div>
+   <div class="gd-h2" id="gd-hoy-t">📋 Tareas de hoy</div>
+   <div class="gd-today" id="gd-today">${T.map(t=>`<div class="gd-tc ${t.warn?'warn':t.n?'':'ok'}" data-k="${t.k}"><div style="display:flex;gap:10px;align-items:center"><div class="n">${t.n}</div><div class="t">${t.t}</div></div><div class="d">${t.d}</div>${t.n?`<button class="btn btn-sm btn-primary" onclick="${t.f}">${t.b}</button>`:''}</div>`).join('')}</div>
+  </div>`;
+}
+window.gdRenderInicio=renderInicio;
+
+/* ---------- motor de asistentes ---------- */
+let W=null;
+function pasos(){return W.steps.filter(s=>!s.skip||!s.skip(W.st));}
+function pinta(){
+  const P=pasos();const s=P[W.i];const n=P.length;
+  $i('gd-ttl').textContent=W.title;$i('gd-paso').textContent=`Paso ${W.i+1} de ${n}`;$i('gd-pnom').textContent=s.name||'';
+  $i('gd-bari').style.width=((W.i+1)/n*100)+'%';
+  $i('gd-bd').innerHTML=`<div class="gd-q">${s.q}</div>${s.help?`<div class="gd-help">${s.help}</div>`:''}<div id="gd-step">${s.html(W.st)}</div><div class="gd-err" id="gd-err"></div>`;
+  $i('gd-back').textContent=W.i?'← Atrás':'Cancelar';
+  const last=W.i===n-1;$i('gd-next').textContent=last?'✓ Confirmar':'Siguiente →';$i('gd-next').classList.toggle('fin',last);
+  s.bind&&s.bind(W.st);
+  const f=$i('gd-bd').querySelector('input:not([type=checkbox]),textarea');if(f&&!('ontouchstart' in window))setTimeout(()=>f.focus(),30);
+}
+window.gdErr=m=>{$i('gd-err').textContent=m?'⚠ '+m:'';};
+window.gdSig=function(){
+  const P=pasos();const s=P[W.i];
+  if(s.read)s.read(W.st);
+  const e=s.check?s.check(W.st):null;if(e){gdErr(e);return;}
+  if(W.i===P.length-1){const w=W;try{const ok=w.done(w.st);if(ok===false)return;}catch(x){console.error(x);gdErr('Error al guardar: '+x.message);return;}gdCerrar();try{renderInicio();}catch(x){}return;}
+  W.i++;pinta();
+};
+window.gdAtras=function(){if(!W)return;const s=pasos()[W.i];if(s.read)s.read(W.st);if(W.i===0)return gdCerrar();W.i--;pinta();};
+window.gdCerrar=()=>{$i('gd-wiz').classList.remove('on');W=null;};
+window.gdGoto=n=>{W.i=n;pinta();};
+document.addEventListener('keydown',e=>{if(W&&e.key==='Enter'&&e.target.tagName==='INPUT'&&!e.target.dataset.noenter){e.preventDefault();gdSig();}});
+window.gdSet=(k,v,re)=>{if(re){const s=pasos()[W.i];try{s.read&&s.read(W.st);}catch(e){}}W.st[k]=v;if(re)pinta();};
+window.gdW=()=>W;
+
+/* helpers de UI */
+const opts=(k,list,cur)=>`<div class="gd-opts">${list.map(([v,t,sub])=>`<button type="button" class="gd-opt ${cur===v?'sel':''}" onclick="gdSet('${k}','${v}',true)"><b>${t}</b>${sub?`<small>${sub}</small>`:''}</button>`).join('')}</div>`;
+function cliBuscar(q){q=(q||'').toLowerCase().trim();if(!q)return[];const r=normRut(q);
+  return (DB.clientes||[]).filter(c=>(c.nombre||'').toLowerCase().includes(q)||(r.length>=4&&normRut(c.rut).includes(r))||(c.tel||'').replace(/\D/g,'').includes(q.replace(/\D/g,'')||'#')).slice(0,8);}
+/* paso: elegir cliente existente o crear uno nuevo */
+function stepCliente(opt){return {name:'Cliente',q:opt.q||'¿Quién es el cliente?',help:'Escribe el nombre, RUT o teléfono. Si ya existe, tócalo en la lista. Si es nuevo, toca "➕ Cliente nuevo".',
+  html:st=>st.cli?`<div class="gd-card"><b style="font-size:17px">👤 ${E(st.cli.nombre)}</b><div class="s" style="color:var(--text2);font-size:13px">${E(st.cli.rut||'Sin RUT')} · ${E(st.cli.tel||'Sin teléfono')}</div></div><button class="btn btn-sm" onclick="gdSet('cli',null,true)">Cambiar cliente</button>`
+   : st.cliNuevo?`<div class="gd-card" style="font-size:13px">➕ <b>Cliente nuevo</b> — <a href="#" onclick="gdSet('cliNuevo',false,true);return false">volver a buscar</a></div>
+     <label class="l">Nombre o razón social *</label><input id="gd-cn" value="${E(st.cn||'')}" placeholder="Ej: Transportes Soto SpA">
+     <label class="l">RUT <span style="font-weight:400;color:var(--text2)">(si pide factura)</span></label><input id="gd-cr" value="${E(st.cr||'')}" placeholder="76.123.456-7">
+     <label class="l">Teléfono <span style="font-weight:400;color:var(--text2)">(para avisarle por WhatsApp)</span></label><input id="gd-ct" value="${E(st.ct||'')}" inputmode="tel" placeholder="9 1234 5678">`
+   : `${opt.anon?`<button type="button" class="gd-opt" style="width:100%;margin-bottom:10px" onclick="gdSet('cli',{id:null,nombre:'Cliente mesón',rut:'',tel:''},true)"><b>🙋 Cliente de paso (sin datos)</b><small>Para ventas rápidas con boleta</small></button>`:''}
+     <input id="gd-cq" placeholder="Buscar cliente…" data-noenter="1" oninput="gdCliAc(this.value)" value="${E(st.cq||'')}"><div class="gd-ac" id="gd-cac" style="display:none"></div>
+     <button class="btn btn-primary" style="margin-top:12px;width:100%;padding:12px;font-size:15px" onclick="gdSet('cliNuevo',true,true)">➕ Cliente nuevo</button>`,
+  bind:st=>{if(st.cq&&!st.cli&&!st.cliNuevo)gdCliAc(st.cq);},
+  read:st=>{if(st.cliNuevo&&!st.cli){st.cn=($i('gd-cn')||{}).value?.trim()||'';st.cr=($i('gd-cr')||{}).value?.trim()||'';st.ct=($i('gd-ct')||{}).value?.trim()||'';}},
+  check:st=>{if(st.cli)return null;if(!st.cliNuevo)return'Elige un cliente de la lista o toca "Cliente nuevo".';
+    if(!st.cn)return'Escribe el nombre del cliente.';
+    if(st.cr){const d=(DB.clientes||[]).find(c=>c.rut&&normRut(c.rut)===normRut(st.cr));if(d){st.dupe=d;return `Ya existe un cliente con ese RUT: "${E(d.nombre)}". Toca "Volver a buscar" y elígelo.`;}}
+    const nn=st.cn.toLowerCase().replace(/\s+/g,' ');const dn=(DB.clientes||[]).find(c=>(c.nombre||'').toLowerCase().replace(/\s+/g,' ').trim()===nn);
+    if(dn&&!st.okNom&&!(st.cr&&dn.rut&&normRut(dn.rut)!==normRut(st.cr))){st.okNom=true;return `Ya hay un cliente llamado "${E(dn.nombre)}". Si es el mismo, vuelve a buscar y elígelo. Si es otro, toca Siguiente otra vez.`;}
+    return null;}};}
+window.gdCliAc=q=>{W.st.cq=q;const L=cliBuscar(q);const b=$i('gd-cac');if(!b)return;b.style.display=L.length||q?'block':'none';
+  b.innerHTML=L.length?L.map(c=>`<div onclick="gdSelCli('${c.id}')"><b>${E(c.nombre)}</b> <span style="color:var(--text2);font-size:12px">${E(c.rut||'')} ${E(c.tel||'')}</span></div>`).join(''):`<div style="color:var(--text2);cursor:default">No encontré a nadie. Toca "➕ Cliente nuevo".</div>`;};
+window.gdSelCli=id=>{W.st.cli=(DB.clientes||[]).find(c=>c.id===id);W.st.cliNuevo=false;pinta();};
+function crearCliSiNuevo(st){if(st.cli)return st.cli;
+  const c={id:uid(),nombre:st.cn,rut:st.cr||'',tel:st.ct||'',email:'',dir:'',origen:'',obs:'Creado desde Modo guiado',tipo:/spa|ltda|s\.a|limitada|eirl|transportes|sociedad/i.test(st.cn)?'empresa':'persona',creado:new Date().toISOString()};
+  DB.clientes.push(c);st.cli=c;return c;}
+
+/* paso: ítems (inventario + libre) */
+function stepItems(opt){return {name:'Ítems',q:opt.q,help:opt.help||'Busca un repuesto o servicio y tócalo. Para algo que no está en la lista, usa "Ítem libre" con su precio. Escribe precios <b>sin IVA</b>; el sistema suma el 19%.',
+  html:st=>{st.items=st.items||[];const tot=totItems(st.items);return `<input id="gd-pq" placeholder="Buscar repuesto o servicio…" data-noenter="1" oninput="gdProdAc(this.value)"><div class="gd-ac" id="gd-pac" style="display:none"></div>
+   <div class="gd-card" style="margin-top:10px"><b style="font-size:13px">Ítem libre</b><div style="display:flex;gap:8px;margin-top:6px"><input id="gd-ln" placeholder="Descripción" data-noenter="1" style="flex:2;font-size:15px"><input id="gd-lp" placeholder="Precio" inputmode="numeric" data-noenter="1" style="flex:1;font-size:15px"><button class="btn btn-primary" onclick="gdAddLibre()">＋</button></div></div>
+   <div class="gd-items">${st.items.length?st.items.map((it,i)=>`<div class="it"><div class="g"><b>${E(it.nombre)}</b><div style="font-size:12px;color:var(--text2)">${fmt(it.pu)} c/u${it.pid?` · stock ${((DB.inventario||[]).find(p=>p.id===it.pid)||{}).stock??'—'}`:' · libre'}</div></div>
+     <button class="btn btn-xs" onclick="gdQty(${i},-1)">−</button><b style="min-width:26px;text-align:center">${it.qty}</b><button class="btn btn-xs" onclick="gdQty(${i},1)">＋</button><b style="min-width:90px;text-align:right">${fmt(it.sub)}</b><button class="btn btn-xs btn-red" onclick="gdQty(${i},-999)">✕</button></div>`).join(''):'<div style="color:var(--text2);padding:12px 0">Todavía no hay ítems.</div>'}</div>
+   <div style="text-align:right;margin-top:10px;font-size:14px">Neto ${fmt(tot.neto)} · IVA ${fmt(tot.iva)} · <b style="font-size:18px">Total ${fmt(tot.total)}</b></div>`;},
+  check:st=>st.items&&st.items.length?null:'Agrega al menos un ítem.'};}
+function totItems(L){const neto=L.reduce((s,l)=>s+l.sub,0),iva=L.reduce((s,l)=>s+(l.iva?Math.round(l.sub*0.19):0),0);return {neto,iva,total:neto+iva};}
+window.gdProdAc=q=>{const b=$i('gd-pac');q=(q||'').toLowerCase().trim();if(!q){b.style.display='none';return;}
+  const L=(DB.inventario||[]).filter(p=>(p.nombre||'').toLowerCase().includes(q)||(p.codigo||'').toLowerCase().includes(q)).slice(0,8);b.style.display='block';
+  b.innerHTML=L.length?L.map(p=>`<div onclick="gdAddProd('${p.id}')"><b>${E(p.nombre)}</b> <span style="color:var(--text2);font-size:12px">${fmt(p.pv||p.precio||0)} · stock ${p.stock??0}</span></div>`).join(''):'<div style="color:var(--text2)">No está en inventario. Usa "Ítem libre".</div>';};
+window.gdAddProd=id=>{const p=DB.inventario.find(x=>x.id===id);const L=W.st.items;const ex=L.find(l=>l.pid===id);if(ex){ex.qty++;ex.sub=ex.qty*ex.pu;}else{const pu=+(p.pv||p.precio||0);L.push({pid:p.id,nombre:p.nombre,unidad:p.unidad,cat:p.categoria,qty:1,pu,sub:pu,iva:true});}pinta();};
+window.gdAddLibre=()=>{const n=$i('gd-ln').value.trim(),pu=parseFloat(($i('gd-lp').value||'').replace(/\D/g,''))||0;if(!n||!pu){gdErr('Escribe descripción y precio del ítem libre.');return;}W.st.items.push({pid:null,libre:true,nombre:n,qty:1,pu,sub:pu,iva:true});pinta();};
+window.gdQty=(i,d)=>{const it=W.st.items[i];it.qty+=d;if(it.qty<=0)W.st.items.splice(i,1);else it.sub=it.qty*it.pu;pinta();};
+
+function stepPago(){return {name:'Pago',q:'¿Cómo pagó?',help:'Si va a pagar después, elige "A crédito": queda en Cobros con vencimiento a 30 días.',
+  html:st=>`${opts('fpago',MEDIOS,st.fpago)}${st.fpago==='Crédito'?`<label class="l">¿Hasta cuándo tiene para pagar?</label><input type="date" id="gd-vcto" value="${E(st.vcto||addDias(today(),30))}"><div class="gd-help" style="margin-top:6px">Por defecto: 30 días desde hoy.</div>`:''}`,
+  read:st=>{if($i('gd-vcto'))st.vcto=$i('gd-vcto').value;},check:st=>st.fpago?null:'Elige cómo pagó.'};}
+function stepDoc(){return {name:'Documento',q:'¿Se emitió boleta o factura?',help:'Si ya la hiciste en el facturador, escribe el número. Si todavía no, déjalo en blanco y podrás agregarlo después en Ventas.',
+  html:st=>`${opts('docTipo',[['Factura','🧾 Factura',''],['Boleta','🧾 Boleta',''],['','Todavía no','Lo agrego después']],st.docTipo??'')}${st.docTipo?`<label class="l">N° de ${E(st.docTipo.toLowerCase())}</label><input id="gd-df" inputmode="numeric" value="${E(st.docFolio||'')}" placeholder="Ej: 11780">`:''}`,
+  read:st=>{st.docFolio=($i('gd-df')||{}).value?.trim()||'';},check:()=>null};}
+const medioTxt=v=>(MEDIOS.find(m=>m[0]===v)||[,v])[1];
+const sumT=rows=>`<table class="gd-sum">${rows.filter(Boolean).map(([a,b])=>`<tr><td>${a}</td><td><b>${b}</b></td></tr>`).join('')}</table>`;
+function aplicarDoc(v,st){if(st.docTipo&&st.docFolio){v.docTipo=st.docTipo;v.docFolio=st.docFolio;v.docFecha=today();v.docMonto=v.total;}}
+
+/* ===== 1. Llegó un camión ===== */
+const WIZ={};
+WIZ.camion=()=>({title:'🚚 Llegó un camión',st:{},steps:[
+ {name:'Patente',q:'¿Cuál es la patente?',help:'Escríbela como sale en la placa, por ejemplo <b>ABCD12</b>. Busco si el vehículo ya vino antes.',
+  html:st=>`<input id="gd-pat" value="${E(st.pat||'')}" placeholder="ABCD12" style="text-transform:uppercase;font-size:26px;letter-spacing:3px;text-align:center;font-weight:800" maxlength="10">`,
+  read:st=>{const p=normPat($i('gd-pat').value);if(p!==st.pat){st.pat=p;st.veh=(DB.vehiculos||[]).find(v=>normPat(v.patente)===p)||null;st.cli=st.veh?(DB.clientes||[]).find(c=>c.id===st.veh.clienteId)||null:null;st.vehOk=null;}},
+  check:st=>st.pat.length<4?'La patente parece incompleta.':null},
+ {name:'Vehículo',q:'¡Ya lo conozco! ¿Es este?',skip:st=>!st.veh,
+  html:st=>{const v=st.veh,ots=(DB.ordenes||[]).filter(o=>normPat(o.patente)===st.pat);const abierta=ots.find(o=>!isEnt(o.estado));
+   return `<div class="gd-card"><div style="font-size:22px;font-weight:800;letter-spacing:2px">${E(v.patente)}</div><div>${E([v.marca,v.modelo,v.anio].filter(Boolean).join(' ')||'Sin marca/modelo')}</div>
+   <div style="margin-top:8px">👤 <b>${E(st.cli?.nombre||v.clienteNombre||'Sin dueño')}</b> <span style="color:var(--text2);font-size:13px">${E(st.cli?.rut||'')} ${E(st.cli?.tel||'')}</span></div>
+   <div style="font-size:12px;color:var(--text2);margin-top:6px">${ots.length} trabajo(s) anteriores</div></div>
+   ${abierta?`<div class="gd-card" style="border-color:#E6282D">⚠ Ya tiene una OT abierta: <b>${E(abierta.folio)}</b> (${E(abierta.estado)}). Revisa si no es el mismo trabajo antes de abrir otra.</div>`:''}
+   ${opts('vehOk',[['si','✓ Sí, es este','Seguir'],['otro','✕ No, otro dueño','Elegir el cliente']],st.vehOk)}`;},
+  check:st=>st.vehOk?null:'Toca "Sí, es este" o "No, otro dueño".'},
+ {name:'Vehículo',q:'Vehículo nuevo: ¿qué camión es?',skip:st=>!!st.veh,help:'La patente <b id="gd-pnew"></b> no está registrada. Completa lo que sepas; puedes dejarlo en blanco.',
+  html:st=>`<label class="l">Marca</label><input id="gd-vm" value="${E(st.vm||'')}" placeholder="Volvo, Mercedes, Scania…"><label class="l">Modelo</label><input id="gd-vmo" value="${E(st.vmo||'')}" placeholder="FH 460"><label class="l">Año</label><input id="gd-va" value="${E(st.va||'')}" inputmode="numeric" placeholder="2019">`,
+  bind:st=>{const e=$i('gd-pnew');if(e)e.textContent=st.pat;},
+  read:st=>{st.vm=$i('gd-vm').value.trim();st.vmo=$i('gd-vmo').value.trim();st.va=$i('gd-va').value.trim();}},
+ Object.assign(stepCliente({q:'¿De quién es el camión?'}),{skip:st=>st.veh&&st.vehOk==='si'}),
+ {name:'Trabajo',q:'¿Qué problema trae o qué hay que hacerle?',help:'Escríbelo con tus palabras, como te lo dijo el cliente. Ej: "suena el resorte trasero, cambiar abrazaderas".',
+  html:st=>`<textarea id="gd-diag" placeholder="Describe el trabajo…">${E(st.diag||'')}</textarea><label class="l">Kilometraje <span style="font-weight:400;color:var(--text2)">(opcional)</span></label><input id="gd-km" inputmode="numeric" value="${E(st.km||'')}" placeholder="350000">`,
+  read:st=>{st.diag=$i('gd-diag').value.trim();st.km=($i('gd-km').value||'').replace(/\D/g,'');},check:st=>st.diag?null:'Escribe qué hay que hacer.'},
+ {name:'Mecánico',q:'¿Quién lo va a trabajar?',help:'Opcional. Puedes elegir más de uno o dejarlo para después.',
+  html:st=>{st.mecs=st.mecs||[];const L=(DB.mecanicos||[]).filter(m=>m.estado!=='Inactivo');return L.length?`<div class="gd-opts">${L.map(m=>`<button type="button" class="gd-opt ${st.mecs.includes(m.id)?'sel':''}" onclick="gdMec('${m.id}')"><b>👷 ${E(m.nombre)}</b></button>`).join('')}</div>`:'<div style="color:var(--text2)">No hay mecánicos registrados.</div>';}},
+ {name:'Resumen',q:'Revisa antes de guardar',help:'Si algo está mal, toca Atrás. Al confirmar se crea la orden de trabajo en estado <b>Recibido</b>.',
+  html:st=>{const c=st.cli||{nombre:st.cn,rut:st.cr,tel:st.ct};return sumT([['Patente',E(st.pat)+(st.veh?'':' <span class="badge b-orange">nuevo</span>')],['Vehículo',E(st.veh?[st.veh.marca,st.veh.modelo].filter(Boolean).join(' '):[st.vm,st.vmo,st.va].filter(Boolean).join(' '))||'—'],['Cliente',E(c.nombre)+(st.cli?'':' <span class="badge b-orange">nuevo</span>')],['RUT / Teléfono',E((c.rut||'—')+' · '+(c.tel||'—'))],['Trabajo',E(st.diag)],st.km?['Kilometraje',E(st.km)+' km']:null,['Mecánico',E((DB.mecanicos||[]).filter(m=>st.mecs.includes(m.id)).map(m=>m.nombre).join(' / ')||'Por asignar')]]);}}],
+ done:st=>{
+  const c=crearCliSiNuevo(st);let v=st.veh;
+  if(v&&st.vehOk==='otro'&&v.clienteId!==c.id){v.clienteId=c.id;v.clienteNombre=c.nombre;v.clienteRut=c.rut;}
+  if(!v){if((DB.vehiculos||[]).find(x=>normPat(x.patente)===st.pat))throw new Error('patente duplicada');
+    v={id:uid(),clienteId:c.id,clienteNombre:c.nombre,clienteRut:c.rut,patente:st.pat,marca:st.vm||'',modelo:st.vmo||'',anio:st.va||'',color:'',km:+st.km||0,combustible:'',vin:'',obs:'',imgs:[],histKm:[],creado:new Date().toISOString()};DB.vehiculos.push(v);}
+  const km=+st.km||0;if(km>(+v.km||0))v.km=km;
+  const nums=DB.ordenes.map(o=>parseInt((o.folio||'').replace('OT-',''))||0);const folio='OT-'+String((nums.length?Math.max(...nums):0)+1).padStart(4,'0');
+  const mecs=(DB.mecanicos||[]).filter(m=>st.mecs.includes(m.id));
+  DB.ordenes.unshift({folio,fechaIn:today(),fechaEst:'',clienteId:c.id,clienteNombre:c.nombre,clienteRut:c.rut||'',tel:c.tel||'',vehiculoId:v.id,patente:v.patente,marca:v.marca||'',modelo:v.modelo||'',
+   mecanicoId:mecs.map(m=>m.id).join(','),mecanico:mecs.map(m=>m.nombre).join(' / '),mecanicos:mecs.map(m=>({id:m.id,nombre:m.nombre})),km,diag:st.diag,obs:'',items:[],total:0,estado:'Recibido',imgs:[],
+   ejeFront:1,ejeRear:2,ejeTypes:{1:'traccion',2:'traccion'},zonasVehiculo:[],docTipo:'',docFolio:'',docFecha:'',docMonto:0,origen:'guiado',creado:new Date().toISOString()});
+  save();try{renderOTs();renderClientes();renderVehiculos();}catch(e){}
+  toast(`✓ ${folio} creada para ${v.patente}. Agrega repuestos y mano de obra en la OT cuando sepas el precio.`);
+ }});
+window.gdMec=id=>{const L=W.st.mecs;const i=L.indexOf(id);i<0?L.push(id):L.splice(i,1);pinta();};
+
+/* ===== 2. Entregar un trabajo ===== */
+WIZ.entregar=(pre)=>({title:'✅ Entregar un trabajo',st:{ot:pre||null,fpago:null},steps:[
+ {name:'Trabajo',q:'¿Qué trabajo vas a entregar?',help:'Aquí salen las órdenes que están <b>Listas</b>. Toca la que se lleva el cliente.',
+  html:st=>{const L=(DB.ordenes||[]).filter(o=>o.estado==='Listo'||(st.verTodas&&!isEnt(o.estado)));return (L.length?`<div class="gd-list">${L.map(o=>`<div class="gd-row ${st.ot===o.folio?'sel':''}" onclick="gdSet('ot','${o.folio}',true)"><div style="font-size:24px">🚚</div><div class="g"><b>${E(o.patente||'—')} · ${E(o.clienteNombre||'')}</b><div class="s">${E(o.folio)} · ${E(o.estado)} · ${E((o.diag||'').slice(0,60))}</div></div><b>${fmt(o.total)}</b></div>`).join('')}</div>`:'<div class="gd-allok">No hay trabajos en estado "Listo".</div>')+
+   (st.verTodas?'':`<button class="btn btn-sm" style="margin-top:10px" onclick="gdSet('verTodas',true,true)">Ver también los que están en proceso</button>`);},
+  check:st=>st.ot?null:'Toca un trabajo de la lista.'},
+ {name:'Detalle',q:'¿Está todo lo que se hizo?',help:'Revisa que estén todos los repuestos y la mano de obra. Si falta algo, toca "Editar OT", agrégalo y vuelve a "Entregar un trabajo".',
+  html:st=>{const o=DB.ordenes.find(x=>x.folio===st.ot);const L=o.items||[];return `<div class="gd-card"><b>${E(o.folio)} · ${E(o.patente)} · ${E(o.clienteNombre)}</b></div><div class="gd-items">${L.length?L.map(i=>`<div class="it"><div class="g">${E(i.nombre)}</div><span>${i.qty} ×</span><b style="min-width:90px;text-align:right">${fmt(i.sub)}</b></div>`).join(''):'<div style="color:#E6282D;padding:10px 0;font-weight:700">⚠ Esta OT no tiene ítems.</div>'}</div>
+   <div style="text-align:right;margin-top:10px"><b style="font-size:20px">Total ${fmt(o.total)}</b></div><button class="btn btn-sm" style="margin-top:8px" onclick="gdCerrar();abrirEditOT('${o.folio}')">✏️ Editar OT</button>`;},
+  check:st=>{const o=DB.ordenes.find(x=>x.folio===st.ot);return (+o.total||0)>0?null:'El total es $0. Agrega los ítems en la OT antes de entregar.';}},
+ stepPago(),stepDoc(),
+ {name:'Resumen',q:'Revisa antes de entregar',help:'Al confirmar: la OT queda <b>Entregada</b>, se crea la venta, se descuentan los repuestos del inventario'+' y se abre el mensaje para pedir la reseña por WhatsApp.',
+  html:st=>{const o=DB.ordenes.find(x=>x.folio===st.ot);return sumT([['Trabajo',E(o.folio+' · '+o.patente)],['Cliente',E(o.clienteNombre)],['Total',fmt(o.total)],['Pago',medioTxt(st.fpago)],st.fpago==='Crédito'?['Vence',F(st.vcto||addDias(today(),30))]:null,['Documento',st.docTipo?E(st.docTipo+' N° '+(st.docFolio||'(sin número)')):'Pendiente']]);}}],
+ done:st=>{const o=DB.ordenes.find(x=>x.folio===st.ot);
+  const v=window.fxCrearVentaOT(o.folio,st.fpago);if(!v)throw new Error('no se pudo crear la venta');
+  aplicarDoc(v,st);if(st.docTipo&&st.docFolio){o.docTipo=st.docTipo;o.docFolio=st.docFolio;o.docFecha=v.docFecha;o.docMonto=v.total;}
+  if(st.fpago==='Crédito'){const cr=DB.creditos.find(c=>c.ventaFolio===v.folio);if(cr)cr.vcto=st.vcto||addDias(today(),30);}
+  actualizarEstadoOT(o.folio,'Entregado'); // dispara el flujo existente (reseña por WhatsApp)
+ }});
+
+/* ===== 3. Registrar un pago ===== */
+const deudas=cid=>(DB.creditos||[]).filter(c=>c.clienteId===cid&&(+c.saldo||0)>0).sort((a,b)=>(a.vcto||a.fecha||'').localeCompare(b.vcto||b.fecha||''));
+WIZ.pago=()=>({title:'💰 Registrar un pago',st:{},steps:[
+ {name:'Cliente',q:'¿Quién pagó?',help:'Abajo están los clientes que deben algo, los vencidos primero. También puedes buscar.',
+  html:st=>{const hoy=today();const m={};(DB.creditos||[]).filter(c=>(+c.saldo||0)>0&&c.clienteId).forEach(c=>{const x=m[c.clienteId]=m[c.clienteId]||{s:0,n:0,v:0,nom:c.clienteNombre};x.s+=+c.saldo;x.n++;if(c.vcto&&c.vcto<=hoy)x.v++;});
+   const q=(st.q||'').toLowerCase();const L=Object.entries(m).filter(([id,x])=>!q||x.nom.toLowerCase().includes(q)).sort((a,b)=>b[1].v-a[1].v||b[1].s-a[1].s);
+   return `<input id="gd-pq2" placeholder="Buscar cliente…" data-noenter="1" value="${E(st.q||'')}" oninput="gdW().st.q=this.value;gdPagoFil()"><div class="gd-list" id="gd-plist" style="margin-top:10px">${L.map(([id,x])=>`<div class="gd-row ${st.cid===id?'sel':''}" onclick="gdSet('cid','${id}',true)"><div class="g"><b>${E(x.nom)}</b><div class="s">${x.n} deuda(s)${x.v?` · <span style="color:#E6282D;font-weight:700">${x.v} vencida(s)/hoy</span>`:''}</div></div><b>${fmt(x.s)}</b></div>`).join('')||'<div class="gd-allok">Nadie debe nada 🎉</div>'}</div>`;},
+  bind:()=>{const i=$i('gd-pq2');if(i&&W.st.q){i.focus();i.setSelectionRange(99,99);}},
+  check:st=>{if(!st.cid)return'Toca el cliente que pagó.';st.sel=st.selFor===st.cid?st.sel:deudas(st.cid).map(c=>c.id);st.selFor=st.cid;return null;}},
+ {name:'Deudas',q:'¿Qué está pagando?',help:'Marca las cuentas que paga. Si paga solo una parte, en el siguiente paso cambias el monto.',
+  html:st=>deudas(st.cid).map(c=>`<label class="gd-row ${st.sel.includes(c.id)?'sel':''}"><input type="checkbox" ${st.sel.includes(c.id)?'checked':''} onchange="gdDeu('${c.id}',this.checked)"><div class="g"><b>${E(c.desc||'Crédito')}</b><div class="s">Emitida ${F(c.fecha)} · vence ${F(c.vcto)}${c.vcto&&c.vcto<today()?' · <span style="color:#E6282D;font-weight:700">VENCIDA</span>':''}${c.saldo<c.monto?' · abonado '+fmt(c.monto-c.saldo):''}</div></div><b>${fmt(c.saldo)}</b></label>`).join('')+`<div style="text-align:right;margin-top:10px">Seleccionado: <b style="font-size:18px" id="gd-selt">${fmt(selTot(st))}</b></div>`,
+  check:st=>st.sel.length?null:'Marca al menos una cuenta.'},
+ {name:'Monto',q:'¿Cuánto pagó, cuándo y cómo?',help:'Si el monto es menor, se abona a las cuentas más antiguas primero.',
+  html:st=>{if(st.montoFor!==st.sel.join())st.monto=selTot(st),st.montoFor=st.sel.join();return `<label class="l">Monto pagado</label><input id="gd-pm" inputmode="numeric" value="${E(st.monto)}" style="font-size:24px;font-weight:800">
+   <label class="l">Fecha del pago</label><input type="date" id="gd-pf" value="${E(st.fecha||today())}"><label class="l">Medio de pago</label>${opts('medio',MEDIOS.slice(0,3).concat([['Cheque','🧾 Cheque','']]),st.medio)}
+   <label class="l">N° de movimiento o comprobante <span style="font-weight:400;color:var(--text2)">(opcional)</span></label><input id="gd-pr" value="${E(st.ref||'')}">`;},
+  read:st=>{st.monto=parseInt(($i('gd-pm').value||'').replace(/\D/g,''))||0;st.fecha=$i('gd-pf').value;st.ref=$i('gd-pr').value.trim();},
+  check:st=>!st.monto?'Escribe el monto.':st.monto>selTot(st)?`El monto es mayor que lo seleccionado (${fmt(selTot(st))}).`:!st.medio?'Elige el medio de pago.':!st.fecha?'Indica la fecha.':null},
+ {name:'Resumen',q:'Revisa antes de guardar',html:st=>{const c=DB.clientes.find(x=>x.id===st.cid);const pl=planPago(st);return sumT([['Cliente',E(c?.nombre||deudas(st.cid)[0]?.clienteNombre)],['Monto',fmt(st.monto)],['Fecha',F(st.fecha)],['Medio',medioTxt(st.medio)],st.ref?['Comprobante',E(st.ref)]:null])+`<div class="gd-items" style="margin-top:10px">${pl.map(([cr,m])=>`<div class="it"><div class="g">${E(cr.desc)}</div><span>${m>=cr.saldo?'✓ queda pagada':'abono · queda '+fmt(cr.saldo-m)}</span><b style="min-width:90px;text-align:right">${fmt(m)}</b></div>`).join('')}</div>`;}}],
+ done:st=>{planPago(st).forEach(([cr,m])=>{cr.abonos=cr.abonos||[];cr.abonos.push({monto:m,fecha:st.fecha,obs:'Pago '+medioTxt(st.medio).replace(/^\S+\s/,'')+(st.ref?' · '+st.ref:'')+' (Modo guiado)',medio:st.medio,ref:st.ref||'',creado:new Date().toISOString()});cr.saldo=Math.max(0,cr.saldo-m);cr.estado=estadoCredito(cr);});
+  save();try{renderCreditos();updateBadges();}catch(e){}toast('✓ Pago de '+fmt(st.monto)+' registrado');}});
+const selTot=st=>deudas(st.cid).filter(c=>st.sel.includes(c.id)).reduce((s,c)=>s+(+c.saldo||0),0);
+function planPago(st){let r=st.monto;const out=[];deudas(st.cid).filter(c=>st.sel.includes(c.id)).forEach(c=>{if(r<=0)return;const m=Math.min(r,c.saldo);out.push([c,m]);r-=m;});return out;}
+window.gdDeu=(id,on)=>{const s=W.st.sel;const i=s.indexOf(id);if(on&&i<0)s.push(id);if(!on&&i>=0)s.splice(i,1);pinta();};
+window.gdPagoFil=()=>{const v=$i('gd-pq2').value;pinta();};
+
+/* ===== 4. Hacer cotización ===== */
+WIZ.cot=()=>({title:'📝 Hacer cotización',st:{items:[]},steps:[
+ stepCliente({q:'¿Para quién es la cotización?'}),
+ {name:'Vehículo',q:'¿Para qué vehículo? (opcional)',help:'Escribe la patente si la sabes. Si no, déjalo en blanco.',html:st=>`<input id="gd-cp" value="${E(st.pat||'')}" placeholder="ABCD12" style="text-transform:uppercase;font-size:22px;text-align:center">`,read:st=>{st.pat=normPat($i('gd-cp').value);}},
+ stepItems({q:'¿Qué incluye?'}),
+ {name:'Notas',q:'¿Alguna nota para el cliente? (opcional)',html:st=>`<textarea id="gd-co" placeholder="Ej: Válida por 15 días. Incluye instalación.">${E(st.obs||'')}</textarea>`,read:st=>{st.obs=$i('gd-co').value.trim();}},
+ {name:'Resumen',q:'Revisa antes de guardar',help:'Queda como <b>Pendiente</b> en Cotizaciones; desde ahí la imprimes o la mandas por WhatsApp.',html:st=>{const t=totItems(st.items);return sumT([['Cliente',E(st.cli?.nombre||st.cn)],['Patente',E(st.pat||'—')],['Ítems',st.items.map(i=>E(i.qty+'× '+i.nombre)).join('<br>')],['Total (con IVA)',fmt(t.total)],st.obs?['Notas',E(st.obs)]:null]);}}],
+ done:st=>{const c=crearCliSiNuevo(st);const v=st.pat?(DB.vehiculos||[]).find(x=>normPat(x.patente)===st.pat):null;
+  const n=DB.cotizaciones.map(c=>parseInt((c.folio||'').replace('COT-',''))||0);const folio='COT-'+String((n.length?Math.max(...n):0)+1).padStart(4,'0');
+  DB.cotizaciones.unshift({folio,fecha:today(),clienteId:c.id,clienteNombre:c.nombre,clienteRut:c.rut||'',tel:c.tel||'',vehiculoId:v?.id||null,patente:v?.patente||st.pat||'',marca:v?.marca||'',modelo:v?.modelo||'',
+   items:st.items.map(i=>({...i})),descuento:0,total:totItems(st.items).total,obs:st.obs||'',ejeFront:1,ejeRear:2,ejeTypes:{1:'traccion',2:'traccion'},vtype:'camion',zonasVehiculo:[],estado:'Pendiente',origen:'guiado',creado:new Date().toISOString()});
+  save();try{renderCots();updateBadges();}catch(e){}toast('✓ Cotización '+folio+' guardada');}});
+
+/* ===== 5. Vender en mesón ===== */
+WIZ.meson=()=>({title:'🛒 Vender en mesón',st:{items:[]},steps:[
+ stepCliente({q:'¿A quién le vendes?',anon:true}),
+ stepItems({q:'¿Qué se lleva?'}),
+ Object.assign(stepPago(),{check:st=>!st.fpago?'Elige cómo pagó.':(st.fpago==='Crédito'&&!st.cli?.id&&!st.cliNuevo)?'Para vender a crédito el cliente debe estar registrado. Vuelve atrás y elígelo.':null}),
+ stepDoc(),
+ {name:'Resumen',q:'Revisa antes de guardar',help:'Al confirmar se crea la venta y se descuenta el stock del inventario.',html:st=>{const t=totItems(st.items);return sumT([['Cliente',E(st.cli?.nombre||st.cn)],['Ítems',st.items.map(i=>E(i.qty+'× '+i.nombre)).join('<br>')],['Total',fmt(t.total)],['Pago',medioTxt(st.fpago)],st.fpago==='Crédito'?['Vence',F(st.vcto||addDias(today(),30))]:null,['Documento',st.docTipo?E(st.docTipo+' N° '+(st.docFolio||'(sin número)')):'Pendiente']]);}}],
+ done:st=>{const c=(st.cli&&st.cli.id)||st.cliNuevo?crearCliSiNuevo(st):null;const total=totItems(st.items).total;
+  const n=DB.ventas.map(v=>parseInt((v.folio||'').replace('VT-',''))||0);const folio='VT-'+String((n.length?Math.max(...n):0)+1).padStart(4,'0');
+  const v={folio,fecha:today(),clienteId:c?.id||null,clienteNombre:c?c.nombre:'Cliente mesón',clienteRut:c?.rut||'',tel:c?.tel||'',vehiculoId:null,patente:'',marca:'',modelo:'',items:st.items.map(i=>({...i})),descuento:0,total,fpago:st.fpago,obs:'Venta mesón (Modo guiado)',
+   docTipo:'Sin Boleta/Factura',docFolio:'',docFecha:'',docMonto:0,docAdj:'',docAdjNom:'',chequeNum:'',chequeBanco:'',chequeFecha:'',chequeEstado:'',creado:new Date().toISOString()};
+  aplicarDoc(v,st);DB.ventas.unshift(v);
+  v.items.forEach(it=>{const p=it.pid&&DB.inventario.find(x=>x.id===it.pid);if(!p||p.categoria==='Mano de obra')return;p.stock=Math.max(0,(+p.stock||0)-it.qty);(p.histStock=p.histStock||[]).push({tipo:'salida',qty:it.qty,motivo:'Venta '+folio,fecha:today(),creado:new Date().toISOString()});});
+  v.stockDescontado=true;
+  if(st.fpago==='Crédito')DB.creditos.unshift({id:uid(),clienteId:c.id,clienteNombre:c.nombre,clienteRut:c.rut||'',monto:total,saldo:total,abonos:[],fecha:today(),vcto:st.vcto||addDias(today(),30),desc:'Venta '+folio,ventaFolio:folio,estado:'Pendiente',creado:new Date().toISOString()});
+  save();try{renderVentas();renderInventario();updateBadges();}catch(e){}toast('✓ Venta '+folio+' registrada · '+fmt(total));}});
+
+window.gdWiz=function(k,arg){if(!WIZ[k])return;W=WIZ[k](arg);W.i=0;if(k==='entregar'&&arg)W.i=1;$i('gd-wiz').classList.add('on');pinta();};
+
+/* ---------- Configuración ---------- */
+function cfgGuiado(){const s=$i('sec-config');if(!s||$i('gd-cfg'))return;
+  s.insertAdjacentHTML('afterbegin',`<div class="card" id="gd-cfg" style="margin-bottom:14px"><div class="card-title"><div class="card-title-left">🧭 Modo guiado</div></div>
+  <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Pantalla de inicio con botones grandes y asistentes paso a paso, y un menú corto (Inicio, Trabajos, Clientes, Cobros, Ayuda) con "Más opciones" para el resto.</div>
+  <select id="gd-cfg-sel" style="max-width:360px"><option value="vendedor">Activado para el Vendedor (recomendado)</option><option value="todos">Activado para todos (también Administrador)</option><option value="off">Desactivado</option></select></div>`);
+  $i('gd-cfg-sel').value=CFG.modoGuiado||'vendedor';
+  $i('gd-cfg-sel').onchange=e=>{CFG.modoGuiado=e.target.value;saveCfg(CFG);try{fbSave();}catch(x){}aplicarGuiado();toast('Modo guiado: '+e.target.selectedOptions[0].text);};}
+const _nvC=window.nav;window.nav=function(id){const r=_nvC.apply(this,arguments);try{if(id==='config')cfgGuiado();if(id==='dashboard'&&$i('sec-inicio'))$i('gd-nav-inicio')?.classList.remove('active');}catch(e){}return r;};
+
+/* ---------- Tour ---------- */
+const TOUR=[['#gd-t-camion','<b>Llegó un camión</b><br>Empieza aquí cuando entra un vehículo. Te pregunta la patente, el cliente y el trabajo, y crea la orden.'],
+ ['#gd-t-entregar','<b>Entregar un trabajo</b><br>Cuando el cliente retira: registra el pago y la venta, y descuenta los repuestos. ¡No te olvides de este paso!'],
+ ['#gd-t-pago','<b>Registrar un pago</b><br>Cuando un cliente paga algo que debía (transferencia, efectivo…).'],
+ ['#gd-hoy-t','<b>Tareas de hoy</b><br>El sistema te recuerda lo pendiente: trabajos para entregar, cobros que vencen y ventas sin factura.'],
+ ['.sidebar-nav','<b>Menú</b><br>Solo lo que usas a diario. Lo demás está en "Más opciones", ordenado por grupos que puedes abrir y cerrar.'],
+ ['#gd-help-btn','<b>Ayuda</b><br>Toca <b>?</b> cuando quieras repetir este recorrido.']];
+let tI=0;
+function tourEnd(){document.querySelectorAll('.gd-tour-hl').forEach(e=>e.classList.remove('gd-tour-hl'));$i('gd-tour-bub')?.remove();$i('gd-tour-shade')?.remove();localStorage.setItem('gd_tour_v1','1');}
+function tourShow(){document.querySelectorAll('.gd-tour-hl').forEach(e=>e.classList.remove('gd-tour-hl'));
+  let el=null;while(tI<TOUR.length){el=document.querySelector(TOUR[tI][0]);if(el&&el.offsetParent!==null)break;tI++;}
+  if(tI>=TOUR.length)return tourEnd();
+  el.classList.add('gd-tour-hl');el.scrollIntoView({block:'center',behavior:'instant'});
+  let b=$i('gd-tour-bub');if(!b){b=document.createElement('div');b.id='gd-tour-bub';document.body.appendChild(b);}
+  b.innerHTML=`${TOUR[tI][1]}<div class="ft"><button class="sk" onclick="gdTourFin()">Saltar</button><span style="font-size:12px;color:#B0B8C0">${tI+1}/${TOUR.length}</span><button onclick="gdTourSig()">${tI===TOUR.length-1?'Listo':'Siguiente →'}</button></div>`;
+  const r=el.getBoundingClientRect(),bw=Math.min(300,innerWidth-20);let x=r.right+14,y=r.top;
+  if(x+bw>innerWidth-10){x=Math.max(10,Math.min(r.left,innerWidth-bw-10));y=r.bottom+12;}
+  b.style.left=x+'px';b.style.top='0px';const bh=b.offsetHeight;if(y+bh>innerHeight-10)y=Math.max(10,r.top-bh-12);b.style.top=y+'px';}
+window.gdTourSig=()=>{tI++;tourShow();};window.gdTourFin=tourEnd;
+window.gdTour=function(force){if(!force&&localStorage.getItem('gd_tour_v1'))return;if(!$i('sec-inicio').classList.contains('active'))gdInicio();try{closeMobMenu();}catch(e){}
+  if(!$i('gd-tour-shade')){const s=document.createElement('div');s.id='gd-tour-shade';s.onclick=tourEnd;document.body.appendChild(s);}tI=0;setTimeout(tourShow,120);};
+
+/* ---------- arranque ---------- */
+function init(){aplicarGuiado();if(localStorage.getItem('gd_mas')&&!document.body.classList.contains('gd-more-open'))gdMas();if(guiadoOn()){gdInicio();setTimeout(()=>gdTour(false),700);}}
+if(typeof aplicarRol==='function'){const _ar=window.aplicarRol;window.aplicarRol=function(){const r=_ar.apply(this,arguments);try{aplicarGuiado();}catch(e){}return r;};}
+const _rdG=window.renderDashboard;window.renderDashboard=function(){const r=_rdG.apply(this,arguments);try{if($i('sec-inicio')?.classList.contains('active'))renderInicio();}catch(e){}return r;};
+setTimeout(()=>{try{init();}catch(e){console.warn('guiado init',e);}},800);
 })();
 </script>
 
