@@ -15190,5 +15190,47 @@ setTimeout(()=>{prev=window.gdOn?gdOn():null;boton();setInterval(()=>{try{sync()
 })();
 </script>
 
+<!-- ══ TALLERSYS BOTÓN ABRIR PRT JUNTO A PATENTES (aditivo) ══ -->
+<style>
+.prt-btn{display:inline-flex;align-items:center;gap:4px;flex:none;white-space:nowrap;font:inherit;font-size:12px;font-weight:700;padding:6px 10px;border-radius:8px;border:1px solid #1f6feb;background:#1f6feb14;color:#1f6feb;cursor:pointer;margin-left:6px;vertical-align:middle}
+.prt-btn:hover{background:#1f6feb26}.prt-btn.off{opacity:.45;cursor:not-allowed}
+.prt-wrap{display:flex;align-items:center;gap:0;min-width:0;width:100%}.prt-wrap>input{flex:1;min-width:0;width:auto!important}.g2>.field,.g3>.field,.g4>.field{min-width:0}
+.prt-help{font-size:11px;color:var(--text2);margin-top:4px;line-height:1.35}
+.gd-bd .prt-btn{font-size:14px;padding:10px 14px;margin-left:8px}
+</style>
+<script>
+(function(){
+const URL_PRT='https://www.prt.cl/paginas/revisiontecnica.aspx';
+const IDS=['vh-pat','qveh-pat','ev-pat','vhr-pat','edit-ot-pat','gd-pat'];
+const HELP='Copia la patente y abre la consulta de revisión técnica (PRT). Allí pégala con Ctrl+V (en el celular: mantén presionado → Pegar), resuelve el "No soy un robot" y luego escribe aquí marca, modelo, año y N° de chasis.';
+const norm=v=>String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+function copiar(t){try{if(navigator.clipboard&&window.isSecureContext)return navigator.clipboard.writeText(t);}catch(e){}
+  return new Promise(r=>{const a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;opacity:0';document.body.appendChild(a);a.select();try{document.execCommand('copy')}catch(e){}a.remove();r();});}
+window.prtAbrir=function(src){
+  const el=typeof src==='string'?document.getElementById(src):null;
+  const p=norm(el?el.value:(src&&src.pat)||'');
+  if(p.length<4){toast('Escribe primero la patente para consultarla en PRT','warn');el&&el.focus();return;}
+  window.open(URL_PRT,'_blank','noopener');
+  Promise.resolve(copiar(p)).catch(()=>{}).then(()=>toast('Patente '+p+' copiada — pégala en PRT con Ctrl+V'));
+};
+function estado(inp,b){const ok=norm(inp.value).length>=4;b.classList.toggle('off',!ok);b.title=ok?HELP:'Escribe la patente primero. '+HELP;}
+function poner(inp){if(inp.dataset.prt)return;inp.dataset.prt='1';
+  const b=document.createElement('button');b.type='button';b.className='prt-btn';b.innerHTML='🔎 Abrir PRT';b.onclick=()=>prtAbrir(inp.id);
+  const par=inp.parentElement;const cs=getComputedStyle(par);const isFlex=cs.display.includes('flex')&&!cs.flexDirection.startsWith('column');
+  if(isFlex)inp.after(b);else{const w=document.createElement('div');w.className='prt-wrap';inp.before(w);w.appendChild(inp);w.appendChild(b);}
+  const h=document.createElement('div');h.className='prt-help';h.textContent='🔎 Abrir PRT: copia la patente y abre la consulta; pégala con Ctrl+V y anota aquí modelo, año y chasis.';
+  isFlex?par.after(h):b.parentElement.after(h);
+  inp.addEventListener('input',()=>estado(inp,b));estado(inp,b);}
+function scan(){IDS.forEach(id=>{const e=document.getElementById(id);if(e)poner(e);});
+  /* asistente: paso "Vehículo nuevo" (la patente ya se escribió en el paso anterior) */
+  const pn=document.getElementById('gd-pnew');
+  if(pn&&!document.getElementById('gd-prt-new')){const st=window.gdW&&gdW()&&gdW().st;
+    pn.closest('.gd-help').insertAdjacentHTML('afterend',`<div class="gd-card" id="gd-prt-new"><button type="button" class="prt-btn" style="margin:0 0 6px" onclick="prtAbrir({pat:(gdW()&&gdW().st.pat)||''})">🔎 Abrir PRT con ${String((st&&st.pat)||'').replace(/[^A-Z0-9]/g,'')}</button><div class="prt-help">Se copia la patente y se abre la consulta de revisión técnica. Pégala con Ctrl+V, resuelve el "No soy un robot" y vuelve aquí a escribir marca, modelo y año.</div></div>`);}
+}
+new MutationObserver(()=>{try{scan()}catch(e){}}).observe(document.body,{childList:true,subtree:true});
+setTimeout(scan,900);
+})();
+</script>
+
 </body>
 </html>
