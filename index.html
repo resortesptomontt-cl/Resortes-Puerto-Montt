@@ -14578,13 +14578,23 @@ setTimeout(run,700);
 .kc-ghost{position:fixed;pointer-events:none;z-index:99999;opacity:.85;transform:rotate(2deg);width:220px}
 .kc-hint{font-size:11px;color:var(--text2);margin:-6px 0 12px}
 @media(max-width:900px){.kc-kanban{grid-template-columns:repeat(4,minmax(78vw,1fr))}}
+.kc-clis{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-bottom:14px}
+.kc-clis-hd{grid-column:1/-1;font-size:13px;color:var(--text2)}
+.kc-cli{background:var(--surface);border:1px solid var(--border);border-left:4px solid #787E86;border-radius:10px;padding:12px 14px;cursor:pointer;transition:transform .15s,box-shadow .15s}
+.kc-cli.ven{border-left-color:#E6282D}.kc-cli:hover{transform:translateY(-2px);box-shadow:0 6px 14px rgba(0,0,0,.12)}
+.kc-cli .nm{font-size:14px;line-height:1.25}.kc-cli .amt,.kc-det .amt{font-family:'JetBrains Mono',monospace;font-weight:700}
+.kc-cli .m,.kc-det .m{color:var(--text2);font-size:11.5px;margin-top:2px}
+.kc-det{margin-bottom:14px}.kc-det-hd{display:flex;gap:14px;align-items:center;margin-bottom:12px}
+.kc-det-cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media(max-width:900px){.kc-det-cols{grid-template-columns:1fr}.kc-det .kc-col{min-height:0}}
 </style>
 <script>
 (function(){
 'use strict';
 const esc=window.tsxEsc;const $i=id=>document.getElementById(id);
 const COLS=[['Pendiente','Al día / pendiente','#787E86'],['Pagado parcial','Pago parcial','#d97706'],['Vencido','Vencido','#E6282D'],['Pagado','Pagado','#16a34a']];
-let on=localStorage.getItem('tsx_kcred')==='1';
+let on=localStorage.getItem('tsx_kcred')==='1';let kcCli=null;
+window.kcVerCli=k=>{kcCli=k;paint();try{document.getElementById('sec-creditos').scrollIntoView({block:'start'})}catch(e){}};
 const fF=d=>d?String(d).slice(0,10).split('-').reverse().join('/'):'—';
 const age=c=>Math.max(0,Math.round((new Date(today()+'T12:00:00')-new Date(String(c.fecha||c.creado||today()).slice(0,10)+'T12:00:00'))/864e5));
 const agingCol=a=>a<=30?['0-30','#787E86']:a<=60?['31-60','#d97706']:a<=90?['61-90','#E6282D']:['+90','#B2121C'];
@@ -14603,26 +14613,45 @@ function ensure(){
 function paint(){
   ensure();const k=$i('kc-kanban'),b=$i('kc-toggle');if(!k)return;
   const listCard=$i('kc-listcard');
-  b.textContent=on?'☰ Vista lista':'▦ Vista Kanban';
-  k.style.display=on?'grid':'none';$i('kc-hint').style.display=on?'':'none';
+  b.textContent=on?'☰ Vista lista':'▦ Vista por cliente';
+  k.style.display=on?'':'none';$i('kc-hint').style.display=on?'':'none';
   if(listCard)listCard.style.display=on?'none':'';const cp=$i('cheques-panel');if(cp&&on)cp.style.display='none';
   // the original renderCreditos re-shows cheques panel; when list view active, nothing to restore beyond re-render
   if(!on)return;
-  const q=($i('scr')?.value||'').toLowerCase();const mesAtras=addD(-60);
-  const all=(DB.creditos||[]).filter(c=>!q||[c.clienteNombre,c.desc,c.chequeNum,c.chequeBanco,c.ventaFolio].join(' ').toLowerCase().includes(q));
-  k.innerHTML=COLS.map(([s,l,col])=>{
-    let its=all.filter(c=>est(c)===s);
-    if(s==='Pagado'&&!q)its=its.filter(c=>{const ab=(c.abonos||[]).slice(-1)[0];return String((ab&&ab.fecha)||c.fecha||'')>=mesAtras;});
-    its.sort((a,b)=>s==='Pagado'?String(b.fecha).localeCompare(a.fecha):age(b)-age(a));
-    const tot=its.reduce((x,c)=>x+(s==='Pagado'?(+c.monto||0):(+c.saldo||0)),0);
-    return `<div class="kc-col" data-est="${esc(s)}"><h4 style="color:${col}">${esc(l)} <b>${its.length}</b></h4><div class="tot">${s==='Pagado'?'Cobrado':'Por cobrar'}: ${esc(fmt(tot))}${s==='Pagado'&&!q?' · últimos 60 días':''}</div>${its.map(c=>{
-      const a=age(c),[ag,agc]=agingCol(a);const ch=c.tipo==='Cheque';const pag=(+c.monto||0)-(+c.saldo||0);
-      return `<div class="kc-card" draggable="true" data-id="${esc(c.id)}" style="--kcc:${col}">
-        <div style="display:flex;justify-content:space-between;gap:6px"><b style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.clienteNombre||'—')}</b><span class="amt" style="color:${s==='Pagado'?'#16a34a':'var(--text)'}">${esc(fmt(s==='Pagado'?+c.monto||0:+c.saldo||0))}</span></div>
-        <div class="m">${esc((c.desc||'').slice(0,60))}</div>
-        <div class="m">${c.vcto?(s!=='Pagado'&&c.vcto<today()?'⚠️ ':'📅 ')+'Vence '+esc(fF(c.vcto)):'Sin vencimiento'}${pag>0&&s!=='Pagado'?' · abonado '+esc(fmt(pag)):''}</div>
-        ${ch?`<div class="m">🏦 Cheque N°${esc(c.chequeNum||'?')} · ${esc(c.chequeBanco||'—')} · cobro ${esc(fF(c.chequeFecha))}${c.chequeEstado?` · <b style="color:${c.chequeEstado==='Rechazado'?'#E6282D':c.chequeEstado==='Cobrado'?'#16a34a':'inherit'}">${esc(c.chequeEstado)}</b>`:''}</div>`:''}
-        <div style="margin-top:5px">${s!=='Pagado'?`<span class="kc-chip" style="background:${agc}22;color:${agc}">${ag} días · ${a}d</span>`:''}${c.ventaFolio?`<span class="kc-chip" style="background:var(--surface2);color:var(--text2)">${esc(c.ventaFolio)}</span>`:''}</div></div>`;}).join('')||'<div class="m" style="text-align:center;padding:24px 0;opacity:.6">Arrastra aquí</div>'}</div>`;}).join('');
+  const q=($i('scr')?.value||'').toLowerCase();const hoy=today();
+  const key=c=>String(c.clienteId||('n:'+(c.clienteNombre||'—')));
+  const G={};(DB.creditos||[]).forEach(c=>{const k=key(c);(G[k]=G[k]||{k,nom:c.clienteNombre||'—',L:[]}).L.push(c);});
+  const vc=c=>String(c.vcto||'9999-12-31');
+  const card=(c,s,col)=>{const pag=(+c.monto||0)-(+c.saldo||0);const ch=c.tipo==='Cheque';const a=age(c),[ag,agc]=agingCol(a);
+    return `<div class="kc-card kc-doc" data-id="${esc(c.id)}" style="--kcc:${col};cursor:default">
+     <div style="display:flex;justify-content:space-between;gap:6px"><b>${esc((c.desc||c.ventaFolio||'Crédito').slice(0,60))}</b><span class="amt" style="color:${s==='Pagado'?'#16a34a':'var(--text)'}">${esc(fmt(s==='Pagado'?+c.monto||0:+c.saldo||0))}</span></div>
+     <div class="m">Emitida ${esc(fF(c.fecha))} · ${c.vcto?(s==='Vencido'?'⚠️ ':'📅 ')+'vence '+esc(fF(c.vcto)):'sin vencimiento'}${pag>0&&s!=='Pagado'?' · abonado '+esc(fmt(pag))+' de '+esc(fmt(c.monto)):''}</div>
+     ${s==='Pagado'?`<div class="m">✅ Pagada ${esc(fF(((c.abonos||[]).slice(-1)[0]||{}).fecha||''))}</div>`:''}
+     ${ch?`<div class="m">🏦 Cheque N°${esc(c.chequeNum||'?')} · ${esc(c.chequeBanco||'—')} · cobro ${esc(fF(c.chequeFecha))}${c.chequeEstado?' · <b>'+esc(c.chequeEstado)+'</b>':''}</div>`:''}
+     <div style="margin-top:5px">${s!=='Pagado'?`<span class="kc-chip" style="background:${agc}22;color:${agc}">${ag} días · ${a}d</span>`:''}${c.ventaFolio?`<span class="kc-chip" style="background:var(--surface2);color:var(--text2)">${esc(c.ventaFolio)}</span>`:''}</div>
+     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">${s!=='Pagado'?`<button class="btn btn-xs btn-primary" onclick="abrirAbono('${esc(c.id)}')">💵 Abono</button><button class="btn btn-xs" onclick="kcMover('${esc(c.id)}','Pagado')">✅ Marcar pagada</button><button class="btn btn-xs" onclick="kcMover('${esc(c.id)}','Pendiente')">📅 Reprogramar</button>`:`<button class="btn btn-xs" onclick="kcMover('${esc(c.id)}','Pendiente')">↩ Reabrir</button>`}</div></div>`;};
+  const g=kcCli&&G[kcCli];
+  if(!g){kcCli=null;
+    const L=Object.values(G).map(x=>{const act=x.L.filter(c=>est(c)!=='Pagado'&&(+c.saldo||0)>0);const ven=act.filter(c=>est(c)==='Vencido');const prox=act.map(vc).sort()[0];return {...x,act,ven,prox,tot:act.reduce((t,c)=>t+(+c.saldo||0),0)};})
+     .filter(x=>x.act.length&&(!q||[x.nom].concat(x.L.map(c=>[c.desc,c.ventaFolio,c.chequeNum].join(' '))).join(' ').toLowerCase().includes(q)))
+     .sort((a,b)=>(b.ven.length>0)-(a.ven.length>0)||a.prox.localeCompare(b.prox)||b.tot-a.tot);
+    const T=L.reduce((t,x)=>t+x.tot,0);
+    k.className='kc-clis';
+    k.innerHTML=`<div class="kc-clis-hd">${L.length} cliente(s) con deuda · <b>${esc(fmt(T))}</b> por cobrar · ${L.filter(x=>x.ven.length).length} con vencidas</div>`+(L.map(x=>`<div class="kc-cli ${x.ven.length?'ven':''}" onclick="kcVerCli('${esc(x.k).replace(/'/g,'&#39;')}')">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><b class="nm">${esc(x.nom)}</b>${x.ven.length?`<span class="kc-chip" style="background:#E6282D22;color:#E6282D">${x.ven.length} vencida(s)</span>`:''}</div>
+      <div class="amt" style="font-size:20px;margin:6px 0 4px">${esc(fmt(x.tot))}</div>
+      <div class="m">${x.act.length} documento(s) por cobrar</div>
+      <div class="m">${x.prox<hoy?'⚠️ Vencida desde ':'📅 Próximo vencimiento '}${esc(fF(x.prox==='9999-12-31'?'':x.prox))}</div></div>`).join('')||'<div class="m" style="padding:30px;text-align:center;opacity:.7">Nadie debe nada 🎉</div>');
+    $i('kc-hint').innerHTML='Toca un cliente para ver sus facturas pendientes, vencidas y pagadas.';return;}
+  const sec=[['Vencido','⚠️ Vencidas','#E6282D',x=>x.filter(c=>est(c)==='Vencido').sort((a,b)=>vc(a).localeCompare(vc(b)))],
+   ['Pendiente','🕒 Pendientes','#787E86',x=>x.filter(c=>['Pendiente','Pagado parcial'].includes(est(c))).sort((a,b)=>vc(a).localeCompare(vc(b)))],
+   ['Pagado','✅ Pagadas','#16a34a',x=>x.filter(c=>est(c)==='Pagado').sort((a,b)=>String(((b.abonos||[]).slice(-1)[0]||{}).fecha||b.fecha||'').localeCompare(String(((a.abonos||[]).slice(-1)[0]||{}).fecha||a.fecha||'')))]];
+  const tot=g.L.filter(c=>est(c)!=='Pagado').reduce((t,c)=>t+(+c.saldo||0),0);
+  k.className='kc-det';
+  k.innerHTML=`<div class="kc-det-hd"><button class="btn btn-sm" onclick="kcVerCli(null)">← Volver a clientes</button><div><b style="font-size:17px">${esc(g.nom)}</b><div class="m">Debe <b>${esc(fmt(tot))}</b></div></div></div>
+   <div class="kc-det-cols">${sec.map(([s,l,col,fn])=>{const L=fn(g.L);const sv=s==='Pagado'?L.slice(0,30):L;
+    return `<div class="kc-col" data-est="${s}"><h4 style="color:${col}">${l} <b>${L.length}</b></h4><div class="tot">${s==='Pagado'?'Cobrado':'Por cobrar'}: ${esc(fmt(L.reduce((t,c)=>t+(s==='Pagado'?+c.monto||0:+c.saldo||0),0)))}${s==='Pagado'&&L.length>30?' · últimas 30':''}</div>${sv.map(c=>card(c,s==='Pendiente'?'Pendiente':s,col)).join('')||'<div class="m" style="text-align:center;padding:20px 0;opacity:.6">Ninguna</div>'}</div>`;}).join('')}</div>`;
+  $i('kc-hint').innerHTML='Vencidas y pendientes: la más próxima a vencer primero. Pagadas: la más reciente primero.';
 }
 window.kcRender=paint;
 /* ---------- mover ---------- */
@@ -14661,7 +14690,7 @@ document.addEventListener('dragover',e=>{const col=e.target.closest&&e.target.cl
 document.addEventListener('drop',e=>{const col=e.target.closest&&e.target.closest('.kc-col');if(!col)return;e.preventDefault();col.classList.remove('over');const id=e.dataTransfer.getData('text/kc');if(id)mover(id,col.dataset.est);});
 document.addEventListener('dblclick',e=>{const c=e.target.closest&&e.target.closest('.kc-card');if(c){const cr=DB.creditos.find(x=>String(x.id)===c.dataset.id);if(cr&&est(cr)!=='Pagado')abrirAbono(cr.id);}});
 let tg=null,tc=null,tm=false;
-document.addEventListener('touchstart',e=>{const c=e.target.closest&&e.target.closest('.kc-card');if(!c)return;tc=c;tm=false;},{passive:true});
+document.addEventListener('touchstart',e=>{const c=e.target.closest&&e.target.closest('.kc-card:not(.kc-doc)');if(!c)return;tc=c;tm=false;},{passive:true});
 document.addEventListener('touchmove',e=>{if(!tc)return;e.preventDefault();const t=e.touches[0];if(!tg){tg=tc.cloneNode(true);tg.classList.add('kc-ghost');document.body.appendChild(tg);tc.classList.add('drag');}
   tm=true;tg.style.left=(t.clientX-110)+'px';tg.style.top=(t.clientY-20)+'px';document.querySelectorAll('.kc-col.over').forEach(x=>x.classList.remove('over'));const col=document.elementFromPoint(t.clientX,t.clientY)?.closest('.kc-col');if(col)col.classList.add('over');},{passive:false});
 document.addEventListener('touchend',e=>{if(!tc)return;const t=e.changedTouches[0];if(tm){const col=document.elementFromPoint(t.clientX,t.clientY)?.closest('.kc-col');if(col)mover(tc.dataset.id,col.dataset.est);}
