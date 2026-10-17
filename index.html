@@ -14,6 +14,7 @@
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <meta name="theme-color" content="#121214">
+<meta name="color-scheme" content="light only">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- Firebase SDK compat (works everywhere including mobile) -->
@@ -3997,7 +3998,7 @@ function acSearchCot(){
   const q=($('cot-prod-txt')?.value||'').trim().toLowerCase();
   const drop=$('cot-ac-drop');if(!drop)return;
   if(!q){drop.style.display='none';return;}
-  const hits=DB.inventario.filter(p=>p.nombre.toLowerCase().includes(q)).slice(0,8);
+  const hits=window.tsInvSearch?tsInvSearch(q,10):DB.inventario.filter(p=>p.nombre.toLowerCase().includes(q)).slice(0,8);
   let html=hits.map(p=>`<div class="ac-item" onmousedown="acSelCotProd('${p.id}')">
     <div><span class="ac-item-name">${p.nombre}</span> <span class="ac-badge-new">${p.unidad}</span></div>
     <div><span class="ac-item-meta">${p.categoria||''} · ${fmt(p.precio)}</span></div>
@@ -14946,19 +14947,21 @@ function crearCliSiNuevo(st){if(st.cli)return st.cli;
   DB.clientes.push(c);st.cli=c;return c;}
 
 /* paso: ítems (inventario + libre) */
-function stepItems(opt){return {name:'Ítems',q:opt.q,help:opt.help||'Busca un repuesto o servicio y tócalo. Para algo que no está en la lista, usa "Ítem libre" con su precio. Escribe precios <b>sin IVA</b>; el sistema suma el 19%.',
+function stepItems(opt){return {name:'Ítems',q:opt.q,help:opt.help||'Busca un repuesto o servicio y tócalo. Para algo que no está en la lista, usa "Ítem libre" con su precio. Escribe precios <b>con IVA incluido</b>; puedes cambiar el precio de cada ítem.',
   html:st=>{st.items=st.items||[];const tot=totItems(st.items);return `<input id="gd-pq" placeholder="Buscar repuesto o servicio…" data-noenter="1" oninput="gdProdAc(this.value)"><div class="gd-ac" id="gd-pac" style="display:none"></div>
    <div class="gd-card" style="margin-top:10px"><b style="font-size:13px">Ítem libre</b><div style="display:flex;gap:8px;margin-top:6px"><input id="gd-ln" placeholder="Descripción" data-noenter="1" style="flex:2;font-size:15px"><input id="gd-lp" placeholder="Precio" inputmode="numeric" data-noenter="1" style="flex:1;font-size:15px"><button class="btn btn-primary" onclick="gdAddLibre()">＋</button></div></div>
-   <div class="gd-items">${st.items.length?st.items.map((it,i)=>`<div class="it"><div class="g"><b>${E(it.nombre)}</b><div style="font-size:12px;color:var(--text2)">${fmt(it.pu)} c/u${it.pid?` · stock ${((DB.inventario||[]).find(p=>p.id===it.pid)||{}).stock??'—'}`:' · libre'}</div></div>
+   <div class="gd-items">${st.items.length?st.items.map((it,i)=>`<div class="it"><div class="g"><b>${E(it.nombre)}</b><div style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:4px;flex-wrap:wrap">$<input type="number" min="0" step="1" value="${it.pu}" data-noenter="1" title="Precio unitario con IVA (editable)" onchange="gdPu(${i},this.value)" style="width:96px;padding:2px 6px;font-size:13px;font-family:'JetBrains Mono',monospace"> c/u${it.pid?` · stock ${((DB.inventario||[]).find(p=>p.id===it.pid)||{}).stock??'—'}`:' · libre'}</div></div>
      <button class="btn btn-xs" onclick="gdQty(${i},-1)">−</button><b style="min-width:26px;text-align:center">${it.qty}</b><button class="btn btn-xs" onclick="gdQty(${i},1)">＋</button><b style="min-width:90px;text-align:right">${fmt(it.sub)}</b><button class="btn btn-xs btn-red" onclick="gdQty(${i},-999)">✕</button></div>`).join(''):'<div style="color:var(--text2);padding:12px 0">Todavía no hay ítems.</div>'}</div>
    <div style="text-align:right;margin-top:10px;font-size:14px">Neto ${fmt(tot.neto)} · IVA ${fmt(tot.iva)} · <b style="font-size:18px">Total ${fmt(tot.total)}</b></div>`;},
   check:st=>st.items&&st.items.length?null:'Agrega al menos un ítem.'};}
-function totItems(L){const neto=L.reduce((s,l)=>s+l.sub,0),iva=L.reduce((s,l)=>s+(l.iva?Math.round(l.sub*0.19):0),0);return {neto,iva,total:neto+iva};}
+/* v11: los precios del inventario y del ítem libre INCLUYEN IVA (igual que Cotización Formal): Neto = Total/1.19 */
+function totItems(L){const total=L.reduce((s,l)=>s+l.sub+(l.iva?Math.round(l.sub*0.19):0),0);const neto=Math.round(total/1.19);return {neto,iva:total-neto,total};}
 window.gdProdAc=q=>{const b=$i('gd-pac');q=(q||'').toLowerCase().trim();if(!q){b.style.display='none';return;}
-  const L=(DB.inventario||[]).filter(p=>(p.nombre||'').toLowerCase().includes(q)||(p.codigo||'').toLowerCase().includes(q)).slice(0,8);b.style.display='block';
-  b.innerHTML=L.length?L.map(p=>`<div onclick="gdAddProd('${p.id}')"><b>${E(p.nombre)}</b> <span style="color:var(--text2);font-size:12px">${fmt(p.pv||p.precio||0)} · stock ${p.stock??0}</span></div>`).join(''):'<div style="color:var(--text2)">No está en inventario. Usa "Ítem libre".</div>';};
-window.gdAddProd=id=>{const p=DB.inventario.find(x=>x.id===id);const L=W.st.items;const ex=L.find(l=>l.pid===id);if(ex){ex.qty++;ex.sub=ex.qty*ex.pu;}else{const pu=+(p.pv||p.precio||0);L.push({pid:p.id,nombre:p.nombre,unidad:p.unidad,cat:p.categoria,qty:1,pu,sub:pu,iva:true});}pinta();};
-window.gdAddLibre=()=>{const n=$i('gd-ln').value.trim(),pu=parseFloat(($i('gd-lp').value||'').replace(/\D/g,''))||0;if(!n||!pu){gdErr('Escribe descripción y precio del ítem libre.');return;}W.st.items.push({pid:null,libre:true,nombre:n,qty:1,pu,sub:pu,iva:true});pinta();};
+  const L=window.tsInvSearch?tsInvSearch(q,10):(DB.inventario||[]).filter(p=>(p.nombre||'').toLowerCase().includes(q)).slice(0,8);b.style.display='block';
+  b.innerHTML=L.length?L.map(p=>`<div onclick="gdAddProd('${p.id}')"><b>${E(p.nombre)}</b> <span style="color:var(--text2);font-size:12px">${fmt(p.pv||p.precio||0)} c/IVA · stock ${p.stock??0}${p.categoria?' · '+E(p.categoria):''}</span></div>`).join(''):'<div style="color:var(--text2)">No está en inventario. Usa "Ítem libre".</div>';};
+window.gdAddProd=id=>{const p=DB.inventario.find(x=>x.id===id);const L=W.st.items;const ex=L.find(l=>l.pid===id);if(ex){ex.qty++;ex.sub=ex.qty*ex.pu;}else{const pu=+(p.pv||p.precio||0);L.push({pid:p.id,nombre:p.nombre,unidad:p.unidad,cat:p.categoria,qty:1,pu,sub:pu,iva:false});}pinta();};
+window.gdAddLibre=()=>{const n=$i('gd-ln').value.trim(),pu=parseFloat(($i('gd-lp').value||'').replace(/\D/g,''))||0;if(!n||!pu){gdErr('Escribe descripción y precio del ítem libre.');return;}W.st.items.push({pid:null,libre:true,nombre:n,qty:1,pu,sub:pu,iva:false});pinta();};
+window.gdPu=(i,v)=>{const it=W.st.items[i];const pu=Math.max(0,Math.round(parseFloat(String(v).replace(/[^\d.]/g,''))||0));it.pu=pu;it.sub=it.qty*pu;pinta();};
 window.gdQty=(i,d)=>{const it=W.st.items[i];it.qty+=d;if(it.qty<=0)W.st.items.splice(i,1);else it.sub=it.qty*it.pu;pinta();};
 
 function stepPago(){return {name:'Pago',q:'¿Cómo pagó?',help:'Si va a pagar después, elige "A crédito": queda en Cobros con vencimiento a 30 días.',
@@ -15611,5 +15614,82 @@ const st=document.createElement('style');st.textContent=`
 document.head.appendChild(st);
 })();
 </script>
+
+<script>
+/* v11: búsqueda de inventario mejorada (asistente y Cotización Formal) */
+(function(){
+const SIN={mercedes:['mbenz','mb','benz','mercedes'],benz:['mbenz','mb','benz','mercedes'],mb:['mbenz','mb','benz','mercedes'],mbenz:['mbenz','mb','benz','mercedes'],mercedesbenz:['mbenz','mb','benz','mercedes'],
+ paquete:['paquete','pt'],paquetes:['paquete','pt'],resorte:['hoja','hj','paquete','pt','ptp','resorte'],resortes:['hoja','hj','paquete','pt','ptp','resorte'],
+ hoja:['hoja','hj'],hojas:['hoja','hj'],pretemplado:['pt','ptp','pre-templado','pretemplado'],volkswagen:['vw','volkswagen'],vw:['vw','volkswagen'],
+ international:['inter','international'],chevrolet:['chevr','chevrolet'],freightliner:['freightl','freigthliner','freightliner']};
+const norm=t=>String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/×/g,'x')
+  .replace(/(\d)\s*[x*]\s*(?=\d)/g,'$1x').replace(/\./g,'').replace(/\bm\s+benz\b/g,'mbenz').replace(/\s+/g,' ').trim();
+window.tsNormBusq=norm;
+function prep(p){const k=(p.nombre||'')+'|'+(p.codigo||'')+'|'+(p.categoria||'');if(p.__sk!==k){Object.defineProperty(p,'__sk',{value:k,writable:true,enumerable:false,configurable:true});
+  const h=norm((p.nombre||'')+' '+(p.codigo||'')+' '+(p.categoria||''));Object.defineProperty(p,'__sh',{value:h,writable:true,enumerable:false,configurable:true});
+  Object.defineProperty(p,'__st',{value:h.split(/[\s\/,()-]+/),writable:true,enumerable:false,configurable:true});
+  Object.defineProperty(p,'__sn',{value:norm(p.nombre),writable:true,enumerable:false,configurable:true});}return p;}
+window.tsInvSearch=function(q,max){
+  let qq=norm(q);if(!qq)return [];
+  qq=qq.replace(/\bmercedes benz\b/g,'mercedes').replace(/\bpaquetes? terminados?\b/g,'paquete').replace(/\bpre templado\b/g,'pretemplado');
+  const toks=qq.split(' ').filter(Boolean);
+  const out=[];
+  for(const p0 of (DB.inventario||[])){const p=prep(p0);let score=0,ok=true;
+    for(const t of toks){const alts=SIN[t];let hit=false;
+      if(alts){hit=alts.some(a=>p.__st.some(w=>w.startsWith(a)))||p.__sh.includes(t);}
+      else hit=p.__sh.includes(t);
+      if(!hit){ok=false;break;}
+      if(p.__sn.includes(t)||(alts&&alts.some(a=>p.__sn.split(' ').some(w=>w.startsWith(a)))))score+=2;else score+=1;
+      if(p.__sn.startsWith(t))score+=1;}
+    if(ok)out.push([score,p0]);}
+  out.sort((a,b)=>b[0]-a[0]||(+(b[1].stock>0))-(+(a[1].stock>0))||String(a[1].nombre).localeCompare(String(b[1].nombre)));
+  return out.slice(0,max||10).map(x=>x[1]);
+};
+})();
+</script>
+<script>
+/* v11: "Hacer cotización" pregunta primero el tipo: rápida (asistente) o formal (módulo Cotización Formal) */
+(function(){
+const _gw=window.gdWiz;if(!_gw)return;
+window.gdWiz=function(k,arg){
+  if(k!=='cot'||(arg&&arg.directo))return _gw.apply(this,arguments);
+  cotTipoCerrar();
+  document.body.insertAdjacentHTML('beforeend',`<div id="cot-tipo-modal" onclick="if(event.target===this)cotTipoCerrar()" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px">
+   <div style="background:var(--surface,#fff);color:var(--text);border-radius:14px;max-width:620px;width:100%;padding:20px 22px;box-shadow:0 10px 40px rgba(0,0,0,.35)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b style="font-size:18px">📝 ¿Qué tipo de cotización?</b><button class="btn btn-sm" onclick="cotTipoCerrar()">✕</button></div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:14px">Elige según quién la pide.</div>
+    <div class="cot-tipo-g">
+     <button class="cot-tipo-b" id="cot-tipo-rapida" onclick="cotTipoElegir('rapida')"><span class="i">⚡</span><b>Cotización rápida</b><span>Cliente consultando. Pocos pasos: cliente, ítems y total.</span></button>
+     <button class="cot-tipo-b" id="cot-tipo-formal" onclick="cotTipoElegir('formal')"><span class="i">📄</span><b>Cotización formal</b><span>Empresa / OC. Módulo completo: ejes y zonas, descuentos, validez y condiciones.</span></button>
+    </div></div></div>`);
+};
+window.cotTipoCerrar=()=>{document.getElementById('cot-tipo-modal')?.remove();};
+window.cotTipoElegir=function(t){
+  cotTipoCerrar();
+  if(t==='rapida')return _gw('cot',{directo:true});
+  try{nav('cotizaciones',null);}catch(e){}
+  setTimeout(()=>{try{wzOpen('cot',true);const b=document.querySelector('#wz-cot .wz-st[data-i="0"]');b&&b.click();document.getElementById('sec-cotizaciones').querySelector('.wz-wrap')?.scrollIntoView({block:'start'});}catch(e){console.warn('cot formal',e);}},250);
+};
+const st=document.createElement('style');st.textContent=`
+.cot-tipo-g{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cot-tipo-b{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;padding:18px;border:2px solid var(--border);border-radius:14px;background:var(--surface);color:var(--text);cursor:pointer;font:inherit;min-height:150px}
+.cot-tipo-b:hover{border-color:#B2121C;background:var(--surface2)}
+.cot-tipo-b .i{font-size:34px;line-height:1}.cot-tipo-b b{font-size:17px}.cot-tipo-b span:last-child{font-size:13px;color:var(--text2);line-height:1.35}
+#cot-tipo-formal{border-color:#B2121C33}
+@media(max-width:560px){.cot-tipo-g{grid-template-columns:1fr}.cot-tipo-b{min-height:0}}`;
+document.head.appendChild(st);
+})();
+</script>
+<style>
+/* v11: menú lateral siempre legible (texto claro explícito sobre fondo oscuro) */
+.sidebar{color-scheme:dark;forced-color-adjust:none;color:#e9e9ec}
+.sidebar .nav-item,.sidebar .nav-item span:not(.nav-badge),.sidebar button.nav-item{color:rgba(255,255,255,.82)!important;-webkit-text-fill-color:currentColor;-webkit-appearance:none;appearance:none;background-color:transparent}
+.sidebar .nav-item:hover,.sidebar .nav-item:hover span:not(.nav-badge){color:#fff!important}
+.sidebar .nav-item.active,.sidebar .nav-item.active span:not(.nav-badge){color:#fff!important}
+.sidebar .nav-group,.sidebar .nav-gh,.sidebar .nav-gh span,.sidebar .nav-chev,.sidebar .nav-section{color:rgba(255,255,255,.55)!important;-webkit-text-fill-color:currentColor;-webkit-appearance:none;appearance:none}
+.sidebar .nav-gh:hover,.sidebar .nav-gh:hover span{color:rgba(255,255,255,.85)!important}
+.sidebar .nav-sec.cerrado:has(.nav-item.active) .nav-gh,.sidebar .nav-sec.cerrado:has(.nav-item.active) .nav-gh span{color:#ff6b6f!important}
+.sidebar .logo-sub,.sidebar .sidebar-footer,.sidebar .sidebar-footer *{color:rgba(255,255,255,.5)}
+</style>
 </body>
 </html>
