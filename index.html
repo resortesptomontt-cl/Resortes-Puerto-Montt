@@ -5437,12 +5437,12 @@ function editItemInline(tipo, folio, idx, field, val){
     it.sub=sub+ivaAmt;
   }
   // Recalculate record total
-  rec.total=rec.items.reduce((s,it)=>{
+  rec.total=Math.max(0,rec.items.reduce((s,it)=>{
     const dto=it.dto||0;
     const sub=Math.round(it.qty*it.pu*(1-dto/100));
     const iva=it.iva?Math.round(sub*0.19):0;
     return s+sub+iva;
-  },0);
+  },0)-(+rec.descuento||0)); // fix v8: antes se perdía el descuento global
   save();
   if(tipo==='ot')renderOTs();
   else if(tipo==='v')renderVentas();
@@ -5464,10 +5464,10 @@ function addItemInline(tipo, folio){
     toast('🔒 Cotización '+rec.estado.toLowerCase()+' — no se puede modificar');return;
   }
   rec.items.push({nombre:nom,qty,pu,unidad:'und',sub,dto:0,iva:false,libre:true});
-  rec.total=rec.items.reduce((s,it)=>{
+  rec.total=Math.max(0,rec.items.reduce((s,it)=>{
     const d=it.dto||0;const s2=Math.round(it.qty*it.pu*(1-d/100));
     return s+s2+(it.iva?Math.round(s2*0.19):0);
-  },0);
+  },0)-(+rec.descuento||0)); // fix v8
   save();
   if(tipo==='ot')renderOTs();
   else if(tipo==='v')renderVentas();
@@ -8826,6 +8826,7 @@ function guardarEditMec(){
 // ══════════════════════════════════════════════════
 let _editOTFolio=null;
 let _editOTItems=[];
+function _eotSub(it){const s=Math.round((+it.qty||0)*(+it.pu||0)*(1-(+it.dto||0)/100));it.sub=s+(it.iva?Math.round(s*0.19):0);return it.sub;}
 
 // ── Selector de zona del vehículo — motor multi-carrocería ────────────
 const VEH_IMGS={
@@ -9261,7 +9262,7 @@ function renderEditOTItems(){
     _editOTItems.map((it,i)=>`<tr>
       <td style="font-weight:500">${it.nombre}</td>
       <td><input type="number" value="${it.qty}" min="0.01" step="0.01" style="width:60px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;background:var(--bg);color:var(--text)"
-        onchange="_editOTItems[${i}].qty=parseFloat(this.value)||0;_editOTItems[${i}].sub=_editOTItems[${i}].qty*_editOTItems[${i}].pu;renderEditOTItems()"></td>
+        onchange="_editOTItems[${i}].qty=parseFloat(this.value)||0;_eotSub(_editOTItems[${i}]);renderEditOTItems()"></td>
       <td>${it.unidad}</td>
       <td><input type="number" value="${it.pu}" min="0" style="width:80px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace"
         onchange="cambiarPrecioItemOT(${i},parseFloat(this.value)||0)"></td>
@@ -9272,7 +9273,7 @@ function renderEditOTItems(){
 function cambiarPrecioItemOT(i,nuevoPu){
   const it=_editOTItems[i];if(!it)return;
   it.pu=nuevoPu;
-  it.sub=it.qty*it.pu;
+  _eotSub(it);
   // Si el ítem viene del inventario y el precio difiere, ofrecer actualizar el producto
   if(it.pid){
     const prod=DB.inventario.find(p=>p.id===it.pid);
@@ -15432,6 +15433,34 @@ const _rr=window.renderReportes;if(_rr)window.renderReportes=function(){const r=
 const _nv=window.nav;window.nav=function(id){const r=_nv.apply(this,arguments);if(id==='reportes')setTimeout(()=>{try{repCard()}catch(e){}},80);return r;};
 function init(){widget('v-fpago');widget('fpago-ot-sel');filtroUI();}
 setTimeout(init,700);
+})();
+</script>
+
+<!-- ══ TALLERSYS v8: OT editada después de vender → sincronizar venta y crédito (aditivo) ══ -->
+<script>
+(function(){
+const ventaDe=f=>(DB.ventas||[]).find(v=>v.otOrigen===f);
+function sumItems(L){return (L||[]).reduce((s,it)=>{const d=+it.dto||0;const x=Math.round((+it.qty||0)*(+it.pu||0)*(1-d/100));return s+x+(it.iva?Math.round(x*0.19):0);},0);}
+window.otSyncVenta=function(folio,silencioso){
+  const o=(DB.ordenes||[]).find(x=>x.folio===folio);const v=o&&ventaDe(folio);if(!o||!v)return false;
+  if((+v.total||0)===(+o.total||0)&&JSON.stringify(v.items)===JSON.stringify(o.items)&&(+v.descuento||0)===(+o.descuento||0))return false;
+  const cr=(DB.creditos||[]).find(c=>c.ventaFolio===v.folio);const abon=cr?(+cr.monto||0)-(+cr.saldo||0):0;
+  const msg=`La ${folio} ya tiene registrada la venta ${v.folio} por ${fmt(v.total)}.\nAhora la OT suma ${fmt(o.total)}${o.descuento?` (con descuento ${fmt(o.descuento)})`:''}.\n\n¿Actualizar la venta${cr?' y la cuenta por cobrar':''} al nuevo total?\n(Aceptar = actualizar · Cancelar = dejar la venta como estaba)`;
+  if(!silencioso&&!confirm(msg)){toast(`⚠ ${v.folio} quedó en ${fmt(v.total)} y la ${folio} en ${fmt(o.total)} — no coinciden`,'warn');v.difOT=true;save();return false;}
+  (v.historialTotal=v.historialTotal||[]).push({de:v.total,a:o.total,fecha:new Date().toISOString(),motivo:'OT '+folio+' editada'});
+  v.items=o.items.map(i=>({...i}));v.descuento=+o.descuento||0;v.total=+o.total||0;delete v.difOT;
+  if(v.docMonto&&v.docMonto===v.historialTotal.slice(-1)[0].de)v.docMonto=v.total;
+  if(cr){cr.monto=v.total;cr.saldo=Math.max(0,v.total-abon);try{cr.estado=estadoCredito(cr);}catch(e){}}
+  save();try{renderVentas();renderCreditos();updateBadges();}catch(e){}
+  toast(`✓ ${v.folio} actualizada a ${fmt(v.total)}${cr?' (también la cuenta por cobrar)':''}. Ojo: el stock no se recalcula.`);return true;};
+window.otSumItems=sumItems;
+const _ge=window.guardarEditOT;window.guardarEditOT=function(){const f=window._editOTFolio||(typeof _editOTFolio!=='undefined'?_editOTFolio:null);const r=_ge.apply(this,arguments);try{if(f)setTimeout(()=>otSyncVenta(f),50);}catch(e){}return r;};
+const _ei=window.editItemInline;window.editItemInline=function(tipo,folio){const r=_ei.apply(this,arguments);try{if(tipo==='ot')setTimeout(()=>otSyncVenta(folio),50);}catch(e){}return r;};
+const _ai=window.addItemInline;window.addItemInline=function(tipo,folio){const r=_ai.apply(this,arguments);try{if(tipo==='ot')setTimeout(()=>otSyncVenta(folio),50);}catch(e){}return r;};
+/* aviso visible en la lista de ventas si la venta no coincide con su OT */
+const _rv=window.renderVentas;window.renderVentas=function(){const r=_rv.apply(this,arguments);try{const M={};(DB.ordenes||[]).forEach(o=>M[o.folio]=o);
+  document.querySelectorAll('#lista-ventas .exp-hdr .folio-tag:first-child').forEach(t=>{const v=(DB.ventas||[]).find(x=>x.folio===t.textContent.trim());const o=v&&v.otOrigen&&M[v.otOrigen];
+    if(o&&(+o.total||0)!==(+v.total||0)&&!t.parentElement.querySelector('.b-difot'))t.insertAdjacentHTML('afterend',` <span class="b-difot" title="La OT dice ${fmt(o.total)}" style="background:#fee2e2;color:#991b1b;font-size:10px;font-weight:800;padding:2px 7px;border-radius:10px;cursor:pointer" onclick="event.stopPropagation();otSyncVenta('${o.folio}')">⚠ OT ${o.folio}: ${fmt(o.total)}</span>`);});}catch(e){}return r;};
 })();
 </script>
 
