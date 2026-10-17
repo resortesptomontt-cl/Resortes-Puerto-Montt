@@ -174,6 +174,7 @@ tbody tr:hover td{background:var(--bg)}
 .s-pendiente{background:#FDF3E0;color:#7A4F10}
 .s-aceptada{background:#E8F5ED;color:#2A5C3A}
 .s-rechazada{background:#F5E8E8;color:#8B1A1A}
+.s-vencida-cot{background:#E5E2DD;color:#B45309;box-shadow:inset 0 0 0 1px #F59E0B}
 .s-convertida{background:#E8EEF5;color:#121214}
 /* MISC */
 .empty{text-align:center;padding:32px 16px;color:var(--text3);font-size:12px}
@@ -1021,7 +1022,7 @@ body.dark .folio-tag,body.dark .pill-val,body.dark .pill-lbl{color:#B0B8C0}
       <input id="s-cot" placeholder="Buscar folio, cliente, patente..." oninput="renderCots()">
       <select id="s-cot-est" onchange="renderCots()" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:'Inter',sans-serif;background:var(--surface);color:var(--text);outline:none">
         <option value="">Todos los estados</option>
-        <option>Pendiente</option><option>Aceptada</option><option>Rechazada</option><option>Convertida</option>
+        <option>Pendiente</option><option>Aceptada</option><option>Rechazada</option><option>Vencida</option><option>Convertida</option>
       </select>
     </div>
     <div id="lista-cots"></div>
@@ -3523,13 +3524,13 @@ function setToday(id){const el=$(id);if(el&&!el.value)el.value=today();}
 
 function statusClass(s){
   const m={Recibido:'s-recibido','En proceso':'s-proceso',Listo:'s-listo',Entregado:'s-entregado','Entregado s/OC':'s-oc',Vencido:'s-vencido',
-    Pendiente:'s-pendiente',Aceptada:'s-aceptada',Rechazada:'s-rechazada',Convertida:'s-convertida'};
+    Pendiente:'s-pendiente',Aceptada:'s-aceptada',Rechazada:'s-rechazada',Vencida:'s-vencida-cot',Convertida:'s-convertida'};
   return m[s]||'s-pendiente';
 }
 function statusLabel(s){
   const icons={Recibido:'📥',  'En proceso':'⚙️', 'En fabricación':'⚙️', Listo:'✅', 'Listo para retiro':'✅',
     'Entregado s/OC':'📋', Entregado:'🏁', Retirado:'🏁', Vencido:'⚠️',
-    Pendiente:'🕐', Aceptada:'👍', Rechazada:'❌', Convertida:'🔄'};
+    Pendiente:'🕐', Aceptada:'👍', Rechazada:'❌', Vencida:'⏳', Convertida:'🔄'};
   return (icons[s]||'')+' '+s;
 }
 
@@ -5619,8 +5620,11 @@ function renderCots(){
           ${(c.tel||c.clienteNombre)?`<button class="btn btn-xs btn-green" onclick="event.stopPropagation();waCot('${c.folio}')" title="Enviar por WhatsApp">💬 WhatsApp</button>`:''}
           ${c.estado==='Pendiente'?`
             <button class="btn btn-xs btn-green" onclick="event.stopPropagation();estadoCot('${c.folio}','Aceptada')">✓ Aceptada</button>
-            <button class="btn btn-xs btn-red" onclick="event.stopPropagation();estadoCot('${c.folio}','Rechazada')">✕ Rechazada</button>`:''}
-          ${c.estado!=='Convertida'&&c.estado!=='Rechazada'?`
+            <button class="btn btn-xs btn-red" onclick="event.stopPropagation();estadoCot('${c.folio}','Rechazada')">✕ Rechazada</button>
+            <button class="btn btn-xs" style="background:#25D366;color:#fff;border-color:#25D366" onclick="event.stopPropagation();cotRecordarWA('${c.folio}')" title="Recordatorio por WhatsApp">🔔 Recordar por WhatsApp</button>`:''}
+          ${c.estado==='Vencida'?`<span style="font-size:11px;color:#8A4B08">⏳ Vencida automáticamente${c.vencidaAuto?' el '+c.vencidaAuto:''}</span>
+            <button class="btn btn-xs btn-primary" onclick="event.stopPropagation();cotReactivar('${c.folio}')">↺ Reactivar</button>`:''}
+          ${c.estado!=='Convertida'&&c.estado!=='Rechazada'&&c.estado!=='Vencida'?`
             <button class="btn btn-xs btn-primary" onclick="event.stopPropagation();cotAVenta('${c.folio}')">→ Convertir en OT</button>`:''}
           <button class="btn btn-xs btn-red" onclick="event.stopPropagation();eliminarCot('${c.folio}')">🗑 Eliminar</button>
         </div>
@@ -14857,6 +14861,7 @@ function tareasHoy(){
   T.push({k:'cobros',warn:cr.length>0,n:cr.length,t:'Cobros vencidos o que vencen hoy',d:cr.length?`${venc} vencido(s) · ${cr.length-venc} vence(n) hoy · ${fmt(cr.reduce((s,c)=>s+(+c.saldo||0),0))}`:'Nada por cobrar hoy',b:'💰 Registrar pago',f:"gdWiz('pago')"});
   const cot=(DB.cotizaciones||[]).filter(c=>c.estado==='Pendiente');
   T.push({k:'cot',warn:false,n:cot.length,t:'Cotizaciones esperando respuesta',d:cot.length?cot.slice(0,3).map(c=>E(c.folio)+' · '+E(c.clienteNombre||'')).join('<br>'):'Ninguna pendiente',b:'📝 Ver cotizaciones',f:"nav('cotizaciones')"});
+  try{const rc=window.cotPorRecordar?cotPorRecordar():[];T.push({k:'cotrec',warn:rc.length>0,n:rc.length,t:'Cotizaciones por recordar',d:rc.length?rc.slice(0,3).map(c=>E(c.folio)+' · '+E(c.clienteNombre||'')).join('<br>'):'Nada que recordar',b:'💬 Ver y recordar',f:"cotRecAbrir()"});}catch(e){}
   const mes=hoy.slice(0,7);
   const sf=(DB.ventas||[]).filter(v=>(v.fecha||'').startsWith(mes)&&!v.docFolio);
   T.push({k:'sinfact',warn:sf.length>0,n:sf.length,t:'Ventas del mes sin N° de boleta/factura',d:sf.length?sf.slice(0,3).map(v=>E(v.folio)+' · '+E(v.clienteNombre||'')+' · '+fmt(v.total)).join('<br>'):'Todas tienen documento',b:'🧾 Revisar ventas',f:"nav('ventas')"});
@@ -15120,7 +15125,7 @@ window.gdTour=function(force){if(!force&&localStorage.getItem('gd_tour_v1'))retu
 /* ---------- arranque ---------- */
 function init(){aplicarGuiado();if(localStorage.getItem('gd_mas')&&!document.body.classList.contains('gd-more-open'))gdMas();if(guiadoOn()){gdInicio();setTimeout(()=>gdTour(false),700);}}
 if(typeof aplicarRol==='function'){const _ar=window.aplicarRol;window.aplicarRol=function(){const r=_ar.apply(this,arguments);try{aplicarGuiado();}catch(e){}return r;};}
-const _rdG=window.renderDashboard;window.renderDashboard=function(){const r=_rdG.apply(this,arguments);try{if($i('sec-inicio')?.classList.contains('active'))renderInicio();}catch(e){}return r;};
+const _rdG=window.renderDashboard;window.renderDashboard=function(){const r=_rdG.apply(this,arguments);try{if($i('sec-inicio')?.classList.contains('active'))window.gdRenderInicio();}catch(e){}return r;};
 setTimeout(()=>{try{init();}catch(e){console.warn('guiado init',e);}},800);
 })();
 </script>
@@ -15464,5 +15469,101 @@ const _rv=window.renderVentas;window.renderVentas=function(){const r=_rv.apply(t
 })();
 </script>
 
+
+<script>
+/* v9: Cotizaciones — vencimiento automático a 30 días y recordatorio WhatsApp a 15 días */
+(function(){
+const $i=id=>document.getElementById(id);
+const E=t=>String(t==null?'':t).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const hoyS=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+const addD=(f,n)=>{const d=new Date(f+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);};
+const fF=f=>f?f.slice(8,10)+'-'+f.slice(5,7)+'-'+f.slice(0,4):'';
+function base(c){return c.reactivadaEn||c.fecha||(c.creado||'').slice(0,10);}
+function edad(c){const b=base(c);if(!b)return 0;return Math.floor((new Date(hoyS()+'T12:00:00')-new Date(b+'T12:00:00'))/864e5);}
+function venceEn(c){return c.validoHasta||addD(base(c)||hoyS(),+c.validezDias||+(typeof CFG!=='undefined'&&CFG.validez)||30);}
+window.cotVenceEn=venceEn;
+function vencerCots(){
+  if(typeof DB==='undefined'||!Array.isArray(DB.cotizaciones))return 0;
+  let n=0;const h=hoyS();
+  DB.cotizaciones.forEach(c=>{if(c.estado==='Pendiente'&&base(c)&&edad(c)>30){c.estado='Vencida';c.vencidaAuto=h;n++;}});
+  if(n){try{save();}catch(e){}try{updateBadges();}catch(e){}}
+  return n;
+}
+window.vencerCots=vencerCots;
+window.cotReactivar=function(folio){
+  const c=DB.cotizaciones.find(x=>x.folio===folio);if(!c)return;
+  const h=hoyS();c.estado='Pendiente';c.reactivadaEn=h;c.validoHasta=addD(h,30);delete c.vencidaAuto;delete c.recordadaEn;delete c.recordDescartado;
+  save();renderCots();try{updateBadges();}catch(e){}toast('Cotización '+folio+' reactivada — válida hasta '+fF(c.validoHasta));
+};
+function telCot(c){
+  let t=c.tel||'';
+  if(!t&&c.clienteId){const cl=(DB.clientes||[]).find(x=>x.id===c.clienteId);t=cl&&cl.tel||'';}
+  let d=String(t).replace(/\D/g,'');
+  if(!d)return '';
+  if(d.startsWith('00'))d=d.slice(2);
+  if(d.startsWith('56')&&d.length>=11)return d;
+  if(d.length===9)return '56'+d;
+  if(d.length===8)return '569'+d;
+  return d.length>=10?d:'';
+}
+function waUrl(c){
+  const tel=telCot(c);if(!tel)return '';
+  const msg=`Hola ${c.clienteNombre||''}, le recordamos la cotización N° ${c.folio} por ${fmt(c.total)}, válida hasta ${fF(venceEn(c))}. ¿Desea confirmarla? Resortes Puerto Montt`;
+  return 'https://wa.me/'+tel+'?text='+encodeURIComponent(msg);
+}
+window.cotWaUrl=waUrl;
+window.cotRecordarWA=function(folio){
+  const c=DB.cotizaciones.find(x=>x.folio===folio);if(!c)return;
+  const u=waUrl(c);
+  if(!u){toast('El cliente no tiene teléfono. Agrégalo en Clientes para enviar el recordatorio.','warn');return;}
+  window.open(u,'_blank');
+  c.recordadaEn=hoyS();save();refrescar();
+};
+window.cotDescartarRecordatorio=function(folio){
+  const c=DB.cotizaciones.find(x=>x.folio===folio);if(!c)return;
+  c.recordDescartado=hoyS();save();refrescar();toast('Recordatorio descartado');
+};
+window.cotPorRecordar=()=>porRecordar();
+function porRecordar(){return (DB.cotizaciones||[]).filter(c=>c.estado==='Pendiente'&&edad(c)>=15&&!c.recordadaEn&&!c.recordDescartado).sort((a,b)=>edad(b)-edad(a));}
+function cardHTML(){
+  const L=porRecordar();if(!L.length)return '';
+  return `<div class="card cot-rec-card" style="margin:0 0 14px;border-left:4px solid #25D366">
+   <div class="card-title"><div class="card-title-left">🔔 Cotizaciones para recordar <span style="font-size:11px;font-weight:400;color:var(--text2)">— ${L.length} con 15 días o más sin respuesta</span></div></div>
+   ${L.map(c=>{const u=waUrl(c);return `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--border)">
+     <div style="flex:1;min-width:180px"><span class="folio-cot">${E(c.folio)}</span> <b>${E(c.clienteNombre)}</b> · <span style="font-family:'JetBrains Mono',monospace">${fmt(c.total)}</span>
+     <div style="font-size:11px;color:var(--text2)">Hace ${edad(c)} días · válida hasta ${fF(venceEn(c))}${u?'':' · <span style="color:#b45309">⚠ Sin teléfono: agrégalo en Clientes para poder enviar</span>'}</div></div>
+     ${u?`<button class="btn btn-sm" style="background:#25D366;color:#fff;border-color:#25D366;font-weight:700" onclick="cotRecordarWA('${E(c.folio)}')">💬 WhatsApp</button>`:`<button class="btn btn-sm" onclick="nav('clientes',null)">➕ Agregar teléfono</button>`}
+     <button class="btn btn-sm" onclick="cotDescartarRecordatorio('${E(c.folio)}')">Descartar</button></div>`;}).join('')}
+  </div>`;
+}
+function pintar(){
+  document.querySelectorAll('.cot-rec-card').forEach(x=>x.remove());
+  const m=$i('cotrec-modal');if(m){const L=porRecordar();m.querySelector('.cotrec-body').innerHTML=L.length?listaHTML(L):'<div class="empty" style="padding:16px">✓ No quedan cotizaciones por recordar</div>';}
+}
+function listaHTML(L){return L.map(c=>{const u=waUrl(c);return `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--border)">
+     <div style="flex:1;min-width:180px"><span class="folio-cot">${E(c.folio)}</span> <b>${E(c.clienteNombre)}</b> · <span style="font-family:'JetBrains Mono',monospace">${fmt(c.total)}</span>
+     <div style="font-size:11px;color:var(--text2)">Hace ${edad(c)} días · válida hasta ${fF(venceEn(c))}${u?'':' · <span style="color:#b45309">⚠ Sin teléfono: agrégalo en Clientes para poder enviar</span>'}</div></div>
+     ${u?`<button class="btn btn-sm" style="background:#25D366;color:#fff;border-color:#25D366;font-weight:700" onclick="cotRecordarWA('${E(c.folio)}')">💬 WhatsApp</button>`:`<button class="btn btn-sm" onclick="cotRecCerrar();nav('clientes',null)">➕ Agregar teléfono</button>`}
+     <button class="btn btn-sm" onclick="cotDescartarRecordatorio('${E(c.folio)}')">Descartar</button></div>`;}).join('');}
+window.cotRecAbrir=function(){
+  cotRecCerrar();
+  document.body.insertAdjacentHTML('beforeend',`<div id="cotrec-modal" onclick="if(event.target===this)cotRecCerrar()" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px">
+   <div style="background:var(--surface,#fff);color:var(--text);border-radius:12px;max-width:680px;width:100%;max-height:85vh;overflow:auto;padding:18px 20px;box-shadow:0 10px 40px rgba(0,0,0,.3)">
+    <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:16px">💬 Cotizaciones por recordar</b><button class="btn btn-sm" onclick="cotRecCerrar()">✕ Cerrar</button></div>
+    <div style="font-size:12px;color:var(--text2);margin:4px 0 8px">Pendientes con 15 días o más sin respuesta. El botón WhatsApp abre el chat con el mensaje listo.</div>
+    <div class="cotrec-body"></div></div></div>`);
+  pintar();
+};
+window.cotRecCerrar=()=>{$i('cotrec-modal')?.remove();};
+function refrescar(){try{pintar();}catch(e){}try{if($i('sec-inicio')?.classList.contains('active'))window.gdRenderInicio();}catch(e){}try{if($i('sec-cotizaciones')?.classList.contains('active'))renderCots();}catch(e){}}
+window.cotRecPintar=pintar;
+const _rd=window.renderDashboard;if(_rd)window.renderDashboard=function(){const r=_rd.apply(this,arguments);try{vencerCots();pintar();}catch(e){}return r;};
+try{const _ri=renderInicio;}catch(e){}
+const _gi=window.gdInicio;if(_gi)window.gdInicio=function(){const r=_gi.apply(this,arguments);try{vencerCots();pintar();}catch(e){}return r;};
+const _rc=window.renderCots;if(_rc)window.renderCots=function(){try{vencerCots();}catch(e){}return _rc.apply(this,arguments);};
+const _au=window._aplicarUpdateFirebase;if(_au)window._aplicarUpdateFirebase=function(){const r=_au.apply(this,arguments);setTimeout(()=>{try{vencerCots();pintar();}catch(e){}},300);return r;};
+setTimeout(()=>{try{vencerCots();pintar();}catch(e){}},1500);
+})();
+</script>
 </body>
 </html>
