@@ -1226,7 +1226,7 @@ body.dark .folio-tag,body.dark .pill-val,body.dark .pill-lbl{color:#B0B8C0}
       <input id="s-ot" placeholder="Buscar N° orden, cliente, patente, mecánico..." oninput="renderOTs()">
       <select id="s-ot-est" onchange="renderOTs()" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:'Inter',sans-serif;background:var(--surface);color:var(--text);outline:none">
         <option value="">Todos los estados</option>
-        <option>Recibido</option><option>En proceso</option><option>Listo</option><option>Entregado s/OC</option><option>Entregado</option><option>Vencido</option>
+        <option value="__curso">En curso (Recibido + En proceso)</option><option>Recibido</option><option>En proceso</option><option>Listo</option><option>Entregado s/OC</option><option>Entregado</option><option>Vencido</option>
       </select>
     </div>
     <!-- Filtro de mes/año para historial -->
@@ -6049,6 +6049,7 @@ function renderOTs(){
 
   // Apply status filter
   if(est==='Vencido')lista=lista.filter(o=>o.fechaEst&&o.fechaEst<hoy&&o.estado!=='Listo'&&o.estado!=='Entregado');
+  else if(est==='__curso')lista=lista.filter(o=>o.estado==='Recibido'||o.estado==='En proceso');
   else if(est)lista=lista.filter(o=>o.estado===est);
 
   // Sort: active first by date desc, then delivered
@@ -14858,13 +14859,12 @@ function tareasHoy(){
   if(sinV.length)T.push({k:'sinventa',warn:true,n:sinV.length,t:'Entregados sin venta registrada',d:sinV.slice(0,3).map(o=>E(o.folio)+' · '+E(o.clienteNombre||'')).join('<br>'),b:'🧾 Registrar',f:"nav('dashboard')"});
   const cr=(DB.creditos||[]).filter(c=>(+c.saldo||0)>0&&c.vcto&&c.vcto<=hoy);
   const venc=cr.filter(c=>c.vcto<hoy).length;
-  T.push({k:'cobros',warn:cr.length>0,n:cr.length,t:'Cobros vencidos o que vencen hoy',d:cr.length?`${venc} vencido(s) · ${cr.length-venc} vence(n) hoy · ${fmt(cr.reduce((s,c)=>s+(+c.saldo||0),0))}`:'Nada por cobrar hoy',b:'💰 Registrar pago',f:"gdWiz('pago')"});
+  T.push({k:'cobros',warn:cr.length>0,n:cr.length,t:'Cobros vencidos o que vencen hoy',d:cr.length?`${venc} vencido(s) · ${cr.length-venc} vence(n) hoy · ${fmt(cr.reduce((s,c)=>s+(+c.saldo||0),0))}`:'Nada por cobrar hoy',b:'💰 Registrar pago de crédito',f:"gdWiz('pago')"});
   const cot=(DB.cotizaciones||[]).filter(c=>c.estado==='Pendiente');
   T.push({k:'cot',warn:false,n:cot.length,t:'Cotizaciones esperando respuesta',d:cot.length?cot.slice(0,3).map(c=>E(c.folio)+' · '+E(c.clienteNombre||'')).join('<br>'):'Ninguna pendiente',b:'📝 Ver cotizaciones',f:"nav('cotizaciones')"});
   try{const rc=window.cotPorRecordar?cotPorRecordar():[];T.push({k:'cotrec',warn:rc.length>0,n:rc.length,t:'Cotizaciones por recordar',d:rc.length?rc.slice(0,3).map(c=>E(c.folio)+' · '+E(c.clienteNombre||'')).join('<br>'):'Nada que recordar',b:'💬 Ver y recordar',f:"cotRecAbrir()"});}catch(e){}
   const mes=hoy.slice(0,7);
-  const sf=(DB.ventas||[]).filter(v=>(v.fecha||'').startsWith(mes)&&!v.docFolio);
-  T.push({k:'sinfact',warn:sf.length>0,n:sf.length,t:'Ventas del mes sin N° de boleta/factura',d:sf.length?sf.slice(0,3).map(v=>E(v.folio)+' · '+E(v.clienteNombre||'')+' · '+fmt(v.total)).join('<br>'):'Todas tienen documento',b:'🧾 Revisar ventas',f:"nav('ventas')"});
+  /* v10: se quitó el recuadro 'Ventas del mes sin N° de boleta/factura' (solo interfaz) */
   return T;
 }
 window.gdTareasHoy=tareasHoy;
@@ -14877,12 +14877,13 @@ function renderInicio(){
    <div class="gd-tasks" id="gd-tasks">
     <button class="gd-task prim" id="gd-t-camion" onclick="gdWiz('camion')"><div class="gi">🚚</div><b>Llegó un camión</b><span>Recibir un vehículo y abrir su orden de trabajo</span></button>
     <button class="gd-task" id="gd-t-entregar" onclick="gdWiz('entregar')"><div class="gi">✅</div><b>Entregar un trabajo</b><span>Cobrar, registrar la venta y descontar repuestos</span></button>
-    <button class="gd-task" id="gd-t-pago" onclick="gdWiz('pago')"><div class="gi">💰</div><b>Registrar un pago</b><span>Un cliente pagó algo que debía</span></button>
+    <button class="gd-task" id="gd-t-pago" onclick="gdWiz('pago')"><div class="gi">💰</div><b>Registrar pago de crédito</b><span>Abono de cliente a crédito (cuentas por cobrar)</span></button>
     <button class="gd-task" id="gd-t-cot" onclick="gdWiz('cot')"><div class="gi">📝</div><b>Hacer cotización</b><span>Presupuesto para un cliente</span></button>
     <button class="gd-task" id="gd-t-meson" onclick="gdWiz('meson')"><div class="gi">🛒</div><b>Vender en mesón</b><span>Venta de repuestos sin orden de trabajo</span></button>
    </div>
    <div class="gd-h2" id="gd-hoy-t">📋 Tareas de hoy</div>
    <div class="gd-today" id="gd-today">${T.map(t=>`<div class="gd-tc ${t.warn?'warn':t.n?'':'ok'}" data-k="${t.k}"><div style="display:flex;gap:10px;align-items:center"><div class="n">${t.n}</div><div class="t">${t.t}</div></div><div class="d">${t.d}</div>${t.n?`<button class="btn btn-sm btn-primary" onclick="${t.f}">${t.b}</button>`:''}</div>`).join('')}</div>
+   ${window.gdTrabajosHTML?gdTrabajosHTML():''}
   </div>`;
 }
 window.gdRenderInicio=renderInicio;
@@ -15035,7 +15036,7 @@ WIZ.entregar=(pre)=>({title:'✅ Entregar un trabajo',st:{ot:pre||null,fpago:nul
 
 /* ===== 3. Registrar un pago ===== */
 const deudas=cid=>(DB.creditos||[]).filter(c=>c.clienteId===cid&&(+c.saldo||0)>0).sort((a,b)=>(a.vcto||a.fecha||'').localeCompare(b.vcto||b.fecha||''));
-WIZ.pago=()=>({title:'💰 Registrar un pago',st:{},steps:[
+WIZ.pago=()=>({title:'💰 Registrar pago de crédito',st:{},steps:[
  {name:'Cliente',q:'¿Quién pagó?',help:'Abajo están los clientes que deben algo, los vencidos primero. También puedes buscar.',
   html:st=>{const hoy=today();const m={};(DB.creditos||[]).filter(c=>(+c.saldo||0)>0&&c.clienteId).forEach(c=>{const x=m[c.clienteId]=m[c.clienteId]||{s:0,n:0,v:0,nom:c.clienteNombre};x.s+=+c.saldo;x.n++;if(c.vcto&&c.vcto<=hoy)x.v++;});
    const q=(st.q||'').toLowerCase();const L=Object.entries(m).filter(([id,x])=>!q||x.nom.toLowerCase().includes(q)).sort((a,b)=>b[1].v-a[1].v||b[1].s-a[1].s);
@@ -15103,8 +15104,8 @@ const _nvC=window.nav;window.nav=function(id){const r=_nvC.apply(this,arguments)
 /* ---------- Tour ---------- */
 const TOUR=[['#gd-t-camion','<b>Llegó un camión</b><br>Empieza aquí cuando entra un vehículo. Te pregunta la patente, el cliente y el trabajo, y crea la orden.'],
  ['#gd-t-entregar','<b>Entregar un trabajo</b><br>Cuando el cliente retira: registra el pago y la venta, y descuenta los repuestos. ¡No te olvides de este paso!'],
- ['#gd-t-pago','<b>Registrar un pago</b><br>Cuando un cliente paga algo que debía (transferencia, efectivo…).'],
- ['#gd-hoy-t','<b>Tareas de hoy</b><br>El sistema te recuerda lo pendiente: trabajos para entregar, cobros que vencen y ventas sin factura.'],
+ ['#gd-t-pago','<b>Registrar pago de crédito</b><br>Abono de un cliente a un crédito (cuentas por cobrar) (transferencia, efectivo…).'],
+ ['#gd-hoy-t','<b>Tareas de hoy</b><br>El sistema te recuerda lo pendiente: trabajos para entregar, cobros que vencen y cotizaciones por recordar.'],
  ['.sidebar-nav','<b>Menú</b><br>Solo lo que usas a diario. Lo demás está en "Más opciones", ordenado por grupos que puedes abrir y cerrar.'],
  ['#gd-help-btn','<b>Ayuda</b><br>Toca <b>?</b> cuando quieras repetir este recorrido.']];
 let tI=0;
@@ -15202,6 +15203,9 @@ setTimeout(()=>{prev=window.gdOn?gdOn():null;boton();setInterval(()=>{try{sync()
 .prt-btn:hover{background:#1f6feb26}.prt-btn.off{opacity:.45;cursor:not-allowed}
 .prt-wrap{display:flex;align-items:center;gap:0;min-width:0;width:100%}.prt-wrap>input{flex:1;min-width:0;width:auto!important}.g2>.field,.g3>.field,.g4>.field{min-width:0}
 .prt-help{font-size:11px;color:var(--text2);margin-top:4px;line-height:1.35}
+.field.prt-full{grid-column:1/-1}
+.field.prt-full .prt-wrap>input{font-size:20px;font-weight:800;letter-spacing:2px;text-transform:uppercase;padding:10px 12px;min-width:9ch}
+.field.prt-full .prt-btn{font-size:13px;padding:10px 14px;margin-left:8px;align-self:stretch}
 .gd-bd .prt-btn{font-size:14px;padding:10px 14px;margin-left:8px}
 </style>
 <script>
@@ -15221,6 +15225,7 @@ window.prtAbrir=function(src){
 };
 function estado(inp,b){const ok=norm(inp.value).length>=4;b.classList.toggle('off',!ok);b.title=ok?HELP:'Escribe la patente primero. '+HELP;}
 function poner(inp){if(inp.dataset.prt)return;inp.dataset.prt='1';
+  try{const f=inp.closest('.field');const g=f&&f.parentElement;if(g&&getComputedStyle(g).display.includes('grid'))f.classList.add('prt-full');}catch(e){}
   const b=document.createElement('button');b.type='button';b.className='prt-btn';b.innerHTML='🔎 Abrir PRT';b.onclick=()=>prtAbrir(inp.id);
   const par=inp.parentElement;const cs=getComputedStyle(par);const isFlex=cs.display.includes('flex')&&!cs.flexDirection.startsWith('column');
   if(isFlex)inp.after(b);else{const w=document.createElement('div');w.className='prt-wrap';inp.before(w);w.appendChild(inp);w.appendChild(b);}
@@ -15563,6 +15568,47 @@ const _gi=window.gdInicio;if(_gi)window.gdInicio=function(){const r=_gi.apply(th
 const _rc=window.renderCots;if(_rc)window.renderCots=function(){try{vencerCots();}catch(e){}return _rc.apply(this,arguments);};
 const _au=window._aplicarUpdateFirebase;if(_au)window._aplicarUpdateFirebase=function(){const r=_au.apply(this,arguments);setTimeout(()=>{try{vencerCots();pintar();}catch(e){}},300);return r;};
 setTimeout(()=>{try{vencerCots();pintar();}catch(e){}},1500);
+})();
+</script>
+
+<script>
+/* v10: Inicio — Trabajos en proceso (OT en estado Recibido o En proceso) */
+(function(){
+const E=t=>String(t==null?'':t).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const EST=['Recibido','En proceso'];
+function dias(o){const f=(o.fechaIn||o.creado||'').slice(0,10);if(!f)return null;return Math.max(0,Math.floor((new Date(today()+'T12:00:00')-new Date(f+'T12:00:00'))/864e5));}
+window.gdTrabajosHTML=function(){
+  const L=(DB.ordenes||[]).filter(o=>EST.includes(o.estado)).sort((a,b)=>(dias(b)||0)-(dias(a)||0));
+  const MAX=6;
+  const rows=L.slice(0,MAX).map(o=>{const d=dias(o);const veh=[o.marca,o.modelo].filter(Boolean).join(' ');
+    return `<button class="gd-wip-row" onclick="gdAbrirOT('${E(o.folio)}')">
+      <span class="folio-tag" style="font-size:11px">${E(o.folio)}</span>
+      <span class="gd-wip-pat">${E(o.patente||'—')}</span>
+      <span class="gd-wip-main"><b>${E(o.clienteNombre||'')}</b>${veh?`<span>${E(veh)}</span>`:''}</span>
+      <span class="status ${statusClass(o.estado)}" style="font-size:10px">${E(o.estado)}</span>
+      <span class="gd-wip-d${d!=null&&d>=7?' late':''}">${d==null?'':d===0?'hoy':d===1?'1 día':d+' días'}</span></button>`;}).join('');
+  return `<div class="gd-h2" id="gd-wip-t" style="margin-top:18px">🔧 Trabajos en proceso <span style="font-size:12px;font-weight:600;color:var(--text2)">(${L.length})</span></div>
+   <div class="gd-wip">${L.length?rows:'<div style="padding:12px 14px;font-size:12px;color:var(--text2)">No hay trabajos en proceso ahora.</div>'}
+   ${L.length>MAX?`<button class="gd-wip-more" onclick="gdVerTrabajos()">Ver todos (${L.length}) →</button>`:''}</div>`;
+};
+window.gdAbrirOT=function(folio){
+  nav('ordenes',null);
+  setTimeout(()=>{try{const s=document.getElementById('s-ot');if(s)s.value=folio;renderOTs();const b=document.getElementById('ot-'+folio);if(b&&!b.classList.contains('open'))toggle('ot-'+folio);(b&&b.parentElement||b)?.scrollIntoView({block:'center'});}catch(e){}},250);
+};
+window.gdVerTrabajos=function(){
+  nav('ordenes',null);
+  setTimeout(()=>{try{const s=document.getElementById('s-ot');if(s)s.value='';const e=document.getElementById('s-ot-est');if(e)e.value='__curso';renderOTs();}catch(x){}},250);
+};
+const st=document.createElement('style');st.textContent=`
+.gd-wip{border:1px solid var(--border);border-radius:12px;background:var(--surface);overflow:hidden}
+.gd-wip-row{display:grid;grid-template-columns:auto 90px 1fr auto 60px;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--border);padding:10px 14px;font:inherit;color:var(--text);cursor:pointer}
+.gd-wip-row:first-child{border-top:0}.gd-wip-row:hover{background:var(--surface2)}
+.gd-wip-pat{font-family:'JetBrains Mono',monospace;font-weight:800;letter-spacing:1px}
+.gd-wip-main{display:flex;flex-direction:column;min-width:0;font-size:13px}.gd-wip-main b,.gd-wip-main span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gd-wip-main span{font-size:11px;color:var(--text2)}
+.gd-wip-d{font-size:12px;color:var(--text2);text-align:right;white-space:nowrap}.gd-wip-d.late{color:#b45309;font-weight:700}
+.gd-wip-more{display:block;width:100%;border:0;border-top:1px solid var(--border);background:var(--surface2);padding:9px;font:inherit;font-size:12px;font-weight:700;color:var(--accent,#b91c1c);cursor:pointer}
+@media(max-width:640px){.gd-wip-row{grid-template-columns:auto 1fr auto;row-gap:2px}.gd-wip-main{grid-column:1/-1;order:5}.gd-wip-row .status{display:none}}`;
+document.head.appendChild(st);
 })();
 </script>
 </body>
