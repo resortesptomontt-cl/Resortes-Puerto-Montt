@@ -3508,7 +3508,11 @@ const $ = id => document.getElementById(id);
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
 const fmt=n=>'$'+Number(n||0).toLocaleString('es-CL');
 const fmtN=n=>Number(n||0).toLocaleString('es-CL');
-const today=()=>new Date().toISOString().slice(0,10);
+/* v12: fechas en día LOCAL (America/Santiago), no UTC. Antes, después de las 21:00 (UTC-3) la fecha saltaba al día siguiente. */
+function ymdL(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+const _fmtCL=(()=>{try{return new Intl.DateTimeFormat('en-CA',{timeZone:'America/Santiago',year:'numeric',month:'2-digit',day:'2-digit'});}catch(e){return null;}})();
+function today(){const d=new Date();if(_fmtCL){try{const p={};_fmtCL.formatToParts(d).forEach(x=>p[x.type]=x.value);if(p.year&&p.month&&p.day)return p.year+'-'+p.month+'-'+p.day;}catch(e){}}return ymdL(d);}
+window.ymdL=ymdL;window.today=today;
 const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 function toast(msg,type='ok'){
@@ -4292,7 +4296,7 @@ function renderDashboard(){
     const alertas=[];
     const hoy=today();
     const en7=new Date();en7.setDate(en7.getDate()+7);
-    const en7str=en7.toISOString().slice(0,10);
+    const en7str=ymdL(en7);
 
     // OTs Entregado s/OC pendientes de facturar
     const ocPendientes=DB.ordenes.filter(o=>o.estado==='Entregado s/OC');
@@ -4562,7 +4566,7 @@ function ultimos6meses(map){
   const res=[];
   for(let i=5;i>=0;i--){
     const d=new Date();d.setMonth(d.getMonth()-i);
-    const k=d.toISOString().slice(0,7);
+    const k=ymdL(d).slice(0,7);
     res.push({label:meses[d.getMonth()],value:map[k]||0});
   }
   return res;
@@ -5833,7 +5837,7 @@ function addBusinessDays(fechaStr,n){
     const dow=d.getDay();
     if(dow!==0&&dow!==6)added++;
   }
-  return d.toISOString().slice(0,10);
+  return ymdL(d);
 }
 function otRequiereReapriete(o){
   if(o.reaprieteManual===false)return false; // desactivado a mano
@@ -7406,11 +7410,11 @@ function renderInformeVentas(){
   } else if(periodo==='mes_ant'){
     const ma=new Date(d.getFullYear(),d.getMonth()-1,1);
     const maf=new Date(d.getFullYear(),d.getMonth(),0);
-    desde=ma.toISOString().slice(0,10);
-    hasta=maf.toISOString().slice(0,10);
+    desde=ymdL(ma);
+    hasta=ymdL(maf);
   } else if(periodo==='trim'){
     const t=new Date(d); t.setMonth(t.getMonth()-3);
-    desde=t.toISOString().slice(0,10);
+    desde=ymdL(t);
   } else if(periodo==='anio'){
     desde=`${d.getFullYear()}-01-01`;
   } else {
@@ -7569,7 +7573,7 @@ function renderInformeCli(){
       <div><div style="color:var(--text2);font-size:10px;text-transform:uppercase;letter-spacing:.04em">RUT</div><div style="font-weight:500">${c.rut}</div></div>
       <div><div style="color:var(--text2);font-size:10px;text-transform:uppercase;letter-spacing:.04em">Teléfono</div><div style="font-weight:500">${c.tel||'—'}</div></div>
       <div><div style="color:var(--text2);font-size:10px;text-transform:uppercase;letter-spacing:.04em">Email</div><div style="font-weight:500">${c.email||'—'}</div></div>
-      <div><div style="color:var(--text2);font-size:10px;text-transform:uppercase;letter-spacing:.04em">Cliente desde</div><div style="font-weight:500">${c.creado?c.creado.slice(0,10):'—'}</div></div>
+      <div><div style="color:var(--text2);font-size:10px;text-transform:uppercase;letter-spacing:.04em">Cliente desde</div><div style="font-weight:500">${c.creado?ymdL(new Date(c.creado)):'—'}</div></div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
       <div class="stat" style="padding:10px"><div class="stat-lbl">Total facturado</div><div class="stat-val" style="font-size:16px">${fmt(totalGastado)}</div></div>
@@ -7915,7 +7919,7 @@ function switchCredTab(tab, btn){
 function renderCreditos(){
   const hoy=today();
   const en5=new Date();en5.setDate(en5.getDate()+5);
-  const en5str=en5.toISOString().slice(0,10);
+  const en5str=ymdL(en5);
   const fmtF=d=>{if(!d)return"—";const[y,m,dd]=d.split("-");return`${dd}/${m}/${y}`;};
 
   DB.creditos.forEach(cr=>cr.estado=estadoCredito(cr));
@@ -9402,7 +9406,7 @@ function initAntPdfTab(){
   const diaSemana=hoy.getDay()===0?6:hoy.getDay()-1;
   const lunes=new Date(hoy);lunes.setDate(hoy.getDate()-diaSemana);
   const domingo=new Date(lunes);domingo.setDate(lunes.getDate()+6);
-  const iso=d=>d.toISOString().slice(0,10);
+  const iso=d=>ymdL(d);
   if($('ant-pdf-desde'))$('ant-pdf-desde').value=iso(lunes);
   if($('ant-pdf-hasta'))$('ant-pdf-hasta').value=iso(domingo);
   if($('ant-pdf-desde-ind'))$('ant-pdf-desde-ind').value=iso(lunes);
@@ -9624,7 +9628,7 @@ function buildComprobanteHTML(lista,forPrint){
         <div class="main">Comprobante de Pago</div>
         <div class="sub">Anticipos y Préstamos</div>
         <div class="sub" style="font-weight:700;margin-top:6px">${semana}</div>
-        <div class="sub">Emitido: ${fmtF(new Date().toISOString().slice(0,10))}</div>
+        <div class="sub">Emitido: ${fmtF(today())}</div>
       </div>
     </div>
     <div class="aviso">⚠ Cada trabajador debe firmar y escribir su RUT en la línea de su nombre, confirmando haber recibido el monto indicado. Este documento es respaldo del empleador.</div>
@@ -9679,7 +9683,7 @@ function buildComprobanteHTML(lista,forPrint){
       <div><div class="firma-lbl">Firma responsable del pago</div><div style="border-bottom:1px solid #333;height:28px;margin-top:4px"></div><div style="font-size:9px;color:#888;margin-top:4px">${cfg.nombre||'Taller'} — Administración</div></div>
       <div><div class="firma-lbl">Fecha y lugar de pago</div><div style="border-bottom:1px solid #333;height:28px;margin-top:4px"></div><div style="font-size:9px;color:#888;margin-top:4px">${cfg.ciudad||''}</div></div>
     </div>
-    <div class="footer">TallerSys Pro — ${cfg.nombre||''} — ${fmtF(new Date().toISOString().slice(0,10))}</div>
+    <div class="footer">TallerSys Pro — ${cfg.nombre||''} — ${fmtF(today())}</div>
   </div>`;
 }
 // ══════════════════════════════════════════════════
@@ -10324,7 +10328,7 @@ function buildDocOT(o,v){
 }
 function buildDocCot(c,v){
   const val=+c.validezDias||+CFG.validez||30;
-  let vence='';try{const d=new Date((c.fecha||today())+'T12:00:00');d.setDate(d.getDate()+val);vence=d.toISOString().slice(0,10);}catch(e){}
+  let vence='';try{const d=new Date((c.fecha||today())+'T12:00:00');d.setDate(d.getDate()+val);vence=ymdL(d);}catch(e){}
   return docCSS2()+`<div class="d2">${docHdr2('Cotización',c.folio,['Fecha '+_fF(c.fecha||today()),'Válida '+val+' días · hasta '+_fF(vence)],c.estado)}
   <div class="d2-g2"><div><div class="d2-h">Cliente</div>${docCli2(c)}</div><div><div class="d2-h">Vehículo</div>${docVeh2(c,v)}</div></div>
   ${c.obs?`<div class="d2-h">Alcance del trabajo</div><div class="d2-box">${_e(c.obs)}</div>`:''}
@@ -11704,7 +11708,7 @@ function imprimirCreditoMec(id){
   const m=DB.mecanicos.find(x=>x.id===c.mecanicoId);
   const cfg=CFG||{};
   const fmtF=d=>{if(!d)return'—';const[y,mo,dd]=d.split('-');return`${dd}/${mo}/${y}`;};
-  const fechaEmision=c.creado?c.creado.slice(0,10):today();
+  const fechaEmision=c.creado?ymdL(new Date(c.creado)):today();
   const pagadas=c.cuotasPlan.filter(cu=>cu.pagado).length;
   const numLetras=numeroALetras(c.monto);
   // Fecha primera y última cuota
@@ -13538,7 +13542,7 @@ function inPeriod(f){
   if(period==='hoy')return f===t;
   if(period==='mes')return f.slice(0,7)===(typeof _dashMes!=='undefined'?_dashMes:t.slice(0,7));
   if(period==='anio')return f.slice(0,4)===t.slice(0,4);
-  const d=new Date(t+'T12:00:00');d.setDate(d.getDate()-6);return f>=d.toISOString().slice(0,10)&&f<=t;
+  const d=new Date(t+'T12:00:00');d.setDate(d.getDate()-6);return f>=ymdL(d)&&f<=t;
 }
 function ensureChartsDom(){
   if(document.getElementById('tsx-charts'))return;
@@ -13752,7 +13756,7 @@ const money=n=>fmt(+n||0);
 const hoy=()=>today();
 const fF=d=>d?String(d).slice(0,10).split('-').reverse().join('/'):'—';
 const dd=(a,b)=>Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/86400000);
-const addD=(d,n)=>{const x=new Date(d+'T12:00:00');x.setDate(x.getDate()+n);return x.toISOString().slice(0,10);};
+const addD=(d,n)=>{const x=new Date(d+'T12:00:00');x.setDate(x.getDate()+n);return ymdL(x);};
 function wrap(name,after){const f=window[name];if(typeof f!=='function')return;window[name]=function(){const r=f.apply(this,arguments);try{after.apply(this,arguments);}catch(e){console.warn('tsx2 '+name,e);}return r;};}
 const M=document.getElementById('tsx2-modal');
 function openM(t,html){document.getElementById('tsx2-mt').textContent=t;document.getElementById('tsx2-mb').innerHTML=html;M.classList.add('on');}
@@ -13898,7 +13902,7 @@ function credCard(){
   const hoyC=chq.filter(c=>(c.chequeFecha||c.vcto)<=h);
   document.getElementById('tsx2-chqhoy').innerHTML=hoyC.length?`<div style="background:var(--accent2-light);border:1px solid #E6282D;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:13px">🏦 <b>${hoyC.length} cheque(s) para depositar hoy o atrasados</b> — ${money(hoyC.reduce((s,c)=>s+(+c.saldo||+c.monto||0),0))}: ${hoyC.map(c=>esc(c.clienteNombre)+' N°'+esc(c.chequeNum||'?')).join(', ')}</div>`:'';
   const base=new Date(h+'T12:00:00');const y=base.getFullYear(),m=base.getMonth();const first=new Date(y,m,1),start=new Date(first);start.setDate(1-((first.getDay()+6)%7));
-  let cells='';for(let i=0;i<35;i++){const d=new Date(start);d.setDate(start.getDate()+i);const k=d.toISOString().slice(0,10);const its=chq.filter(c=>(c.chequeFecha||c.vcto)===k);
+  let cells='';for(let i=0;i<35;i++){const d=new Date(start);d.setDate(start.getDate()+i);const k=ymdL(d);const its=chq.filter(c=>(c.chequeFecha||c.vcto)===k);
     cells+=`<div class="tsx2-day${d.getMonth()!==m?' out':''}${k===h?' today':''}" style="min-height:44px"><div class="n">${d.getDate()}</div>${its.map(c=>`<div class="tsx2-ev chq" title="${esc(c.clienteNombre)} ${esc(c.chequeBanco||'')}">${money(c.saldo||c.monto)}</div>`).join('')}</div>`;}
   document.getElementById('tsx2-chqcal').innerHTML=`<div style="font-size:12px;font-weight:700;margin-bottom:4px">📅 Cheques — ${base.toLocaleDateString('es-CL',{month:'long',year:'numeric'})}</div><div class="tsx2-cal">${['Lu','Ma','Mi','Ju','Vi','Sá','Do'].map(x=>`<div class="dh">${x}</div>`).join('')}${cells}</div>`;
   const list=(agingFilter==null?act:sums[agingFilter]).slice().sort((a,b)=>age(b)-age(a)).slice(0,30);
@@ -13964,9 +13968,9 @@ function paintCal(){
   document.querySelectorAll('#tsx2-ag .tsx-period button').forEach(b=>b.classList.toggle('on',b.dataset.m===calMode));
   const ref=new Date(calRef+'T12:00:00');let start,n;
   if(calMode==='mes'){const f=new Date(ref.getFullYear(),ref.getMonth(),1,12);start=new Date(f);start.setDate(1-((f.getDay()+6)%7));n=42;document.getElementById('tsx2-cl').textContent=ref.toLocaleDateString('es-CL',{month:'long',year:'numeric'});}
-  else{start=new Date(ref);start.setDate(ref.getDate()-((ref.getDay()+6)%7));n=7;const e=new Date(start);e.setDate(start.getDate()+6);document.getElementById('tsx2-cl').textContent=fF(start.toISOString().slice(0,10))+' – '+fF(e.toISOString().slice(0,10));}
+  else{start=new Date(ref);start.setDate(ref.getDate()-((ref.getDay()+6)%7));n=7;const e=new Date(start);e.setDate(start.getDate()+6);document.getElementById('tsx2-cl').textContent=fF(ymdL(start))+' – '+fF(ymdL(e));}
   const auto=autoRem();let cells='';
-  for(let i=0;i<n;i++){const d=new Date(start);d.setDate(start.getDate()+i);const k=d.toISOString().slice(0,10);
+  for(let i=0;i<n;i++){const d=new Date(start);d.setDate(start.getDate()+i);const k=ymdL(d);
     const res=(db.reservas||[]).filter(r=>r.fecha===k&&r.estado!=='cancelada').sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
     const rec=(db.recordatorios||[]).filter(r=>r.fecha===k&&r.estado!=='completado');
     const chq=(db.creditos||[]).filter(c=>c.tipo==='Cheque'&&c.chequeFecha===k&&c.chequeEstado!=='Cobrado');
@@ -13986,7 +13990,7 @@ window.tsx2MkRec=i=>{const a=(window._tsx2Auto||[])[i];if(!a)return;const db=D()
   if(db.recordatorios.some(r=>r.titulo===a.t&&r.fecha===a.f)){toast('Ya existe ese recordatorio','info');return;}
   db.recordatorios.unshift({id:uid(),titulo:a.t,fecha:a.f<hoy()?hoy():a.f,hora:'',desc:a.s,prioridad:a.tipo==='vencido'||a.tipo==='porVencer'?'alta':'normal',clienteId:a.o.clienteId||null,clienteNombre:a.o.clienteNombre||'',otFolio:a.o.folio||'',estado:'pendiente',creado:new Date().toISOString()});
   save();try{renderRecordatorios();renderAgendaStats();updateBadges();}catch(e){}paintCal();toast('🔔 Recordatorio creado');};
-window.tsx2Cal=d=>{const r=new Date((calRef||hoy())+'T12:00:00');if(d===0)calRef=hoy();else{if(calMode==='mes')r.setMonth(r.getMonth()+d,1);else r.setDate(r.getDate()+7*d);calRef=r.toISOString().slice(0,10);}paintCal();};
+window.tsx2Cal=d=>{const r=new Date((calRef||hoy())+'T12:00:00');if(d===0)calRef=hoy();else{if(calMode==='mes')r.setMonth(r.getMonth()+d,1);else r.setDate(r.getDate()+7*d);calRef=ymdL(r);}paintCal();};
 window.tsx2CalMode=m=>{calMode=m;paintCal();};
 function moveRes(id,day){const r=(D().reservas||[]).find(x=>String(x.id)===String(id));if(!r||r.fecha===day)return;const prev=r.fecha;r.fecha=day;save();try{renderReservas();renderAgendaStats();updateBadges();}catch(e){}paintCal();toast(`📅 Reserva de ${esc(r.clienteNombre||'')} movida ${fF(prev)} → <b>${fF(day)}</b>`);}
 document.addEventListener('dragstart',e=>{const el=e.target.closest&&e.target.closest('[data-res]');if(el)e.dataTransfer.setData('text/res',el.dataset.res);});
@@ -14609,7 +14613,7 @@ window.kcVerCli=k=>{kcCli=k;paint();try{document.getElementById('sec-creditos').
 const fF=d=>d?String(d).slice(0,10).split('-').reverse().join('/'):'—';
 const age=c=>Math.max(0,Math.round((new Date(today()+'T12:00:00')-new Date(String(c.fecha||c.creado||today()).slice(0,10)+'T12:00:00'))/864e5));
 const agingCol=a=>a<=30?['0-30','#787E86']:a<=60?['31-60','#d97706']:a<=90?['61-90','#E6282D']:['+90','#B2121C'];
-const addD=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);};
+const addD=n=>{const d=new Date();d.setDate(d.getDate()+n);return ymdL(d);};
 function est(c){try{return estadoCredito(c);}catch(e){return c.estado||'Pendiente';}}
 function ensure(){
   const sec=$i('sec-creditos');if(!sec||$i('kc-kanban'))return;
@@ -14817,7 +14821,7 @@ const E=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt
 const F=d=>d?String(d).slice(0,10).split('-').reverse().join('/'):'—';
 const normPat=p=>String(p||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 const normRut=r=>String(r||'').replace(/[^0-9kK]/g,'').toUpperCase();
-const addDias=(f,n)=>{const d=new Date(f+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);};
+const addDias=(f,n)=>{const d=new Date(f+'T12:00:00');d.setDate(d.getDate()+n);return ymdL(d);};
 const esAdm=()=>sessionStorage.getItem('rpm_role')==='admin';
 const isEnt=e=>e==='Entregado'||e==='Entregado s/OC';
 const MEDIOS=[['Contado','💵 Efectivo','Pagó en billetes'],['Transferencia','🏦 Transferencia','Depósito al banco'],['Débito','💳 Tarjeta','Débito o crédito en máquina'],['Crédito','📒 A crédito','Paga después (cuenta por cobrar)']];
@@ -14859,8 +14863,8 @@ function tareasHoy(){
   const pedL=(DB.pedidos||[]).filter(p=>p.estado==='Listo para retiro');
   const nL=listas.length+pedL.length;
   const dL=[...listas.slice(0,3).map(o=>E(o.patente||o.folio)+' · '+E(o.clienteNombre||'')),
-    ...pedL.slice(0,Math.max(0,4-Math.min(3,listas.length))).map(p=>`<a href="javascript:void 0" onclick="gdAbrirPed('${E(p.folio)}')" style="color:inherit"><span class="gd-ped-tag">🏭 Pedido</span> ${E(p.folio)} · ${E(p.clienteNombre||'')}</a>`)];
-  T.push({k:'listas',warn:nL>0,n:nL,t:'Trabajos listos para entregar',d:nL?dL.join('<br>'):'Ninguno por ahora',b:listas.length?'🚚 Entregar':'🏭 Ver pedidos',f:listas.length?"gdWiz('entregar')":"gdVerPedidos('Listo para retiro')"});
+    ...pedL.slice(0,Math.max(0,4-Math.min(3,listas.length))).map(p=>`<a href="javascript:void 0" onclick="gdAbrirPed('${E(p.folio)}')" style="color:inherit"><span class="gd-ped-tag">🏭 Fabricación</span> ${E(p.folio)} · ${E(p.clienteNombre||'')}</a>`)];
+  T.push({k:'listas',warn:nL>0,n:nL,t:'Trabajos listos para entregar',d:nL?dL.join('<br>'):'Ninguno por ahora',b:listas.length?'🚚 Entregar':'🏭 Ver fabricaciones',f:listas.length?"gdWiz('entregar')":"gdVerPedidos('Listo para retiro')"});
   const sinV=(DB.ordenes||[]).filter(o=>isEnt(o.estado)&&!(DB.ventas||[]).some(v=>v.otOrigen===o.folio));
   if(sinV.length)T.push({k:'sinventa',warn:true,n:sinV.length,t:'Entregados sin venta registrada',d:sinV.slice(0,3).map(o=>E(o.folio)+' · '+E(o.clienteNombre||'')).join('<br>'),b:'🧾 Registrar',f:"nav('dashboard')"});
   const cr=(DB.creditos||[]).filter(c=>(+c.saldo||0)>0&&c.vcto&&c.vcto<=hoy);
@@ -15488,8 +15492,8 @@ const _rv=window.renderVentas;window.renderVentas=function(){const r=_rv.apply(t
 (function(){
 const $i=id=>document.getElementById(id);
 const E=t=>String(t==null?'':t).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-const hoyS=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
-const addD=(f,n)=>{const d=new Date(f+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);};
+const hoyS=()=>today();
+const addD=(f,n)=>{const d=new Date(f+'T12:00:00');d.setDate(d.getDate()+n);return ymdL(d);};
 const fF=f=>f?f.slice(8,10)+'-'+f.slice(5,7)+'-'+f.slice(0,4):'';
 function base(c){return c.reactivadaEn||c.fecha||(c.creado||'').slice(0,10);}
 function edad(c){const b=base(c);if(!b)return 0;return Math.floor((new Date(hoyS()+'T12:00:00')-new Date(b+'T12:00:00'))/864e5);}
@@ -15593,7 +15597,7 @@ window.gdTrabajosHTML=function(){
     if(o.__ped){const it=(o.items||[]);const det=o.desc||(it[0]&&it[0].nombre?it[0].nombre+(it.length>1?' +'+(it.length-1)+' más':''):'');
       return `<button class="gd-wip-row gd-wip-ped" onclick="gdAbrirPed('${E(o.folio)}')">
       <span class="folio-tag" style="font-size:11px">${E(o.folio)}</span>
-      <span class="gd-ped-tag">🏭 Pedido</span>
+      <span class="gd-ped-tag">🏭 Fabricación</span>
       <span class="gd-wip-main"><b>${E(o.clienteNombre||'')}</b>${det?`<span>${E(det)}</span>`:''}</span>
       <span class="status ${o.estado==='En fabricación'?'s-proceso':'s-pendiente'}" style="font-size:10px">${E(o.estado)}</span>
       <span class="gd-wip-d${d!=null&&d>=7?' late':''}">${d==null?'':d===0?'hoy':d===1?'1 día':d+' días'}</span></button>`;}
@@ -15606,7 +15610,7 @@ window.gdTrabajosHTML=function(){
       <span class="gd-wip-d${d!=null&&d>=7?' late':''}">${d==null?'':d===0?'hoy':d===1?'1 día':d+' días'}</span></button>`;}).join('');
   return `<div class="gd-h2" id="gd-wip-t" style="margin-top:18px">🔧 Trabajos en proceso <span style="font-size:12px;font-weight:600;color:var(--text2)">(${L.length})</span></div>
    <div class="gd-wip">${L.length?rows:'<div style="padding:12px 14px;font-size:12px;color:var(--text2)">No hay trabajos en proceso ahora.</div>'}
-   ${L.length>MAX?`<div style="display:flex"><button class="gd-wip-more" style="flex:1" onclick="gdVerTrabajos()">Ver OT en curso (${L.filter(x=>!x.__ped).length}) →</button>${L.some(x=>x.__ped)?`<button class="gd-wip-more" style="flex:1;border-left:1px solid var(--border)" onclick="gdVerPedidos('')">Ver pedidos (${L.filter(x=>x.__ped).length}) →</button>`:''}</div>`:''}</div>`;
+   ${L.length>MAX?`<div style="display:flex"><button class="gd-wip-more" style="flex:1" onclick="gdVerTrabajos()">Ver OT en curso (${L.filter(x=>!x.__ped).length}) →</button>${L.some(x=>x.__ped)?`<button class="gd-wip-more" style="flex:1;border-left:1px solid var(--border)" onclick="gdVerPedidos('')">Ver fabricaciones (${L.filter(x=>x.__ped).length}) →</button>`:''}</div>`:''}</div>`;
 };
 window.gdAbrirOT=function(folio){
   nav('ordenes',null);
