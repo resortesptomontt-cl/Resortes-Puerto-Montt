@@ -14855,7 +14855,12 @@ const _nvG=window.nav;window.nav=function(id){if(id==='inicio')return gdInicio()
 function tareasHoy(){
   const hoy=today();const T=[];
   const listas=(DB.ordenes||[]).filter(o=>o.estado==='Listo');
-  T.push({k:'listas',warn:listas.length>0,n:listas.length,t:'Trabajos listos para entregar',d:listas.length?listas.slice(0,3).map(o=>E(o.patente||o.folio)+' · '+E(o.clienteNombre||'')).join('<br>'):'Ninguno por ahora',b:'🚚 Entregar',f:"gdWiz('entregar')"});
+  /* v12: también Pedidos de fabricación en estado "Listo para retiro" */
+  const pedL=(DB.pedidos||[]).filter(p=>p.estado==='Listo para retiro');
+  const nL=listas.length+pedL.length;
+  const dL=[...listas.slice(0,3).map(o=>E(o.patente||o.folio)+' · '+E(o.clienteNombre||'')),
+    ...pedL.slice(0,Math.max(0,4-Math.min(3,listas.length))).map(p=>`<a href="javascript:void 0" onclick="gdAbrirPed('${E(p.folio)}')" style="color:inherit"><span class="gd-ped-tag">🏭 Pedido</span> ${E(p.folio)} · ${E(p.clienteNombre||'')}</a>`)];
+  T.push({k:'listas',warn:nL>0,n:nL,t:'Trabajos listos para entregar',d:nL?dL.join('<br>'):'Ninguno por ahora',b:listas.length?'🚚 Entregar':'🏭 Ver pedidos',f:listas.length?"gdWiz('entregar')":"gdVerPedidos('Listo para retiro')"});
   const sinV=(DB.ordenes||[]).filter(o=>isEnt(o.estado)&&!(DB.ventas||[]).some(v=>v.otOrigen===o.folio));
   if(sinV.length)T.push({k:'sinventa',warn:true,n:sinV.length,t:'Entregados sin venta registrada',d:sinV.slice(0,3).map(o=>E(o.folio)+' · '+E(o.clienteNombre||'')).join('<br>'),b:'🧾 Registrar',f:"nav('dashboard')"});
   const cr=(DB.creditos||[]).filter(c=>(+c.saldo||0)>0&&c.vcto&&c.vcto<=hoy);
@@ -15581,9 +15586,18 @@ const E=t=>String(t==null?'':t).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','
 const EST=['Recibido','En proceso'];
 function dias(o){const f=(o.fechaIn||o.creado||'').slice(0,10);if(!f)return null;return Math.max(0,Math.floor((new Date(today()+'T12:00:00')-new Date(f+'T12:00:00'))/864e5));}
 window.gdTrabajosHTML=function(){
-  const L=(DB.ordenes||[]).filter(o=>EST.includes(o.estado)).sort((a,b)=>(dias(b)||0)-(dias(a)||0));
+  const PEST=['Recibido','En fabricación'];
+  const L=[...(DB.ordenes||[]).filter(o=>EST.includes(o.estado)),...(DB.pedidos||[]).filter(p=>PEST.includes(p.estado)).map(p=>Object.assign(Object.create(p),{__ped:true}))].sort((a,b)=>(dias(b)||0)-(dias(a)||0));
   const MAX=6;
-  const rows=L.slice(0,MAX).map(o=>{const d=dias(o);const veh=[o.marca,o.modelo].filter(Boolean).join(' ');
+  const rows=L.slice(0,MAX).map(o=>{const d=dias(o);
+    if(o.__ped){const it=(o.items||[]);const det=o.desc||(it[0]&&it[0].nombre?it[0].nombre+(it.length>1?' +'+(it.length-1)+' más':''):'');
+      return `<button class="gd-wip-row gd-wip-ped" onclick="gdAbrirPed('${E(o.folio)}')">
+      <span class="folio-tag" style="font-size:11px">${E(o.folio)}</span>
+      <span class="gd-ped-tag">🏭 Pedido</span>
+      <span class="gd-wip-main"><b>${E(o.clienteNombre||'')}</b>${det?`<span>${E(det)}</span>`:''}</span>
+      <span class="status ${o.estado==='En fabricación'?'s-proceso':'s-pendiente'}" style="font-size:10px">${E(o.estado)}</span>
+      <span class="gd-wip-d${d!=null&&d>=7?' late':''}">${d==null?'':d===0?'hoy':d===1?'1 día':d+' días'}</span></button>`;}
+    const veh=[o.marca,o.modelo].filter(Boolean).join(' ');
     return `<button class="gd-wip-row" onclick="gdAbrirOT('${E(o.folio)}')">
       <span class="folio-tag" style="font-size:11px">${E(o.folio)}</span>
       <span class="gd-wip-pat">${E(o.patente||'—')}</span>
@@ -15592,11 +15606,19 @@ window.gdTrabajosHTML=function(){
       <span class="gd-wip-d${d!=null&&d>=7?' late':''}">${d==null?'':d===0?'hoy':d===1?'1 día':d+' días'}</span></button>`;}).join('');
   return `<div class="gd-h2" id="gd-wip-t" style="margin-top:18px">🔧 Trabajos en proceso <span style="font-size:12px;font-weight:600;color:var(--text2)">(${L.length})</span></div>
    <div class="gd-wip">${L.length?rows:'<div style="padding:12px 14px;font-size:12px;color:var(--text2)">No hay trabajos en proceso ahora.</div>'}
-   ${L.length>MAX?`<button class="gd-wip-more" onclick="gdVerTrabajos()">Ver todos (${L.length}) →</button>`:''}</div>`;
+   ${L.length>MAX?`<div style="display:flex"><button class="gd-wip-more" style="flex:1" onclick="gdVerTrabajos()">Ver OT en curso (${L.filter(x=>!x.__ped).length}) →</button>${L.some(x=>x.__ped)?`<button class="gd-wip-more" style="flex:1;border-left:1px solid var(--border)" onclick="gdVerPedidos('')">Ver pedidos (${L.filter(x=>x.__ped).length}) →</button>`:''}</div>`:''}</div>`;
 };
 window.gdAbrirOT=function(folio){
   nav('ordenes',null);
   setTimeout(()=>{try{const s=document.getElementById('s-ot');if(s)s.value=folio;renderOTs();const b=document.getElementById('ot-'+folio);if(b&&!b.classList.contains('open'))toggle('ot-'+folio);(b&&b.parentElement||b)?.scrollIntoView({block:'center'});}catch(e){}},250);
+};
+window.gdAbrirPed=function(folio){
+  nav('pedidos',null);
+  setTimeout(()=>{try{const s=document.getElementById('s-ped');if(s)s.value=folio;const e=document.getElementById('s-ped-est');if(e)e.value='';renderPedidos();const b=document.getElementById('ped-'+folio);if(b&&!b.classList.contains('open'))toggle('ped-'+folio);(b&&b.parentElement||b)?.scrollIntoView({block:'center'});}catch(e){}},250);
+};
+window.gdVerPedidos=function(est){
+  nav('pedidos',null);
+  setTimeout(()=>{try{const s=document.getElementById('s-ped');if(s)s.value='';const e=document.getElementById('s-ped-est');if(e)e.value=est||'';renderPedidos();}catch(x){}},250);
 };
 window.gdVerTrabajos=function(){
   nav('ordenes',null);
@@ -15606,6 +15628,7 @@ const st=document.createElement('style');st.textContent=`
 .gd-wip{border:1px solid var(--border);border-radius:12px;background:var(--surface);overflow:hidden}
 .gd-wip-row{display:grid;grid-template-columns:auto 90px 1fr auto 60px;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--border);padding:10px 14px;font:inherit;color:var(--text);cursor:pointer}
 .gd-wip-row:first-child{border-top:0}.gd-wip-row:hover{background:var(--surface2)}
+.gd-ped-tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:#EDE7F6;color:#5B3A99;white-space:nowrap}
 .gd-wip-pat{font-family:'JetBrains Mono',monospace;font-weight:800;letter-spacing:1px}
 .gd-wip-main{display:flex;flex-direction:column;min-width:0;font-size:13px}.gd-wip-main b,.gd-wip-main span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gd-wip-main span{font-size:11px;color:var(--text2)}
 .gd-wip-d{font-size:12px;color:var(--text2);text-align:right;white-space:nowrap}.gd-wip-d.late{color:#b45309;font-weight:700}
