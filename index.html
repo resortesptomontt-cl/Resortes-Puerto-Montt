@@ -414,6 +414,24 @@ body.dark .folio-tag,body.dark .pill-val,body.dark .pill-lbl{color:#B0B8C0}
 .pin-btn:hover{border-color:rgba(230,40,45,.45)}
 .sidebar-logo .logo-title,.pin-card .pin-title{display:none!important}
 </style>
+<script>
+/* Abre WhatsApp: en celular usa wa.me (abre la app); en PC intenta la app de escritorio y si no responde abre WhatsApp Web */
+window.abrirWA=function(url){
+  try{
+    const u=new URL(url);const phone=u.pathname.replace(/\D/g,'');const text=u.searchParams.get('text')||'';
+    const movil=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    if(movil){window.open(url,'_blank');return;}
+    const app='whatsapp://send?phone='+phone+'&text='+encodeURIComponent(text);
+    let salio=false;const onBlur=()=>{salio=true;};
+    window.addEventListener('blur',onBlur,{once:true});
+    document.addEventListener('visibilitychange',onBlur,{once:true});
+    const f=document.createElement('iframe');f.style.display='none';f.src=app;document.body.appendChild(f);
+    setTimeout(()=>{f.remove();window.removeEventListener('blur',onBlur);
+      if(!salio&&document.hasFocus()){window.open('https://web.whatsapp.com/send?phone='+phone+'&text='+encodeURIComponent(text),'_blank');}
+    },1800);
+  }catch(e){window.open(url,'_blank');}
+};
+</script>
 </head>
 <body>
 
@@ -5961,7 +5979,7 @@ function marcarResena(via){
 }
 function enviarResenaWA(){
   const url=urlResenaWA();if(!url){toast('Falta un teléfono válido — copia el mensaje','warn');return;}
-  window.open(url,'_blank');marcarResena('WhatsApp');toast('⭐ Reseña pedida por WhatsApp');cerrarResena();
+  abrirWA(url);marcarResena('WhatsApp');toast('⭐ Reseña pedida por WhatsApp');cerrarResena();
 }
 function copiarResena(){
   const txt=$('resena-msg').value;
@@ -7098,7 +7116,7 @@ function waPed(folio){
   const p=(DB.pedidos||[]).find(x=>x.folio===folio);if(!p)return;
   const tel=(p.tel||'').replace(/\D/g,'');
   const msg=encodeURIComponent(`Hola ${p.clienteNombre}, le informamos que su pedido ${p.folio} está ${p.estado.toLowerCase()}.\n\nTotal: ${fmt(p.total)}${p.sena>0?'\nSaldo pendiente: '+fmt(Math.max(0,p.total-p.sena)):''}\n\n${CFG.nombre||'Resortes Puerto Montt'}`);
-  window.open(`https://wa.me/${tel.startsWith('56')?tel:'56'+tel}?text=${msg}`,'_blank');
+  abrirWA(`https://wa.me/${tel.startsWith('56')?tel:'56'+tel}?text=${msg}`);
 }
 
 function imprimirPedido(folio){
@@ -10843,7 +10861,7 @@ function enviarWA(){
   const tel=($('wa-tel').value||'').replace(/\D/g,'');
   const msg=$('wa-msg').value||_waMsgFinal;
   const url=`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
-  window.open(url,'_blank');
+  abrirWA(url);
   cerrarWA();
 }
 
@@ -15533,7 +15551,7 @@ window.cotRecordarWA=function(folio){
   const c=DB.cotizaciones.find(x=>x.folio===folio);if(!c)return;
   const u=waUrl(c);
   if(!u){toast('El cliente no tiene teléfono. Agrégalo en Clientes para enviar el recordatorio.','warn');return;}
-  window.open(u,'_blank');
+  abrirWA(u);
   c.recordadaEn=hoyS();save();refrescar();
 };
 window.cotDescartarRecordatorio=function(folio){
