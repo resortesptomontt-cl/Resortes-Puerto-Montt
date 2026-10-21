@@ -9712,10 +9712,10 @@ const CFG_DEFAULT={
   region:'Los Lagos',web:'',slogan:'',logo:'',
   banco:'',tipoCuenta:'',numCuenta:'',rutTitular:'',nomTitular:'',emailBanco:'',
   validez:30,pieOT:'',pieCot:'',notaLegal:'',
-  msgResena:'¡Hola {cliente}! Gracias por confiar en Resortes Puerto Montt 🙌 Tu vehículo patente {patente} ya está listo.\nSi quedaste conforme, nos ayudarías mucho siguiéndonos y dejando tu reseña ⭐:\n📸 Instagram: https://www.instagram.com/resortespuertomontt\n👍 Facebook: https://www.facebook.com/resortespuertomontt\n⭐ Reseña: https://www.facebook.com/resortespuertomontt/reviews\n¡Gracias y buen viaje! 🚚'
+  msgResena:'¡Hola {cliente}! Gracias por confiar en Resortes Puerto Montt. Tu vehículo patente {patente} ya está listo 🚚\nSi quedaste conforme, ¿nos ayudas con una reseña en Google? Toma menos de un minuto y nos ayuda mucho ⭐\nhttps://g.page/r/CQQJC7DwQO7BEAE/review\n¡Gracias y buen viaje!'
 };
 function loadCfg(){
-  try{const c=Object.assign({},CFG_DEFAULT,JSON.parse(localStorage.getItem('rpm_config')||'{}'));if(!c.msgResena)c.msgResena=CFG_DEFAULT.msgResena;return c;}
+  try{const c=Object.assign({},CFG_DEFAULT,JSON.parse(localStorage.getItem('rpm_config')||'{}'));if(!c.msgResena||c.msgResena==='¡Hola {cliente}! Gracias por confiar en Resortes Puerto Montt 🙌 Tu vehículo patente {patente} ya está listo.\nSi quedaste conforme, nos ayudarías mucho siguiéndonos y dejando tu reseña ⭐:\n📸 Instagram: https://www.instagram.com/resortespuertomontt\n👍 Facebook: https://www.facebook.com/resortespuertomontt\n⭐ Reseña: https://www.facebook.com/resortespuertomontt/reviews\n¡Gracias y buen viaje! 🚚')c.msgResena=CFG_DEFAULT.msgResena;return c;}
   catch(e){return{...CFG_DEFAULT};}
 }
 function saveCfg(c){localStorage.setItem('rpm_config',JSON.stringify(c));}
