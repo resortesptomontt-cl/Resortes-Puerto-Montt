@@ -754,6 +754,7 @@ window.abrirWA=function(url){
       📷 Agregar fotos
       <input type="file" accept="image/*" multiple style="display:none" onchange="agregarImgsVH(this)">
     </label>
+    <small class="foto-local-nota" style="display:block;font-size:11px;color:var(--text3);margin:-6px 0 10px">🔒 Las fotos quedan guardadas solo en este equipo</small>
     <input type="hidden" id="vh-imgs-data">
     <div style="display:flex;gap:6px"><button class="btn btn-primary" onclick="guardarVehiculo()">✓ Guardar</button><button class="btn" onclick="limpiarVH()">↺ Limpiar</button></div>
   </div>
@@ -1223,6 +1224,7 @@ window.abrirWA=function(url){
           📷 Agregar fotos
           <input type="file" accept="image/*" multiple style="display:none" onchange="agregarImgsOT(this)">
         </label>
+        <small class="foto-local-nota" style="display:block;font-size:11px;color:var(--text3);margin:-6px 0 10px">🔒 Las fotos quedan guardadas solo en este equipo</small>
         <input type="hidden" id="ot-imgs-data">
       </div>
     </div>
@@ -3233,6 +3235,7 @@ window.abrirWA=function(url){
         📷 Agregar fotos
         <input type="file" accept="image/*" multiple style="display:none" onchange="agregarImgsEditOT(this)">
       </label>
+      <small class="foto-local-nota" style="display:block;font-size:11px;color:var(--text3);margin-top:4px">🔒 Las fotos quedan guardadas solo en este equipo</small>
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="cerrarEditOT()">Cancelar</button>
@@ -3459,14 +3462,82 @@ function load(){
 let _lastSaveTime=0;
 function save(){
   _lastSaveTime=Date.now();
-  // always persist locally as fallback
-  Object.keys(DB).forEach(k=>{
-    try{localStorage.setItem('ts3_'+k,JSON.stringify(DB[k]));}catch(e){}
-  });
+  // v18: fotos -> IndexedDB (y repone las que vengan vacías); localStorage sin fotos
+  _fotosSync();
+  _lsGuardarDB();
   // push to Firestore if connected
   fbSave();
 }
 load();
+// ══════════════════════════════════════════════════
+// v18 — FOTOS LOCALES: IndexedDB 'tallersys_fotos' (nunca a Firestore ni a localStorage)
+// claves: 'ot:<folio>' (o.imgs), 'rec:<folio>' (o.tsxFotosRec), 'veh:<id>' (v.imgs)
+// ══════════════════════════════════════════════════
+const FOTO_DB='tallersys_fotos',FOTO_MAX=1280,FOTO_KB=200;
+const _FOTO_CAMPOS=[['ordenes','imgs','ot'],['ordenes','tsxFotosRec','rec'],['vehiculos','imgs','veh']];
+const _fotoCache=new Map();          // clave -> {imgs:[dataURL], creado}
+const _fotoVistos=new WeakMap();     // objeto -> Set(campos) ya sincronizados en este equipo
+let _fotoListo=false,_fotoDBp=null,_fotoCola=Promise.resolve();
+function _fotoKey(pref,it){return pref==='veh'?'veh:'+(it.id||('p:'+(it.patente||''))):pref+':'+(it.folio||it.id||'');}
+function _fotoDB(){if(!_fotoDBp)_fotoDBp=new Promise((ok,ko)=>{try{const r=indexedDB.open(FOTO_DB,1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains('fotos'))r.result.createObjectStore('fotos');};r.onsuccess=()=>ok(r.result);r.onerror=()=>ko(r.error);}catch(e){ko(e);}});return _fotoDBp;}
+async function _fotoPut(k,v){const d=await _fotoDB();return new Promise((ok,ko)=>{const t=d.transaction('fotos','readwrite');const st=t.objectStore('fotos');if(v)st.put(v,k);else st.delete(k);t.oncomplete=ok;t.onerror=()=>ko(t.error);t.onabort=()=>ko(t.error);});}
+async function _fotoAll(){const d=await _fotoDB();return new Promise((ok,ko)=>{const out=new Map();const rq=d.transaction('fotos').objectStore('fotos').openCursor();rq.onsuccess=()=>{const c=rq.result;if(c){out.set(c.key,c.value);c.continue();}else ok(out);};rq.onerror=()=>ko(rq.error);});}
+function _fotoGuardar(k,v){_fotoCola=_fotoCola.then(()=>_fotoPut(k,v)).catch(e=>console.warn('fotos IndexedDB',e));return _fotoCola;}
+function _fotoIgual(a,b){if(a===b)return true;if(!a||!b||a.length!==b.length)return false;for(let i=0;i<a.length;i++)if(a[i]!==b[i])return false;return true;}
+function _fotoVisto(it,campo){const s=_fotoVistos.get(it);return !!(s&&s.has(campo));}
+function _fotoMarcar(it,campo){let s=_fotoVistos.get(it);if(!s){s=new Set();_fotoVistos.set(it,s);}s.add(campo);}
+// Comprime a ~1280 px lado mayor, JPEG ~120-200 KB
+function _fotoComprimir(src){return new Promise(res=>{const im=new Image();im.onload=()=>{try{
+  const w=im.naturalWidth||im.width,h=im.naturalHeight||im.height,k=Math.min(1,FOTO_MAX/Math.max(w,h));
+  const c=document.createElement('canvas');c.width=Math.max(1,Math.round(w*k));c.height=Math.max(1,Math.round(h*k));
+  const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);
+  let q=.82,out=c.toDataURL('image/jpeg',q);while(out.length*.75>FOTO_KB*1024&&q>.42){q-=.08;out=c.toDataURL('image/jpeg',q);}
+  res(out);}catch(e){res(src);}};im.onerror=()=>res(src);im.src=src;});}
+function _fotoLeerArchivo(f){return new Promise(res=>{const r=new FileReader();r.onload=e=>_fotoComprimir(e.target.result).then(res);r.onerror=()=>res(null);r.readAsDataURL(f);});}
+function _fotoGrande(d){return typeof d==='string'&&d.length*.75>(FOTO_KB+30)*1024;}
+// Une DB con IndexedDB: si el registro trae fotos -> se guardan; si viene sin fotos (nube/respaldo) -> se reponen;
+// si un registro ya sincronizado quedó sin fotos -> el usuario las borró -> se borran de IndexedDB.
+function _fotosSync(){
+  if(!_fotoListo)return;
+  _FOTO_CAMPOS.forEach(([col,campo,pref])=>{(DB[col]||[]).forEach(it=>{
+    if(!it||typeof it!=='object')return;
+    const k=_fotoKey(pref,it),arr=Array.isArray(it[campo])?it[campo]:[],c=_fotoCache.get(k);
+    if(arr.length){
+      if(!c||!_fotoIgual(c.imgs,arr)){const v={imgs:[...arr],creado:it.creado||''};_fotoCache.set(k,v);_fotoGuardar(k,v);}
+    }else if(c){
+      if(_fotoVisto(it,campo)){_fotoCache.delete(k);_fotoGuardar(k,null);}
+      else if((c.creado||'')===(it.creado||''))it[campo]=[...c.imgs];
+    }
+    _fotoMarcar(it,campo);
+  });});
+}
+// localStorage ts3_* sin fotos (solo cuando IndexedDB ya está listo)
+function _fotoSinImgs(k,arr){
+  if(!_fotoListo||(k!=='ordenes'&&k!=='vehiculos')||!Array.isArray(arr))return arr;
+  return arr.map(it=>{if(it&&((it.imgs&&it.imgs.length)||(it.tsxFotosRec&&it.tsxFotosRec.length))){const c={...it};if(c.imgs&&c.imgs.length)c.imgs=[];if(c.tsxFotosRec&&c.tsxFotosRec.length)c.tsxFotosRec=[];return c;}return it;});
+}
+function _lsGuardarDB(){Object.keys(DB).forEach(k=>{try{localStorage.setItem('ts3_'+k,JSON.stringify(_fotoSinImgs(k,DB[k])));}catch(e){}});}
+// Captura sincrónica de las fotos que ya existen (localStorage antiguo) antes de que llegue la nube
+const _fotoInicial=[];
+_FOTO_CAMPOS.forEach(([col,campo,pref])=>(DB[col]||[]).forEach(it=>{if(it&&Array.isArray(it[campo])&&it[campo].length)_fotoInicial.push({k:_fotoKey(pref,it),campo,col,orig:it[campo],creado:it.creado||''});}));
+window._fotosListas=(async function _fotosInit(){
+  try{
+    const m=await _fotoAll();m.forEach((v,k)=>{if(v&&Array.isArray(v.imgs))_fotoCache.set(k,v);});
+    let mig=0;
+    for(const f of _fotoInicial){
+      let imgs=_fotoCache.has(f.k)?null:[];
+      if(imgs){for(const d of f.orig)imgs.push(_fotoGrande(d)?await _fotoComprimir(d):d);
+        const v={imgs,creado:f.creado};_fotoCache.set(f.k,v);await _fotoPut(f.k,v);mig+=imgs.length;}
+      const fin=_fotoCache.get(f.k).imgs;
+      // reemplaza en memoria la versión pesada por la comprimida
+      (DB[f.col]||[]).forEach(it=>{if(it&&it[f.campo]===f.orig)it[f.campo]=[...fin];});
+    }
+    _fotoListo=true;_fotosSync();_lsGuardarDB();
+    if(mig)console.log('v18: '+mig+' fotos migradas a IndexedDB');
+    try{window._renderActual&&window._renderActual();}catch(e){}
+    return true;
+  }catch(e){console.warn('v18: IndexedDB no disponible, fotos quedan en localStorage',e);return false;}
+})();
 
 // ── Migración: nombres de meses cortos → completos ──
 function migrarMeses(){
@@ -9083,15 +9154,7 @@ function quitarDocOT(){
 let _editOTImgs=[];
 
 function agregarImgsEditOT(input){
-  const files=Array.from(input.files);
-  files.forEach(file=>{
-    const r=new FileReader();
-    r.onload=e=>{
-      _editOTImgs.push(e.target.result);
-      renderEditOTImgs();
-    };
-    r.readAsDataURL(file);
-  });
+  _readImages(input.files,_editOTImgs,renderEditOTImgs); // v18: comprimidas
   input.value='';
 }
 
@@ -9413,8 +9476,9 @@ function guardarEditOT(){
   o.ejeRear=ZONA_STATE.eot.rear;
   o.ejeTypes={...ZONA_STATE.eot.types};
   o.zonasVehiculo=Object.keys(ZONA_STATE.eot.zonas).map(k=>({codigo:k,detalle:ZONA_STATE.eot.zonas[k]||''}));
+  const _fol=_editOTFolio;
   save();renderOTs();renderDashboard();cerrarEditOT();
-  toast(`Orden ${_editOTFolio} actualizada — ${fmt(o.total)}`);
+  toast(`Orden ${_fol} actualizada — ${fmt(o.total)}`);
 }
 
 // ══════════════════════════════════════════════════
@@ -9913,6 +9977,7 @@ function importarBackup(input){
         DB.comisionesAjustadas=bk.comisionesAjustadas;
       // Restaurar configuración del taller
       if(bk.taller){CFG=_cfgMigV14(Object.assign({},CFG_DEFAULT,bk.taller));saveCfg(CFG);}
+      _fotosSync(); // v18: reponer/guardar fotos locales
       save();poblarFormConfig();renderDashboard();updateBadges();llenarSelectsCat();
       toast(`Backup restaurado — ${bk.fecha?bk.fecha.slice(0,10):''}`);}
     catch(err){toast('Error al leer el backup','err');}
@@ -10769,13 +10834,12 @@ function renderReservas(){
 // ══════════════════════════════════════════════════
 let _vhImgs=[], _otImgs=[];
 
-function _readImages(files, arr, renderFn){
-  Array.from(files).forEach(f=>{
-    if(!f.type.startsWith('image/'))return;
-    const r=new FileReader();
-    r.onload=e=>{arr.push(e.target.result);renderFn();};
-    r.readAsDataURL(f);
-  });
+async function _readImages(files, arr, renderFn){
+  // v18: comprimidas (~1280 px, JPEG ~150 KB)
+  for(const f of Array.from(files)){
+    if(!f.type.startsWith('image/'))continue;
+    const d=await _fotoLeerArchivo(f);if(d){arr.push(d);renderFn();}
+  }
 }
 
 function agregarImgsVH(input){_readImages(input.files,_vhImgs,renderVHImgsPreview);input.value='';}
@@ -12702,7 +12766,8 @@ function _aplicarUpdateFirebase(data){
   if(data.comisionesAjustadas&&typeof data.comisionesAjustadas==='object')
     DB.comisionesAjustadas=data.comisionesAjustadas;
   migrarMeses();
-  Object.keys(DB).forEach(k=>{try{localStorage.setItem('ts3_'+k,JSON.stringify(DB[k]));}catch(e){}});
+  _fotosSync(); // v18: reponer fotos locales
+  _lsGuardarDB();
   if(data._cfg&&typeof data._cfg==='object'){CFG=_cfgMigV14(Object.assign({},CFG_DEFAULT,data._cfg));if(!CFG.logo)CFG.logo=BRAND_LOGO;saveCfg(CFG);}
   llenarSelectsCat();renderDashboard();updateBadges();
 }
@@ -13070,7 +13135,8 @@ async function fbInit(){
       if(data.comisionesAjustadas&&typeof data.comisionesAjustadas==='object')
         DB.comisionesAjustadas=data.comisionesAjustadas;
       migrarMeses(); // Migrar meses cortos → completos
-      Object.keys(DB).forEach(k=>{try{localStorage.setItem('ts3_'+k,JSON.stringify(DB[k]));}catch(e){}});
+      _fotosSync(); // v18: reponer fotos locales
+      _lsGuardarDB();
       if(data._cfg&&typeof data._cfg==='object'){
         CFG=_cfgMigV14(Object.assign({},CFG_DEFAULT,data._cfg));if(!CFG.logo)CFG.logo=BRAND_LOGO;
         saveCfg(CFG);
@@ -13113,10 +13179,11 @@ async function fbSaveNow(){
         // Strip base64 docAdj from ventas and ordenes before sending to Firestore
         // Base64 files can exceed Firestore's 1MB document limit
         data[k]=DB[k].map(item=>{
-          if(item.docAdj||item.imgs){
+          if(item.docAdj||item.imgs||item.tsxFotosRec){
             const clean={...item};
             if(clean.docAdj)clean.docAdj=''; // strip — kept only in localStorage
             if(clean.imgs)clean.imgs=[]; // strip imgs too — too large for Firestore
+            if(clean.tsxFotosRec)clean.tsxFotosRec=[]; // v18: fotos solo en IndexedDB
             return clean;
           }
           return item;
@@ -13809,7 +13876,7 @@ window.tsx2SigClear=id=>sigCtx[id]&&sigCtx[id].clear();
 function sigData(id){const s=sigCtx[id];if(!s||!s.used())return null;
   const t=document.createElement('canvas');t.width=420;t.height=Math.round(420*s.c.height/s.c.width);const x=t.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,t.width,t.height);x.drawImage(s.c,0,0,t.width,t.height);return t.toDataURL('image/jpeg',.7);}
 let _fotos=[];
-function compress(file){return new Promise(res=>{const r=new FileReader();r.onload=e=>{const im=new Image();im.onload=()=>{const k=Math.min(1,900/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.72));};im.src=e.target.result;};r.readAsDataURL(file);});}
+function compress(file){return _fotoLeerArchivo(file);} // v18: misma compresión que OT (1280 px)
 window.tsx2AddFotos=async inp=>{for(const f of inp.files){if(f.type.startsWith('image/'))_fotos.push(await compress(f));}inp.value='';paintFotos();};
 function paintFotos(){const w=document.getElementById('tsx2-fotos');if(w)w.innerHTML=_fotos.map((f,i)=>`<span style="position:relative"><img src="${f}"><button onclick="tsx2DelFoto(${i})" style="position:absolute;top:1px;right:1px;border:0;background:#B2121C;color:#fff;border-radius:4px;font-size:10px;cursor:pointer">×</button></span>`).join('');}
 window.tsx2DelFoto=i=>{_fotos.splice(i,1);paintFotos();};
@@ -13828,6 +13895,7 @@ window.tsx2Recepcion=function(folio){
    <div class="tsx2-h">Fotos de ingreso</div>
    <div class="tsx2-fotos" id="tsx2-fotos"></div>
    <label class="btn btn-sm" style="margin-top:6px;display:inline-flex">📷 Agregar fotos<input type="file" accept="image/*" capture="environment" multiple hidden onchange="tsx2AddFotos(this)"></label>
+   <small class="foto-local-nota" style="display:block;font-size:11px;color:var(--text3);margin-top:4px">🔒 Las fotos quedan guardadas solo en este equipo</small>
    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
     <div><div class="tsx2-h">✍ Firma cliente — recepción</div>${f.recepcion?`<img class="tsx2-sigimg" src="${f.recepcion}"><div style="font-size:11px;color:var(--text2)">Firmado ${fF(r.fechaFirma)} · ${esc(r.firmante||'')}</div><div style="font-size:11px">Volver a firmar:</div>`:''}
       <canvas class="tsx2-sig" id="tsx2-sig1"></canvas><div style="display:flex;gap:6px;margin-top:4px"><input id="tsx2-n1" placeholder="Nombre de quien firma" value="${esc(r.firmante||o.clienteNombre||'')}" style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text)"><button class="btn btn-xs" onclick="tsx2SigClear('tsx2-sig1')">Borrar</button></div></div>
@@ -15305,7 +15373,7 @@ function docSize(d){return fsz(d)+100;}
 window.sgDocSize=docSize;
 /* ---------- arma el documento que se sube (igual que antes + logo fuera) ---------- */
 function buildData(){const data={};
-  Object.keys(DB).forEach(k=>{if(Array.isArray(DB[k])){data[k]=DB[k].map(it=>{if(it&&(it.docAdj||it.imgs)){const c={...it};if(c.docAdj)c.docAdj='';if(c.imgs)c.imgs=[];return c;}return it;});}else data[k]=DB[k];});
+  Object.keys(DB).forEach(k=>{if(Array.isArray(DB[k])){data[k]=DB[k].map(it=>{if(it&&(it.docAdj||it.imgs||it.tsxFotosRec)){const c={...it};if(c.docAdj)c.docAdj='';if(c.imgs)c.imgs=[];if(c.tsxFotosRec)c.tsxFotosRec=[];return c;}return it;});}else data[k]=DB[k];});
   const cfg={...CFG};if(cfg.logo===LOGO_DOC||cfg.logo===(typeof BRAND_LOGO!=='undefined'?BRAND_LOGO:null))cfg.logo='@doc';data._cfg=cfg;return data;}
 window.sgBuildData=buildData;
 /* logo: el doc guarda '@doc' y cada equipo usa la copia incluida en la app */
@@ -15410,7 +15478,7 @@ window.sgRestaurar=async function(id,src){
   if(!confirm('¿Restaurar la versión del '+(x?new Date(x._snapFecha).toLocaleString('es-CL'):id)+'?\n\nSe guarda primero una copia de los datos actuales.'))return;
   if(!sgPermitirConPIN('Confirmar restauración.'))return;
   await snapshot(buildData(),'antes de restaurar '+id,ahoraId('pre-restaurar'));
-  Object.keys(DB).forEach(k=>{if(Array.isArray(data[k]))DB[k]=data[k];});if(data.comisionesAjustadas)DB.comisionesAjustadas=data.comisionesAjustadas;
+  Object.keys(DB).forEach(k=>{if(Array.isArray(data[k]))DB[k]=data[k];});if(data.comisionesAjustadas)DB.comisionesAjustadas=data.comisionesAjustadas;_fotosSync();
   if(data._cfg){CFG=_cfgMigV14(Object.assign({},CFG_DEFAULT,data._cfg));saveCfg(CFG);}
   window._sgPermitir=Date.now()+120000;save();try{renderDashboard();updateBadges();llenarSelectsCat();}catch(e){}
   toast('✓ Versión restaurada');sgVersiones(true);};
