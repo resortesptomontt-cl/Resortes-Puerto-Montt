@@ -987,7 +987,7 @@ window.abrirWA=function(url){
         <span id="cot-arr2" style="margin-left:auto;color:var(--text3);font-size:16px;transition:transform .2s">▾</span>
       </div>
       <div id="cot-step2" style="padding:12px 14px;overflow:visible">
-        <div class="g4" style="margin-bottom:10px;align-items:end">
+        <div class="g4 g-it" style="margin-bottom:10px;align-items:end">
           <div class="field ac-wrap">
             <label>Producto / Servicio <span style="color:var(--text3);font-weight:400;font-size:9px">— escribe para buscar o ingresar libre</span></label>
             <input id="cot-prod-txt" placeholder="Ej: Aceite motor, Revisión frenos..." autocomplete="off"
@@ -1004,6 +1004,9 @@ window.abrirWA=function(url){
           </div>
           <div class="field"><label>Cantidad</label><input id="cot-qty" type="number" value="1" min="0.01" step="0.01"></div>
           <div class="field"><label>P. Unit. ($) <small style="color:var(--accent2)">editable</small></label><input id="cot-pu" type="number" placeholder="0"></div>
+          <div class="field"><label>Eje / zona</label>
+            <select id="cot-eje" class="it-eje" title="Eje o zona del vehículo para este ítem (queda elegido para los siguientes)"><option value="">—</option><option value="General">General</option></select>
+          </div>
         </div>
         <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
           <button class="btn btn-orange" onclick="addLineaCot()">+ Agregar ítem</button>
@@ -1167,7 +1170,7 @@ window.abrirWA=function(url){
         </div>
         <div class="field" style="margin-bottom:10px"><label>Diagnóstico / trabajo solicitado</label><textarea id="ot-diag" placeholder="Descripción del problema o trabajo a realizar..."></textarea></div>
         <div class="sec-label" style="margin-bottom:6px">Repuestos y mano de obra</div>
-        <div class="g4" style="margin-bottom:10px;align-items:end">
+        <div class="g4 g-it" style="margin-bottom:10px;align-items:end">
           <div class="field ac-wrap">
             <label>Producto / Servicio <span style="color:var(--text3);font-weight:400;font-size:9px">— escribe para buscar o ingresar libre</span></label>
             <input id="ot-prod-txt" placeholder="Ej: Aceite motor, Cambio frenos..." autocomplete="off"
@@ -1184,6 +1187,9 @@ window.abrirWA=function(url){
           </div>
           <div class="field"><label>Cantidad</label><input id="ot-qty" type="number" value="1" min="0.01" step="0.01"></div>
           <div class="field"><label>P. Unit. ($) <small style="color:var(--accent2)">editable</small></label><input id="ot-pu" type="number" placeholder="0"></div>
+          <div class="field"><label>Eje / zona</label>
+            <select id="ot-eje" class="it-eje" title="Eje o zona del vehículo para este ítem (queda elegido para los siguientes)"><option value="">—</option><option value="General">General</option></select>
+          </div>
         </div>
         <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
           <button class="btn btn-orange" onclick="addLineaOT()">+ Agregar ítem</button>
@@ -3196,7 +3202,7 @@ window.abrirWA=function(url){
       <div id="edit-ot-items"></div>
       <hr style="margin:12px 0">
       <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text2)">Agregar ítem</div>
-      <div class="g4" style="align-items:end;margin-bottom:8px">
+      <div class="g4 g-it" style="align-items:end;margin-bottom:8px">
         <div class="field ac-wrap">
           <label>Producto / Servicio</label>
           <input id="edit-ot-prod-txt" placeholder="Buscar o ingresar libre..." autocomplete="off"
@@ -3213,6 +3219,9 @@ window.abrirWA=function(url){
         </div>
         <div class="field"><label>Cantidad</label><input id="edit-ot-qty" type="number" value="1" min="0.01" step="0.01"></div>
         <div class="field"><label>P. Unit. ($)</label><input id="edit-ot-pu" type="number" placeholder="0"></div>
+        <div class="field"><label>Eje / zona</label>
+          <select id="edit-ot-eje" class="it-eje" title="Eje o zona del vehículo para este ítem"><option value="">—</option><option value="General">General</option></select>
+        </div>
       </div>
       <button class="btn btn-sm btn-orange" onclick="addItemEditOT()">+ Agregar ítem</button>
 
@@ -4075,7 +4084,7 @@ function addLineaCot(){
   lines.cot.push({
     pid:prod?.id||null,nombre:prod?prod.nombre:nombre,
     unidad:prod?prod.unidad:uni,cat:prod?.categoria||'Libre',
-    qty,pu,sub:qty*pu,libre:!prod
+    qty,pu,sub:qty*pu,libre:!prod,eje:ejeSel('cot')
   });
   renderLineas('cot');
   if($('cot-prod-txt'))$('cot-prod-txt').value='';
@@ -4146,7 +4155,8 @@ function addLineaOT(){
     cat:prod?.categoria||'Libre',
     qty,pu,
     sub:qty*pu,
-    libre:!prod             // flag: no descontar stock
+    libre:!prod,            // flag: no descontar stock
+    eje:ejeSel('ot')
   });
 
   renderLineas('ot');
@@ -4169,7 +4179,7 @@ function addLinea(ctx){
   const pu=parseFloat($(puid)?.value)||0;
   if(!prod){toast('Selecciona un producto','err');return;}
   if(qty<=0){toast('Cantidad debe ser mayor a 0','err');return;}
-  lines[ctx].push({pid:prod.id,nombre:prod.nombre,unidad:prod.unidad,cat:prod.categoria,qty,pu,sub:qty*pu});
+  lines[ctx].push({pid:prod.id,nombre:prod.nombre,unidad:prod.unidad,cat:prod.categoria,qty,pu,sub:qty*pu,eje:ejeSel(ctx)});
   renderLineas(ctx);
   $(qid).value=1;
 }
@@ -5465,6 +5475,7 @@ function limpiarCot(){
   if($('cot-prod-id'))$('cot-prod-id').value='';
   if($('cot-pu'))$('cot-pu').value='';
   ZONA_STATE.cot={front:1,rear:2,types:{1:'traccion',2:'traccion'},zonas:{},expanded:false,vtype:'camion'};
+  if($('cot-eje'))$('cot-eje').value='';
   if($('cot-zona-body')){$('cot-zona-body').style.display='none';$('cot-zona-arrow').textContent='▾';}
   zonaRenderAll('cot');
   renderLineas('cot');
@@ -5859,6 +5870,7 @@ function guardarOT(){
     items:[...lines.ot],total,estado:$('ot-estado').value,
     imgs:[..._otImgs],
     ejeFront:ZONA_STATE.ot.front,ejeRear:ZONA_STATE.ot.rear,ejeTypes:{...ZONA_STATE.ot.types},
+    vtype:ZONA_STATE.ot.vtype,
     zonasVehiculo:Object.keys(ZONA_STATE.ot.zonas).map(k=>({codigo:k,detalle:ZONA_STATE.ot.zonas[k]||''})),
     docTipo,
     docFolio:docTipo?($('ot-doc-folio')?.value||'').trim():'',
@@ -5913,6 +5925,7 @@ function limpiarOT(){
   _otImgs=[];renderOTImgsPreview();
   initMecPicker('ot',[]);  $('ot-veh-pill').style.display='none';
   ZONA_STATE.ot={front:1,rear:2,types:{1:'traccion',2:'traccion'},zonas:{},expanded:false,vtype:'camion'};
+  if($('ot-eje'))$('ot-eje').value='';
   if($('ot-zona-body')){$('ot-zona-body').style.display='none';$('ot-zona-arrow').textContent='▾';}
   zonaRenderAll('ot');
   renderLineas('ot');setToday('ot-fecha-in');setOTFolio();
@@ -9091,6 +9104,40 @@ function zonaRenderAll(ns){
   zonaApplyStyles(ns);zonaRenderRows(ns);zonaRenderChips(ns);
 }
 
+// ── v20: Eje / zona por ítem (cotización, OT y edición de OT) ──
+function ejeNombre(code,vtype){
+  if(!code)return '';if(code==='General')return 'General';
+  const m=String(code).match(/^(FT|RR)(\d)(?:-(I|D))?$/);if(!m)return String(code);
+  const cam=vtype==='camioneta';
+  const base=m[1]==='FT'?(cam?'Delantero':'Eje delantero '+m[2]):(cam?'Trasero':'Eje trasero '+m[2]);
+  return m[3]?base+' · '+(m[3]==='I'?'izq.':'der.'):base;
+}
+function ejeOpciones(ns,extra){
+  const s=ZONA_STATE[ns]||{};const vt=s.vtype||'camion';const c=VEH_CFG[vt]||{};
+  const out=[['','—'],['General','General']];const seen=new Set(['','General']);
+  const add=v=>{if(v==null||v===''||seen.has(v))return;seen.add(v);out.push([v,ejeNombre(v,vt)]);};
+  const cam=vt==='camioneta';
+  const nf=c.hF===0?0:(cam?1:(s.front||1)),nr=cam?1:(s.rear||1);
+  for(let i=1;i<=nf;i++){add('FT'+i);add('FT'+i+'-I');add('FT'+i+'-D');}
+  for(let i=1;i<=nr;i++){add('RR'+i);add('RR'+i+'-I');add('RR'+i+'-D');}
+  Object.keys(s.zonas||{}).sort().forEach(add);
+  (extra||[]).forEach(add);
+  return out;
+}
+function ejeOptsHTML(ns,cur){
+  const q=t=>String(t).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  cur=cur||'';
+  return ejeOpciones(ns,cur?[cur]:[]).map(([v,t])=>`<option value="${q(v)}"${v===cur?' selected':''}>${q(t)}</option>`).join('');
+}
+function ejeSel(ns){const el=$({cot:'cot-eje',ot:'ot-eje',eot:'edit-ot-eje'}[ns]);return el?(el.value||''):'';}
+function ejeRefresh(ns){
+  const selId={cot:'cot-eje',ot:'ot-eje',eot:'edit-ot-eje'}[ns];if(!selId)return;
+  const f=$(selId);if(f){const v=f.value;f.innerHTML=ejeOptsHTML(ns,v);f.value=v;}
+  const wrap=$(ns==='eot'?'edit-ot-items':ns+'-lineas-wrap');const L=ns==='eot'?_editOTItems:(lines[ns]||[]);
+  if(wrap)wrap.querySelectorAll('select.ln-eje').forEach(el=>{const l=L[+el.dataset.i];if(!l)return;el.innerHTML=ejeOptsHTML(ns,l.eje||'');el.value=l.eje||'';});
+}
+(function(){const _za=zonaApplyStyles;window.zonaApplyStyles=function(ns){const r=_za.apply(this,arguments);try{ejeRefresh(ns);}catch(e){console.warn(e);}return r;};})();
+
 // ── Documento tributario en OT guardada ──────────
 let _docOTFolio=null;
 function abrirDocOT(folio){
@@ -9195,6 +9242,7 @@ function abrirEditOT(folio){
   }
 
   // Init selector de zona del vehículo
+  if($('edit-ot-eje'))$('edit-ot-eje').value='';
   ZONA_STATE.eot.vtype=o.vtype||'camion';
   ZONA_STATE.eot.front=o.ejeFront||1;
   ZONA_STATE.eot.rear=o.ejeRear||2;
@@ -9350,9 +9398,10 @@ function renderEditOTItems(){
   if(elTotal)elTotal.innerHTML=descuento>0?`${fmt(total)} <span style="font-size:11px;color:var(--amber);font-weight:400">(-${fmt(descuento)} dto.)</span>`:fmt(total);
   const el=$('edit-ot-items');
   if(!_editOTItems.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px 0">Sin ítems — agrega abajo</div>';return;}
-  el.innerHTML='<div class="tw"><table><thead><tr><th>Producto</th><th>Cant.</th><th>Unidad</th><th>P.Unit.</th><th class="tr">Subtotal</th><th></th></tr></thead><tbody>'+
+  el.innerHTML='<div class="tw"><table><thead><tr><th>Producto</th><th>Eje / zona</th><th>Cant.</th><th>Unidad</th><th>P.Unit.</th><th class="tr">Subtotal</th><th></th></tr></thead><tbody>'+
     _editOTItems.map((it,i)=>`<tr>
       <td style="font-weight:500">${it.nombre}</td>
+      <td><select class="ln-eje" data-i="${i}" onchange="_editOTItems[${i}].eje=this.value||''">${ejeOptsHTML('eot',it.eje)}</select></td>
       <td><input type="number" value="${it.qty}" min="0.01" step="0.01" style="width:60px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;background:var(--bg);color:var(--text)"
         onchange="_editOTItems[${i}].qty=parseFloat(this.value)||0;_eotSub(_editOTItems[${i}]);renderEditOTItems()"></td>
       <td>${it.unidad}</td>
@@ -9421,7 +9470,7 @@ function addItemEditOT(){
   if(qty<=0){toast('Cantidad debe ser mayor a 0','err');return;}
   const pid=$('edit-ot-prod-id').value||null;
   const prod=pid?DB.inventario.find(p=>p.id===pid):null;
-  _editOTItems.push({pid:prod?.id||null,nombre:prod?prod.nombre:nombre,unidad:prod?prod.unidad:uni,cat:prod?.categoria||'Libre',qty,pu,sub:qty*pu,libre:!prod});
+  _editOTItems.push({pid:prod?.id||null,nombre:prod?prod.nombre:nombre,unidad:prod?prod.unidad:uni,cat:prod?.categoria||'Libre',qty,pu,sub:qty*pu,libre:!prod,eje:ejeSel('eot')});
   renderEditOTItems();
   $('edit-ot-prod-txt').value='';$('edit-ot-prod-id').value='';
   $('edit-ot-pu').value='';$('edit-ot-qty').value=1;
@@ -10394,7 +10443,7 @@ function docHdr2(tipo,folio,metas,estado){
 }
 function docBank2(){const c=CFG;if(!c.banco&&!c.numCuenta)return'';const f=(l,v)=>v?`<div><span class="l">${l}:</span> <b>${_e(v)}</b></div>`:'';
   return`<div class="d2-bank"><div class="h">Datos para transferencia</div>${f('Banco',c.banco)}${f('Tipo',c.tipoCuenta)}${f('N° cuenta',c.numCuenta)}${f('Titular',c.nomTitular)}${f('RUT',c.rutTitular)}${f('Email',c.emailBanco)}</div>`;}
-function docItems2(items){return`<table><thead><tr><th style="width:28px">#</th><th>Descripción</th><th style="width:70px">Cant.</th><th style="width:70px">Unidad</th><th style="width:110px">Eje / zona</th></tr></thead><tbody>${(items||[]).map((it,i)=>`<tr><td style="color:#9a9ea5">${i+1}</td><td style="font-weight:600">${_e(it.nombre)}</td><td>${_e(it.qty??it.cant??'')}</td><td>${_e(it.unidad||'')}</td><td>${it.eje?`<span class="d2-ej">${_e(it.eje)}</span>`:'<span style="color:#bbb">—</span>'}</td></tr>`).join('')}</tbody></table>`;}
+function docItems2(items,vt){return`<table><thead><tr><th style="width:28px">#</th><th>Descripción</th><th style="width:70px">Cant.</th><th style="width:70px">Unidad</th><th style="width:110px">Eje / zona</th></tr></thead><tbody>${(items||[]).map((it,i)=>`<tr><td style="color:#9a9ea5">${i+1}</td><td style="font-weight:600">${_e(it.nombre)}</td><td>${_e(it.qty??it.cant??'')}</td><td>${_e(it.unidad||'')}</td><td>${it.eje?`<span class="d2-ej">${_e(typeof ejeNombre==='function'?ejeNombre(it.eje,vt):it.eje)}</span>`:'<span style="color:#bbb">—</span>'}</td></tr>`).join('')}</tbody></table>`;}
 function docTot2(total,desc,lbl){const t=Math.round(+total||0),n=Math.round(t/1.19);return`<div class="d2-tot"><div>${desc>0?`<div class="ln"><span>Descuento aplicado</span><b>-${fmt(desc)}</b></div>`:''}<div class="ln"><span>Neto</span><b>${fmt(n)}</b></div><div class="ln"><span>IVA 19%</span><b>${fmt(t-n)}</b></div><div class="tt"><span>${lbl}</span><b>${fmt(t)}</b></div></div></div>`;}
 function docZonas2(z){if(!z||!z.length)return'';const all=z.map(x=>x.codigo);return`<div class="d2-h">Trabajo por eje y lado</div><div class="d2-zn">${z.map(x=>`<span><b>${_e(zonaLabel(x.codigo,all))}</b>${x.detalle?' — '+_e(x.detalle):''}</span>`).join('')}</div>`;}
 function docVeh2(o,v){const r=(l,x,b)=>x?`<div class="d2-r"><span class="l">${l}</span><span class="v"${b?' style="font-weight:800;letter-spacing:.04em"':''}>${x}</span></div>`:'';
@@ -10406,7 +10455,7 @@ function buildDocOT(o,v){
   <div class="d2-g2"><div><div class="d2-h">Cliente</div>${docCli2(o)}</div><div><div class="d2-h">Vehículo</div>${docVeh2(o,v)}</div></div>
   ${o.diag?`<div class="d2-h">Diagnóstico / trabajo solicitado</div><div class="d2-box">${_e(o.diag)}</div>`:''}
   ${docZonas2(o.zonasVehiculo)}
-  <div class="d2-h">Servicios y repuestos</div>${docItems2(o.items)}
+  <div class="d2-h">Servicios y repuestos</div>${docItems2(o.items,o.vtype)}
   ${docTot2(o.total,0,'Total orden')}
   ${o.obs?`<div class="d2-h">Observaciones</div><div class="d2-box">${_e(o.obs)}</div>`:''}
   <div class="d2-note"><b>Importante:</b> los valores son referenciales y pueden variar según repuestos y trabajos adicionales detectados durante el desarme y diagnóstico; toda variación se informa al cliente antes de proceder.${(o.items||[]).some(i=>/abrazadera/i.test(i.nombre||''))?' <b>Reapriete de abrazaderas</b> obligatorio a los 7 días hábiles para mantener la garantía.':''}</div>
@@ -10423,7 +10472,7 @@ function buildDocCot(c,v){
   <div class="d2-g2"><div><div class="d2-h">Cliente</div>${docCli2(c)}</div><div><div class="d2-h">Vehículo</div>${docVeh2(c,v)}</div></div>
   ${c.obs?`<div class="d2-h">Alcance del trabajo</div><div class="d2-box">${_e(c.obs)}</div>`:''}
   ${docZonas2(c.zonasVehiculo)}
-  <div class="d2-h">Servicios y repuestos cotizados</div>${docItems2(c.items)}
+  <div class="d2-h">Servicios y repuestos cotizados</div>${docItems2(c.items,c.vtype)}
   ${docTot2(c.total,+c.descuento||0,'Total cotización')}
   ${docBank2()}
   ${CFG.pieCot?`<div class="d2-note">${_e(CFG.pieCot)}</div>`:''}
@@ -14151,7 +14200,11 @@ div[style*="overflow:hidden"]:has(.ac-wrap)>div:first-child{border-radius:var(--
 .pk-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
 .pk{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--border2);border-radius:99px;padding:4px 6px 4px 11px;font-size:11.5px;background:var(--surface);cursor:pointer;transition:all .15s}
 .pk:hover{border-color:#B2121C;background:var(--accent2-light)}.pk x{font-style:normal;opacity:.45;padding:0 4px;border-radius:50%}.pk x:hover{opacity:1;color:#B2121C}
-.ln-eje{padding:3px 5px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:var(--bg);color:var(--text);max-width:110px}
+.ln-eje{padding:3px 5px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:var(--bg);color:var(--text);max-width:150px}
+.g4.g-it{grid-template-columns:minmax(0,2fr) minmax(0,.9fr) minmax(0,.7fr) minmax(0,.9fr) minmax(0,1.2fr)}
+.it-eje{width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none}
+.it-eje:focus{border-color:#B2121C}
+@media(max-width:768px){.g4.g-it{grid-template-columns:1fr 1fr}.g4.g-it>.field:first-child{grid-column:1/-1}}
 .ot-tl{display:flex;margin:4px 0 14px}.ot-tl>div{flex:1;text-align:center;position:relative;font-size:11px}
 .ot-tl>div::before{content:"";position:absolute;top:9px;left:-50%;width:100%;height:3px;background:var(--border)}.ot-tl>div:first-child::before{display:none}.ot-tl>div.ok::before{background:#16a34a}
 .ot-tl i{display:inline-block;position:relative;z-index:1;width:20px;height:20px;border-radius:50%;background:var(--surface2);border:3px solid var(--surface);box-shadow:0 0 0 1px var(--border)}
@@ -14220,7 +14273,7 @@ function build(ctx){
   form.addEventListener('input',()=>refresh(ctx));form.addEventListener('change',()=>refresh(ctx));form.addEventListener('click',()=>setTimeout(()=>refresh(ctx),50));
   // Enter on qty/pu adds item
   [ctx+'-qty',ctx+'-pu'].forEach(id=>$id(id)?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();ctx==='ot'?addLineaOT():addLineaCot();}}));
-  paintPk(ctx);go(ctx,0);
+  paintPk(ctx);try{ejeRefresh(ctx);}catch(e){}go(ctx,0);
 }
 function toggleForm(ctx,show){const C=W[ctx];const f=$id(ctx+'-cli-txt').closest('.card');f.style.display=show?'':'none';document.body.classList.toggle('wz-open',!!document.querySelector('.wz-wrap:not([style*="none"])'));$id('nv-'+ctx).style.display=show?'none':'';if(show){go(ctx,0);setTimeout(()=>{f.scrollIntoView({behavior:'smooth',block:'start'});$id(ctx+'-cli-txt').focus({preventScroll:true});},50);}}
 window.wzOpen=toggleForm;
@@ -14228,6 +14281,7 @@ function go(ctx,i){i=Math.max(0,Math.min(4,i));st[ctx]=i;const f=$id(ctx+'-cli-t
   f.querySelectorAll('.wz-pane').forEach(p=>p.classList.toggle('on',+p.dataset.i===i));
   f.querySelectorAll('.wz-st').forEach(b=>{const k=+b.dataset.i;b.classList.toggle('on',k===i);b.classList.toggle('done',k<i);});
   const bar=$id('wzb-'+ctx);bar.querySelector('[data-a=prev]').style.visibility=i?'visible':'hidden';bar.querySelector('[data-a=next]').style.display=i===4?'none':'';
+  if(i===2)try{ejeRefresh(ctx);}catch(e){console.warn(e);}
   if(i===4)confirmPane(ctx);refresh(ctx);if(window.innerWidth<=768)$id('wz-'+ctx).scrollIntoView({block:'start'});}
 function zonasList(ctx){try{return Object.keys(ZONA_STATE[ctx].zonas||{});}catch(e){return[];}}
 function refresh(ctx){
@@ -14239,7 +14293,7 @@ function refresh(ctx){
 function confirmPane(ctx){const t=totals(ctx),z=zonasList(ctx),L=lines[ctx]||[];
   const miss=[];if(!$id(ctx+'-cli-txt').value.trim())miss.push('cliente');if(ctx==='ot'&&!$id('ot-veh').value&&!$id('ot-veh-txt').value.trim())miss.push('vehículo');if(!L.length)miss.push('ítems');
   $id('wzc-'+ctx).innerHTML=`${miss.length?`<div class="wz-hint" style="border-color:#d97706">⚠ Falta: <b>${miss.join(', ')}</b></div>`:'<div class="wz-hint" style="border-color:#16a34a">✓ Todo listo. Revisa y guarda.</div>'}
-   <table><tr><th>Ítem</th><th>Eje/zona</th><th>Cant.</th><th style="text-align:right">P. unit.</th><th style="text-align:right">Subtotal</th></tr>${L.map(l=>`<tr><td>${esc(l.nombre)}</td><td>${esc(l.eje||'—')}</td><td>${esc(l.qty)} ${esc(l.unidad||'')}</td><td style="text-align:right">${money(l.pu)}</td><td style="text-align:right">${money(l.qty*l.pu*(1-(l.dto||0)/100))}</td></tr>`).join('')||'<tr><td colspan="5" style="color:var(--text2)">Sin ítems</td></tr>'}</table>
+   <table><tr><th>Ítem</th><th>Eje/zona</th><th>Cant.</th><th style="text-align:right">P. unit.</th><th style="text-align:right">Subtotal</th></tr>${L.map(l=>`<tr><td>${esc(l.nombre)}</td><td>${esc(ejeNombre(l.eje,(ZONA_STATE[ctx]||{}).vtype)||'—')}</td><td>${esc(l.qty)} ${esc(l.unidad||'')}</td><td style="text-align:right">${money(l.pu)}</td><td style="text-align:right">${money(l.qty*l.pu*(1-(l.dto||0)/100))}</td></tr>`).join('')||'<tr><td colspan="5" style="color:var(--text2)">Sin ítems</td></tr>'}</table>
    <div style="font-size:11px;color:var(--text2);margin-top:8px">Zonas: ${esc(z.join(', ')||'—')} · El documento impreso para el cliente muestra solo cantidades y el <b>total</b> (sin precios unitarios).</div>`;}
 function doSave(ctx){const C=W[ctx];const before=(DB[C.coll]||[]).length;const val=ctx==='cot'?parseInt($id('cot-validez')?.value)||0:0;
   window[C.save]();
@@ -14249,8 +14303,8 @@ function doSave(ctx){const C=W[ctx];const before=(DB[C.coll]||[]).length;const v
 /* ---------- eje column in item table ---------- */
 function ejeCol(ctx){const wrap=$id(ctx+'-lineas-wrap');if(!wrap)return;const tb=wrap.querySelector('table');if(!tb||tb.dataset.eje)return;tb.dataset.eje=1;
   const th=tb.querySelector('thead tr th');if(th)th.insertAdjacentHTML('afterend','<th>Eje / zona</th>');
-  const z=zonasList(ctx);tb.querySelectorAll('tbody tr').forEach((tr,i)=>{const l=lines[ctx][i];if(!l)return;const opts=['',...z,'General',...(l.eje&&!z.includes(l.eje)&&l.eje!=='General'?[l.eje]:[])];
-    tr.firstElementChild.insertAdjacentHTML('afterend',`<td><select class="ln-eje" data-i="${i}">${opts.map(o=>`<option value="${esc(o)}" ${l.eje===o?'selected':''}>${o?esc(o):'—'}</option>`).join('')}</select></td>`);});
+  tb.querySelectorAll('tbody tr').forEach((tr,i)=>{const l=lines[ctx][i];if(!l)return;
+    tr.firstElementChild.insertAdjacentHTML('afterend',`<td><select class="ln-eje" data-i="${i}">${ejeOptsHTML(ctx,l.eje||'')}</select></td>`);});
   tb.querySelectorAll('.ln-eje').forEach(s=>s.onchange=()=>{lines[ctx][+s.dataset.i].eje=s.value||'';refresh(ctx);});}
 const _rl=window.renderLineas;window.renderLineas=function(ctx){const r=_rl.apply(this,arguments);if(ctx==='ot'||ctx==='cot'){try{ejeCol(ctx);refresh(ctx);}catch(e){console.warn(e);}}return r;};
 const _rt=window.renderTotalesWrap;if(_rt)window.renderTotalesWrap=function(ctx){const r=_rt.apply(this,arguments);if(ctx==='ot'||ctx==='cot')try{refresh(ctx);}catch(e){}return r;};
@@ -14265,7 +14319,7 @@ function paintPk(ctx){const r=$id('pk-'+ctx);if(!r)return;r.innerHTML=`<span sty
     if(e.target.closest('[data-new]')){const L=lines[ctx]||[];if(!L.length){toast('Agrega ítems primero','warn');return;}const n=prompt('Nombre del paquete:');if(!n)return;CFG.paquetes=[...pks(),{n:n.trim(),it:L.map(l=>[l.nombre,l.qty,l.unidad||'und',l.pu,l.pid||null])}];saveCfg(CFG);save();paintPk('ot');paintPk('cot');toast('⚡ Paquete guardado');return;}
     const p=e.target.closest('.pk');if(!p)return;const pk=pks()[+p.dataset.i];lines[ctx]=lines[ctx]||[];
     pk.it.forEach(([nom,q,u,pu,pid])=>{const prod=(pid&&DB.inventario.find(x=>x.id===pid))||DB.inventario.find(x=>(x.nombre||'').toLowerCase()===String(nom).toLowerCase())||DB.inventario.find(x=>(x.nombre||'').toLowerCase().includes(String(nom).toLowerCase()));
-      const price=pu!=null&&pu!==''?+pu:(prod?+prod.precio||0:0);lines[ctx].push({pid:prod?.id||null,nombre:prod?prod.nombre:nom,unidad:prod?prod.unidad:u,cat:prod?.categoria||'Libre',qty:+q||1,pu:price,sub:(+q||1)*price,libre:!prod});});
+      const price=pu!=null&&pu!==''?+pu:(prod?+prod.precio||0:0);lines[ctx].push({pid:prod?.id||null,nombre:prod?prod.nombre:nom,unidad:prod?prod.unidad:u,cat:prod?.categoria||'Libre',qty:+q||1,pu:price,sub:(+q||1)*price,libre:!prod,eje:ejeSel(ctx)});});
     renderLineas(ctx);toast('⚡ '+esc(pk.n)+' agregado — revisa precios');};}
 /* ---------- timeline in OT detail ---------- */
 const _vr=window.verOTRapido;window.verOTRapido=function(folio){const r=_vr.apply(this,arguments);try{const o=DB.ordenes.find(x=>x.folio===folio),b=$id('ot-preview-body');if(o&&b&&!b.querySelector('.ot-tl')){
@@ -14279,7 +14333,7 @@ const _cv=window.cotAVenta;window.cotAVenta=function(folio){const c=DB.cotizacio
   const M=$id('tsx2-modal');$id('tsx2-mt').textContent='Convertir '+folio+' en orden de trabajo';
   $id('tsx2-mb').innerHTML=`<div class="wz-hint">Se creará la orden <b>${nf}</b> en estado <b>Recibido</b> y la cotización quedará como <b>Convertida</b> (enlazada a la OT).</div>
    <div class="wz-sum"><div class="wz-chip"><b>${esc(c.clienteNombre)}</b><span>Cliente ${esc(c.clienteRut||'')}</span></div><div class="wz-chip"><b>${esc(c.patente||'—')}</b><span>${esc([c.marca,c.modelo].filter(Boolean).join(' ')||'Vehículo')}</span></div><div class="wz-chip"><b>${esc((c.zonasVehiculo||[]).map(z=>z.codigo).join(' · ')||'—')}</b><span>Ejes / zonas</span></div><div class="wz-chip"><b>${money(c.total)}</b><span>Total${c.descuento>0?' (desc. '+money(c.descuento)+')':''}</span></div></div>
-   <div class="wz-confirm"><table><tr><th>Se copian ${(c.items||[]).length} ítems</th><th>Eje</th><th>Cant.</th><th style="text-align:right">Subtotal</th></tr>${(c.items||[]).map(l=>`<tr><td>${esc(l.nombre)}</td><td>${esc(l.eje||'—')}</td><td>${esc(l.qty)} ${esc(l.unidad||'')}</td><td style="text-align:right">${money(l.sub||l.qty*l.pu)}</td></tr>`).join('')}</table></div>
+   <div class="wz-confirm"><table><tr><th>Se copian ${(c.items||[]).length} ítems</th><th>Eje</th><th>Cant.</th><th style="text-align:right">Subtotal</th></tr>${(c.items||[]).map(l=>`<tr><td>${esc(l.nombre)}</td><td>${esc(ejeNombre(l.eje,c.vtype)||'—')}</td><td>${esc(l.qty)} ${esc(l.unidad||'')}</td><td style="text-align:right">${money(l.sub||l.qty*l.pu)}</td></tr>`).join('')}</table></div>
    <div style="font-size:11px;color:var(--text2);margin:8px 0">También se copian las notas como diagnóstico, la carrocería y la configuración de ejes. Mecánico, km y fecha estimada se completan después en la OT.</div>
    <div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn" onclick="tsx2Close()">Cancelar</button><button class="btn btn-primary" id="cv-ok">✓ Crear ${nf}</button></div>`;
   M.classList.add('on');$id('cv-ok').onclick=()=>{const oc=window.confirm;window.confirm=()=>true;try{_cv(folio);}finally{window.confirm=oc;}tsx2Close();};};
