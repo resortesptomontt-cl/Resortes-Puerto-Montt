@@ -5955,6 +5955,7 @@ function msgResenaOT(o){
 let _resenaFolio=null;
 function abrirResena(folio,auto){
   const o=DB.ordenes.find(x=>x.folio===folio);if(!o)return;
+  if(o.resenaEnviada){toast('⭐ La reseña de esta OT ya se envió el '+fmtFechaRes(o.resenaEnviada),'warn');const cb=window._resenaOnClose;window._resenaOnClose=null;if(cb)cb();return;}
   _resenaFolio=folio;
   const cli=(DB.clientes||[]).find(c=>c.id===o.clienteId);
   const tel=o.tel||cli?.tel||cli?.contactoTel||'';
@@ -6135,7 +6136,7 @@ function renderOTs(){
         <div style="display:flex;gap:4px" onclick="event.stopPropagation()">
           <button class="btn btn-xs" onclick="imprimirOT('${o.folio}')" title="Imprimir PDF">🖨</button>
           <button class="btn btn-xs" onclick="imprimirHojaTrabajo('${o.folio}')" title="Hoja de trabajo (sin precios)">👷</button>
-          ${(o.estado==='Entregado'||o.estado==='Entregado s/OC')?`<button class="btn btn-xs ${o.resenaEnviada?'':'btn-primary'}" onclick="abrirResena('${o.folio}')" title="${o.resenaEnviada?'Reseña pedida el '+fmtFechaRes(o.resenaEnviada)+' — volver a enviar':'Pedir reseña por WhatsApp'}">${o.resenaEnviada?'⭐ Reenviar reseña':'⭐ Pedir reseña'}</button>`:''}
+          ${(o.estado==='Entregado'||o.estado==='Entregado s/OC')?(o.resenaEnviada?`<button class="btn btn-xs" disabled style="opacity:.6;cursor:default" title="Reseña enviada el ${fmtFechaRes(o.resenaEnviada)}">⭐ Reseña enviada</button>`:`<button class="btn btn-xs btn-primary" onclick="abrirResena('${o.folio}')" title="Pedir reseña por WhatsApp">⭐ Pedir reseña</button>`):''}
           <select style="padding:3px 6px;border:1px solid var(--border);border-radius:var(--radius);font-size:10px;font-family:'Inter',sans-serif;background:var(--surface);color:var(--text)" onchange="actualizarEstadoOT('${o.folio}',this.value)">
             ${['Recibido','En proceso','Listo','Entregado s/OC','Entregado'].map(s=>`<option ${o.estado===s?'selected':''}>${s}</option>`).join('')}
           </select>
@@ -6272,7 +6273,7 @@ function renderOTs(){
           <button class="btn btn-xs" onclick="event.stopPropagation();imprimirOT('${o.folio}')">🖨 PDF</button>
           <button class="btn btn-xs" onclick="event.stopPropagation();imprimirHojaTrabajo('${o.folio}')" title="Hoja de trabajo sin precios">👷 Hoja</button>
           ${(o.tel||o.clienteNombre)?`<button class="btn btn-xs btn-green" onclick="event.stopPropagation();waOT('${o.folio}')" title="WhatsApp">💬</button>`:''}
-          ${(o.estado==='Entregado'||o.estado==='Entregado s/OC')?`<button class="btn btn-xs ${o.resenaEnviada?'':'btn-primary'}" onclick="event.stopPropagation();abrirResena('${o.folio}')" title="${o.resenaEnviada?'Reseña pedida el '+fmtFechaRes(o.resenaEnviada):'Pedir reseña por WhatsApp'}">⭐ ${o.resenaEnviada?'Reseña pedida '+fmtFechaRes(o.resenaEnviada):'Pedir reseña'}</button>`:''}
+          ${(o.estado==='Entregado'||o.estado==='Entregado s/OC')?(o.resenaEnviada?`<button class="btn btn-xs" disabled style="opacity:.6;cursor:default" onclick="event.stopPropagation()" title="Reseña enviada el ${fmtFechaRes(o.resenaEnviada)}">⭐ Reseña enviada ${fmtFechaRes(o.resenaEnviada)}</button>`:`<button class="btn btn-xs btn-primary" onclick="event.stopPropagation();abrirResena('${o.folio}')" title="Pedir reseña por WhatsApp">⭐ Pedir reseña</button>`):''}
           <button class="btn btn-xs" onclick="event.stopPropagation();abrirEditOT('${o.folio}')">✏ Editar</button>
           <button class="btn btn-xs ${o.docTipo?'btn-teal':'btn-ghost'}" onclick="event.stopPropagation();abrirDocOT('${o.folio}')" title="${o.docTipo?'Doc: '+o.docTipo:'Asignar documento'}">
             🧾 ${o.docTipo?o.docTipo.replace('electrónica','e.').replace('Boleta','Bol.').replace('Factura','Fact.'):'Doc.'}
