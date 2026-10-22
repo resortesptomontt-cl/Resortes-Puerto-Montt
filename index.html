@@ -6135,7 +6135,7 @@ function renderOTs(){
         <div style="display:flex;gap:4px" onclick="event.stopPropagation()">
           <button class="btn btn-xs" onclick="imprimirOT('${o.folio}')" title="Imprimir PDF">🖨</button>
           <button class="btn btn-xs" onclick="imprimirHojaTrabajo('${o.folio}')" title="Hoja de trabajo (sin precios)">👷</button>
-          ${(o.estado==='Entregado'||o.estado==='Entregado s/OC')?`<button class="btn btn-xs ${o.resenaEnviada?'':'btn-primary'}" onclick="abrirResena('${o.folio}')" title="${o.resenaEnviada?'Reseña pedida el '+fmtFechaRes(o.resenaEnviada)+' — volver a enviar':'Pedir reseña por WhatsApp'}">${o.resenaEnviada?'⭐✓':'⭐'}</button>`:''}
+          ${(o.estado==='Entregado'||o.estado==='Entregado s/OC')?`<button class="btn btn-xs ${o.resenaEnviada?'':'btn-primary'}" onclick="abrirResena('${o.folio}')" title="${o.resenaEnviada?'Reseña pedida el '+fmtFechaRes(o.resenaEnviada)+' — volver a enviar':'Pedir reseña por WhatsApp'}">${o.resenaEnviada?'⭐ Reenviar reseña':'⭐ Pedir reseña'}</button>`:''}
           <select style="padding:3px 6px;border:1px solid var(--border);border-radius:var(--radius);font-size:10px;font-family:'Inter',sans-serif;background:var(--surface);color:var(--text)" onchange="actualizarEstadoOT('${o.folio}',this.value)">
             ${['Recibido','En proceso','Listo','Entregado s/OC','Entregado'].map(s=>`<option ${o.estado===s?'selected':''}>${s}</option>`).join('')}
           </select>
@@ -9715,6 +9715,8 @@ function _cfgMigV14(c){
   if(!c.email||/resortesptomontt@gmail\.com/i.test(c.email))c.email=NEW;
   for(const k of Object.keys(c)){if(k!=='logo'&&typeof c[k]==='string'&&/resortesptomontt@gmail\.com/i.test(c[k]))c[k]=c[k].replace(OLD,NEW);}
   if(!c.web||!String(c.web).trim())c.web='resortespuertomontt.cl';
+  /* v15: mensaje de reseña antiguo (Instagram/Facebook) → mensaje nuevo con Google, salvo que lo hayan personalizado */
+  if(!c.msgResena||(/facebook\.com\/resortespuertomontt\/reviews/.test(c.msgResena)&&/nos ayudarías mucho siguiéndonos/.test(c.msgResena)))c.msgResena=CFG_DEFAULT.msgResena;
   return c;
 }
 const CFG_DEFAULT={
@@ -14895,6 +14897,9 @@ function tareasHoy(){
   const cot=(DB.cotizaciones||[]).filter(c=>c.estado==='Pendiente');
   T.push({k:'cot',warn:false,n:cot.length,t:'Cotizaciones esperando respuesta',d:cot.length?cot.slice(0,3).map(c=>E(c.folio)+' · '+E(c.clienteNombre||'')).join('<br>'):'Ninguna pendiente',b:'📝 Ver cotizaciones',f:"nav('cotizaciones')"});
   try{const rc=window.cotPorRecordar?cotPorRecordar():[];T.push({k:'cotrec',warn:rc.length>0,n:rc.length,t:'Cotizaciones por recordar',d:rc.length?rc.slice(0,3).map(c=>E(c.folio)+' · '+E(c.clienteNombre||'')).join('<br>'):'Nada que recordar',b:'💬 Ver y recordar',f:"cotRecAbrir()"});}catch(e){}
+  try{const lim=new Date(Date.now()-15*864e5);const limS=lim.getFullYear()+'-'+String(lim.getMonth()+1).padStart(2,'0')+'-'+String(lim.getDate()).padStart(2,'0');
+    const rs=(DB.ordenes||[]).filter(o=>isEnt(o.estado)&&!o.resenaEnviada&&(o.fechaEntregado||'')>=limS).sort((x,y)=>(y.fechaEntregado||'').localeCompare(x.fechaEntregado||''));
+    T.push({k:'resena',warn:false,n:rs.length,t:'Reseñas por pedir',d:rs.length?rs.slice(0,3).map(o=>`<a href="javascript:void 0" onclick="abrirResena('${E(o.folio)}')" style="color:inherit">${E(o.patente||o.folio)} · ${E(o.clienteNombre||'')}</a>`).join('<br>'):'Ninguna pendiente',b:'⭐ Pedir reseña',f:rs.length?`abrirResena('${E(rs[0].folio)}')`:''});}catch(e){}
   const mes=hoy.slice(0,7);
   /* v10: se quitó el recuadro 'Ventas del mes sin N° de boleta/factura' (solo interfaz) */
   return T;
