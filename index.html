@@ -1005,7 +1005,7 @@ window.abrirWA=function(url){
           <div class="field"><label>Cantidad</label><input id="cot-qty" type="number" value="1" min="0.01" step="0.01"></div>
           <div class="field"><label>P. Unit. ($) <small style="color:var(--accent2)">editable</small></label><input id="cot-pu" type="number" placeholder="0"></div>
           <div class="field"><label>Eje / zona</label>
-            <select id="cot-eje" class="it-eje" title="Eje o zona del vehículo para este ítem (queda elegido para los siguientes)"><option value="">—</option><option value="General">General</option></select>
+            <input type="hidden" id="cot-eje" value=""><button type="button" id="cot-eje-btn" class="it-eje eje-btn" onclick="ejePickOpen('cot',-1)" title="Toca para marcar uno o varios ejes/zonas (queda elegido para los siguientes)"><span class="eje-btn-t">—</span><span class="eje-btn-c">▾</span></button>
           </div>
         </div>
         <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
@@ -1188,7 +1188,7 @@ window.abrirWA=function(url){
           <div class="field"><label>Cantidad</label><input id="ot-qty" type="number" value="1" min="0.01" step="0.01"></div>
           <div class="field"><label>P. Unit. ($) <small style="color:var(--accent2)">editable</small></label><input id="ot-pu" type="number" placeholder="0"></div>
           <div class="field"><label>Eje / zona</label>
-            <select id="ot-eje" class="it-eje" title="Eje o zona del vehículo para este ítem (queda elegido para los siguientes)"><option value="">—</option><option value="General">General</option></select>
+            <input type="hidden" id="ot-eje" value=""><button type="button" id="ot-eje-btn" class="it-eje eje-btn" onclick="ejePickOpen('ot',-1)" title="Toca para marcar uno o varios ejes/zonas (queda elegido para los siguientes)"><span class="eje-btn-t">—</span><span class="eje-btn-c">▾</span></button>
           </div>
         </div>
         <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
@@ -3220,7 +3220,7 @@ window.abrirWA=function(url){
         <div class="field"><label>Cantidad</label><input id="edit-ot-qty" type="number" value="1" min="0.01" step="0.01"></div>
         <div class="field"><label>P. Unit. ($)</label><input id="edit-ot-pu" type="number" placeholder="0"></div>
         <div class="field"><label>Eje / zona</label>
-          <select id="edit-ot-eje" class="it-eje" title="Eje o zona del vehículo para este ítem"><option value="">—</option><option value="General">General</option></select>
+          <input type="hidden" id="edit-ot-eje" value=""><button type="button" id="edit-ot-eje-btn" class="it-eje eje-btn" onclick="ejePickOpen('eot',-1)" title="Toca para marcar uno o varios ejes/zonas (queda elegido para los siguientes)"><span class="eje-btn-t">—</span><span class="eje-btn-c">▾</span></button>
         </div>
       </div>
       <button class="btn btn-sm btn-orange" onclick="addItemEditOT()">+ Agregar ítem</button>
@@ -4084,7 +4084,7 @@ function addLineaCot(){
   lines.cot.push({
     pid:prod?.id||null,nombre:prod?prod.nombre:nombre,
     unidad:prod?prod.unidad:uni,cat:prod?.categoria||'Libre',
-    qty,pu,sub:qty*pu,libre:!prod,eje:ejeSel('cot')
+    qty,pu,sub:qty*pu,libre:!prod,...ejeObj('cot')
   });
   renderLineas('cot');
   if($('cot-prod-txt'))$('cot-prod-txt').value='';
@@ -4156,7 +4156,7 @@ function addLineaOT(){
     qty,pu,
     sub:qty*pu,
     libre:!prod,            // flag: no descontar stock
-    eje:ejeSel('ot')
+    ...ejeObj('ot')
   });
 
   renderLineas('ot');
@@ -4179,7 +4179,7 @@ function addLinea(ctx){
   const pu=parseFloat($(puid)?.value)||0;
   if(!prod){toast('Selecciona un producto','err');return;}
   if(qty<=0){toast('Cantidad debe ser mayor a 0','err');return;}
-  lines[ctx].push({pid:prod.id,nombre:prod.nombre,unidad:prod.unidad,cat:prod.categoria,qty,pu,sub:qty*pu,eje:ejeSel(ctx)});
+  lines[ctx].push({pid:prod.id,nombre:prod.nombre,unidad:prod.unidad,cat:prod.categoria,qty,pu,sub:qty*pu,...ejeObj(ctx)});
   renderLineas(ctx);
   $(qid).value=1;
 }
@@ -5475,7 +5475,7 @@ function limpiarCot(){
   if($('cot-prod-id'))$('cot-prod-id').value='';
   if($('cot-pu'))$('cot-pu').value='';
   ZONA_STATE.cot={front:1,rear:2,types:{1:'traccion',2:'traccion'},zonas:{},expanded:false,vtype:'camion'};
-  if($('cot-eje'))$('cot-eje').value='';
+  ejeSetForm('cot','');
   if($('cot-zona-body')){$('cot-zona-body').style.display='none';$('cot-zona-arrow').textContent='▾';}
   zonaRenderAll('cot');
   renderLineas('cot');
@@ -5925,7 +5925,7 @@ function limpiarOT(){
   _otImgs=[];renderOTImgsPreview();
   initMecPicker('ot',[]);  $('ot-veh-pill').style.display='none';
   ZONA_STATE.ot={front:1,rear:2,types:{1:'traccion',2:'traccion'},zonas:{},expanded:false,vtype:'camion'};
-  if($('ot-eje'))$('ot-eje').value='';
+  ejeSetForm('ot','');
   if($('ot-zona-body')){$('ot-zona-body').style.display='none';$('ot-zona-arrow').textContent='▾';}
   zonaRenderAll('ot');
   renderLineas('ot');setToday('ot-fecha-in');setOTFolio();
@@ -9118,23 +9118,73 @@ function ejeOpciones(ns,extra){
   const add=v=>{if(v==null||v===''||seen.has(v))return;seen.add(v);out.push([v,ejeNombre(v,vt)]);};
   const cam=vt==='camioneta';
   const nf=c.hF===0?0:(cam?1:(s.front||1)),nr=cam?1:(s.rear||1);
-  for(let i=1;i<=nf;i++){add('FT'+i);add('FT'+i+'-I');add('FT'+i+'-D');}
-  for(let i=1;i<=nr;i++){add('RR'+i);add('RR'+i+'-I');add('RR'+i+'-D');}
+  for(let i=1;i<=nf;i++){add('FT'+i);add('FT'+i+'-D');add('FT'+i+'-I');}
+  for(let i=1;i<=nr;i++){add('RR'+i);add('RR'+i+'-D');add('RR'+i+'-I');}
   Object.keys(s.zonas||{}).sort().forEach(add);
   (extra||[]).forEach(add);
   return out;
 }
-function ejeOptsHTML(ns,cur){
+function ejeOptsHTML(ns,cur){/* legado (v20) */
   const q=t=>String(t).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   cur=cur||'';
   return ejeOpciones(ns,cur?[cur]:[]).map(([v,t])=>`<option value="${q(v)}"${v===cur?' selected':''}>${q(t)}</option>`).join('');
 }
-function ejeSel(ns){const el=$({cot:'cot-eje',ot:'ot-eje',eot:'edit-ot-eje'}[ns]);return el?(el.value||''):'';}
+const EJE_IDS={cot:'cot-eje',ot:'ot-eje',eot:'edit-ot-eje'};
+function ejeSel(ns){const el=$(EJE_IDS[ns]);return el?(el.value||''):'';}
+// v21: varias zonas por ítem → l.eje = "FT1-D, FT1-I" (texto) + l.ejes (arreglo)
+function ejeSplit(v){return Array.isArray(v)?v.filter(Boolean).map(String):String(v||'').split(',').map(x=>x.trim()).filter(Boolean);}
+function ejeOrden(ns,arr){const ord=ejeOpciones(ns).map(o=>o[0]);const u=[...new Set(arr)];return u.sort((a,b)=>{const ia=ord.indexOf(a),ib=ord.indexOf(b);return (ia<0?999:ia)-(ib<0?999:ib);});}
+function ejeTexto(v,vt){const p=ejeSplit(v);if(!p.length)return '';if(p.length===1)return ejeNombre(p[0],vt);return p.join(', ');}
+function ejeObj(ns){const v=ejeSel(ns);return {eje:v,ejes:ejeSplit(v)};}
+function ejeSetForm(ns,v){const el=$(EJE_IDS[ns]);if(el)el.value=v||'';ejeBtnPaint(ns);}
+function ejeBtnPaint(ns){const b=$(EJE_IDS[ns]+'-btn');if(!b)return;const v=ejeSel(ns);const t=ejeTexto(v,(ZONA_STATE[ns]||{}).vtype)||'—';
+  b.querySelector('.eje-btn-t').textContent=t;b.classList.toggle('on',!!v);b.title=v?('Eje / zona: '+v+' — toca para cambiar'):'Toca para marcar uno o varios ejes/zonas';}
+function _ejeQ(t){return String(t).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+function ejeLnBtn(ns,i,v){const t=ejeTexto(v,(ZONA_STATE[ns]||{}).vtype);
+  return `<button type="button" class="ln-eje${v?' on':''}" data-i="${i}" onclick="ejePickOpen('${ns}',${i})" title="Eje / zona — toca para marcar varias">${t?_ejeQ(t):'—'} <span class="ln-eje-c">✎</span></button>`;}
+function _ejeItems(ns){return ns==='eot'?_editOTItems:(lines[ns]||[]);}
 function ejeRefresh(ns){
-  const selId={cot:'cot-eje',ot:'ot-eje',eot:'edit-ot-eje'}[ns];if(!selId)return;
-  const f=$(selId);if(f){const v=f.value;f.innerHTML=ejeOptsHTML(ns,v);f.value=v;}
-  const wrap=$(ns==='eot'?'edit-ot-items':ns+'-lineas-wrap');const L=ns==='eot'?_editOTItems:(lines[ns]||[]);
-  if(wrap)wrap.querySelectorAll('select.ln-eje').forEach(el=>{const l=L[+el.dataset.i];if(!l)return;el.innerHTML=ejeOptsHTML(ns,l.eje||'');el.value=l.eje||'';});
+  if(!EJE_IDS[ns])return;ejeBtnPaint(ns);
+  const wrap=$(ns==='eot'?'edit-ot-items':ns+'-lineas-wrap');const L=_ejeItems(ns);
+  if(wrap)wrap.querySelectorAll('.ln-eje').forEach(el=>{const l=L[+el.dataset.i];if(!l)return;el.outerHTML=ejeLnBtn(ns,+el.dataset.i,l.eje||'');});
+  if(_ejePk&&_ejePk.ns===ns)ejePickPaint();
+}
+let _ejePk=null;
+function ejePickGet(){const k=_ejePk;if(!k)return '';if(k.i<0)return ejeSel(k.ns);const l=_ejeItems(k.ns)[k.i];return l?(l.eje||''):'';}
+function ejePickSet(arr){const k=_ejePk;if(!k)return;const v=ejeOrden(k.ns,arr).join(', ');
+  if(k.i<0){ejeSetForm(k.ns,v);}
+  else{const l=_ejeItems(k.ns)[k.i];if(l){l.eje=v;l.ejes=ejeSplit(v);}
+    const wrap=$(k.ns==='eot'?'edit-ot-items':k.ns+'-lineas-wrap');const b=wrap&&wrap.querySelector('.ln-eje[data-i="'+k.i+'"]');if(b)b.outerHTML=ejeLnBtn(k.ns,k.i,v);}
+  ejePickPaint();}
+function ejePickOpen(ns,i){
+  _ejePk={ns,i};let ov=$('eje-pick');
+  if(!ov){ov=document.createElement('div');ov.id='eje-pick';ov.className='eje-ov';
+    ov.innerHTML='<div class="eje-box" role="dialog" aria-modal="true" aria-label="Eje / zona"><div class="eje-hd"><div><b>Eje / zona</b><div class="eje-sub" id="eje-pick-sub"></div></div><button type="button" class="eje-x" onclick="ejePickClose()" aria-label="Cerrar">✕</button></div>'
+      +'<div class="eje-q"><button type="button" class="eje-qb" onclick="ejePickAll()">✓ Todos los ejes</button><button type="button" class="eje-qb" onclick="ejePickSet([])">Limpiar</button></div>'
+      +'<div class="eje-body" id="eje-pick-body"></div>'
+      +'<div class="eje-ft"><div class="eje-sum" id="eje-pick-sum"></div><button type="button" class="btn btn-primary eje-ok" onclick="ejePickClose()">Listo</button></div></div>';
+    ov.addEventListener('click',e=>{if(e.target===ov)ejePickClose();});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('eje-pick')&&$('eje-pick').classList.contains('open'))ejePickClose();});
+    document.body.appendChild(ov);}
+  const L=_ejeItems(ns);$('eje-pick-sub').textContent=i<0?'Para los ítems que agregues ahora':('Ítem: '+((L[i]||{}).nombre||''));
+  ejePickPaint();ov.classList.add('open');
+}
+function ejePickClose(){const ov=$('eje-pick');if(ov)ov.classList.remove('open');const k=_ejePk;_ejePk=null;if(k&&k.i>=0)try{ejeRefresh(k.ns);}catch(e){}}
+function ejePickToggle(v){const cur=ejeSplit(ejePickGet());const i=cur.indexOf(v);if(i>=0)cur.splice(i,1);else cur.push(v);ejePickSet(cur);}
+function ejePickAll(){const k=_ejePk;if(!k)return;const ax=ejeOpciones(k.ns).map(o=>o[0]).filter(v=>/^(FT|RR)\d$/.test(v));
+  const keep=ejeSplit(ejePickGet()).filter(v=>!/^(FT|RR)\d(-[ID])?$/.test(v));ejePickSet([...ax,...keep]);}
+function ejePickPaint(){
+  const k=_ejePk;if(!k||!$('eje-pick-body'))return;const ns=k.ns;const s=ZONA_STATE[ns]||{};const vt=s.vtype||'camion';
+  const cur=ejeSplit(ejePickGet());const sel=new Set(cur);const marc=new Set(Object.keys(s.zonas||{}));
+  const opts=ejeOpciones(ns,cur).map(o=>o[0]).filter(Boolean);
+  const chip=(v,cap)=>`<button type="button" class="eje-chip${sel.has(v)?' on':''}${marc.has(v)?' mk':''}" aria-pressed="${sel.has(v)}" data-v="${_ejeQ(v)}" onclick="ejePickToggle(this.dataset.v)"><b>${_ejeQ(v)}</b><small>${_ejeQ(cap)}</small></button>`;
+  let h='';const axes=opts.filter(v=>/^(FT|RR)\d$/.test(v));
+  axes.forEach(a=>{h+=`<div class="eje-row"><div class="eje-rl">${_ejeQ(ejeNombre(a,vt))}</div><div class="eje-chips">${chip(a,'eje completo')}${opts.includes(a+'-D')?chip(a+'-D','derecho'):''}${opts.includes(a+'-I')?chip(a+'-I','izquierdo'):''}</div></div>`;});
+  const otros=opts.filter(v=>!/^(FT|RR)\d(-[ID])?$/.test(v)||!axes.includes(v.slice(0,3)));
+  h+=`<div class="eje-row"><div class="eje-rl">Otros</div><div class="eje-chips">${otros.map(v=>chip(v,v==='General'?'todo el vehículo':ejeNombre(v,vt)===v?'':ejeNombre(v,vt))).join('')}</div></div>`;
+  if(marc.size)h+='<div class="eje-note"><span class="eje-dot"></span> marcada en el dibujo</div>';
+  $('eje-pick-body').innerHTML=h;
+  $('eje-pick-sum').innerHTML=cur.length?`<b>${cur.length}</b> marcada${cur.length>1?'s':''}: ${_ejeQ(ejeOrden(ns,cur).join(', '))}`:'Ninguna marcada';
 }
 (function(){const _za=zonaApplyStyles;window.zonaApplyStyles=function(ns){const r=_za.apply(this,arguments);try{ejeRefresh(ns);}catch(e){console.warn(e);}return r;};})();
 
@@ -9242,7 +9292,7 @@ function abrirEditOT(folio){
   }
 
   // Init selector de zona del vehículo
-  if($('edit-ot-eje'))$('edit-ot-eje').value='';
+  ejeSetForm('eot','');
   ZONA_STATE.eot.vtype=o.vtype||'camion';
   ZONA_STATE.eot.front=o.ejeFront||1;
   ZONA_STATE.eot.rear=o.ejeRear||2;
@@ -9401,7 +9451,7 @@ function renderEditOTItems(){
   el.innerHTML='<div class="tw"><table><thead><tr><th>Producto</th><th>Eje / zona</th><th>Cant.</th><th>Unidad</th><th>P.Unit.</th><th class="tr">Subtotal</th><th></th></tr></thead><tbody>'+
     _editOTItems.map((it,i)=>`<tr>
       <td style="font-weight:500">${it.nombre}</td>
-      <td><select class="ln-eje" data-i="${i}" onchange="_editOTItems[${i}].eje=this.value||''">${ejeOptsHTML('eot',it.eje)}</select></td>
+      <td>${ejeLnBtn('eot',i,it.eje)}</td>
       <td><input type="number" value="${it.qty}" min="0.01" step="0.01" style="width:60px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;background:var(--bg);color:var(--text)"
         onchange="_editOTItems[${i}].qty=parseFloat(this.value)||0;_eotSub(_editOTItems[${i}]);renderEditOTItems()"></td>
       <td>${it.unidad}</td>
@@ -9470,7 +9520,7 @@ function addItemEditOT(){
   if(qty<=0){toast('Cantidad debe ser mayor a 0','err');return;}
   const pid=$('edit-ot-prod-id').value||null;
   const prod=pid?DB.inventario.find(p=>p.id===pid):null;
-  _editOTItems.push({pid:prod?.id||null,nombre:prod?prod.nombre:nombre,unidad:prod?prod.unidad:uni,cat:prod?.categoria||'Libre',qty,pu,sub:qty*pu,libre:!prod,eje:ejeSel('eot')});
+  _editOTItems.push({pid:prod?.id||null,nombre:prod?prod.nombre:nombre,unidad:prod?prod.unidad:uni,cat:prod?.categoria||'Libre',qty,pu,sub:qty*pu,libre:!prod,...ejeObj('eot')});
   renderEditOTItems();
   $('edit-ot-prod-txt').value='';$('edit-ot-prod-id').value='';
   $('edit-ot-pu').value='';$('edit-ot-qty').value=1;
@@ -10416,7 +10466,7 @@ function docCSS2(){return`<style>
  .d2 table{width:100%;border-collapse:collapse;margin-top:4px}
  .d2 th{background:none;color:#121214!important;border-bottom:1.5px solid #121214;padding:6px 9px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
  .d2 td{padding:5px 9px;border-bottom:1px solid #e3e3e3}
- .d2 .d2-ej{font-size:9.5px;font-weight:700;color:#B2121C;border:1px solid #B2121C;border-radius:10px;padding:0 6px;white-space:nowrap}
+ .d2 .d2-ej{display:inline-block;max-width:100%;font-size:9.5px;font-weight:700;color:#B2121C;border:1px solid #B2121C;border-radius:10px;padding:0 6px;white-space:normal;overflow-wrap:anywhere;line-height:1.35}
  .d2-tot{display:flex;justify-content:flex-end;margin-top:10px}.d2-tot>div{width:270px}
  .d2 .d2-tot .ln{display:flex;justify-content:space-between;padding:3px 2px;color:#5b6068}
  .d2 .d2-tot .ln b{font-family:'Courier New',monospace;color:#1A1917}
@@ -10443,7 +10493,7 @@ function docHdr2(tipo,folio,metas,estado){
 }
 function docBank2(){const c=CFG;if(!c.banco&&!c.numCuenta)return'';const f=(l,v)=>v?`<div><span class="l">${l}:</span> <b>${_e(v)}</b></div>`:'';
   return`<div class="d2-bank"><div class="h">Datos para transferencia</div>${f('Banco',c.banco)}${f('Tipo',c.tipoCuenta)}${f('N° cuenta',c.numCuenta)}${f('Titular',c.nomTitular)}${f('RUT',c.rutTitular)}${f('Email',c.emailBanco)}</div>`;}
-function docItems2(items,vt){return`<table><thead><tr><th style="width:28px">#</th><th>Descripción</th><th style="width:70px">Cant.</th><th style="width:70px">Unidad</th><th style="width:110px">Eje / zona</th></tr></thead><tbody>${(items||[]).map((it,i)=>`<tr><td style="color:#9a9ea5">${i+1}</td><td style="font-weight:600">${_e(it.nombre)}</td><td>${_e(it.qty??it.cant??'')}</td><td>${_e(it.unidad||'')}</td><td>${it.eje?`<span class="d2-ej">${_e(typeof ejeNombre==='function'?ejeNombre(it.eje,vt):it.eje)}</span>`:'<span style="color:#bbb">—</span>'}</td></tr>`).join('')}</tbody></table>`;}
+function docItems2(items,vt){return`<table><thead><tr><th style="width:28px">#</th><th>Descripción</th><th style="width:70px">Cant.</th><th style="width:70px">Unidad</th><th style="width:130px">Eje / zona</th></tr></thead><tbody>${(items||[]).map((it,i)=>`<tr><td style="color:#9a9ea5">${i+1}</td><td style="font-weight:600">${_e(it.nombre)}</td><td>${_e(it.qty??it.cant??'')}</td><td>${_e(it.unidad||'')}</td><td>${it.eje?`<span class="d2-ej">${_e(typeof ejeTexto==='function'?ejeTexto(it.eje,vt):it.eje)}</span>`:'<span style="color:#bbb">—</span>'}</td></tr>`).join('')}</tbody></table>`;}
 function docTot2(total,desc,lbl){const t=Math.round(+total||0),n=Math.round(t/1.19);return`<div class="d2-tot"><div>${desc>0?`<div class="ln"><span>Descuento aplicado</span><b>-${fmt(desc)}</b></div>`:''}<div class="ln"><span>Neto</span><b>${fmt(n)}</b></div><div class="ln"><span>IVA 19%</span><b>${fmt(t-n)}</b></div><div class="tt"><span>${lbl}</span><b>${fmt(t)}</b></div></div></div>`;}
 function docZonas2(z){if(!z||!z.length)return'';const all=z.map(x=>x.codigo);return`<div class="d2-h">Trabajo por eje y lado</div><div class="d2-zn">${z.map(x=>`<span><b>${_e(zonaLabel(x.codigo,all))}</b>${x.detalle?' — '+_e(x.detalle):''}</span>`).join('')}</div>`;}
 function docVeh2(o,v){const r=(l,x,b)=>x?`<div class="d2-r"><span class="l">${l}</span><span class="v"${b?' style="font-weight:800;letter-spacing:.04em"':''}>${x}</span></div>`:'';
@@ -14200,7 +14250,20 @@ div[style*="overflow:hidden"]:has(.ac-wrap)>div:first-child{border-radius:var(--
 .pk-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
 .pk{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--border2);border-radius:99px;padding:4px 6px 4px 11px;font-size:11.5px;background:var(--surface);cursor:pointer;transition:all .15s}
 .pk:hover{border-color:#B2121C;background:var(--accent2-light)}.pk x{font-style:normal;opacity:.45;padding:0 4px;border-radius:50%}.pk x:hover{opacity:1;color:#B2121C}
-.ln-eje{padding:3px 5px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:var(--bg);color:var(--text);max-width:150px}
+.ln-eje{min-width:118px;padding:4px 7px;border:1px solid var(--border);border-radius:4px;font-size:11px;background:var(--bg);color:var(--text);max-width:170px;min-height:30px;text-align:left;cursor:pointer;white-space:normal;line-height:1.3;font-family:inherit}
+.ln-eje.on{border-color:#B2121C;color:#B2121C;font-weight:600}.ln-eje .ln-eje-c{opacity:.55;font-size:10px}
+.eje-btn{display:flex;align-items:center;justify-content:space-between;gap:6px;text-align:left;cursor:pointer;min-height:38px}.eje-btn .eje-btn-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.eje-btn.on{border-color:#B2121C;color:#B2121C;font-weight:600}.eje-btn .eje-btn-c{opacity:.6}
+.eje-ov{position:fixed;inset:0;z-index:10050;background:rgba(8,8,8,.5);display:none;align-items:center;justify-content:center;padding:12px}.eje-ov.open{display:flex}
+.eje-box{background:var(--surface,#fff);color:var(--text);border-radius:14px;width:min(460px,100%);max-height:88vh;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,.3);overflow:hidden}
+.eje-hd{display:flex;justify-content:space-between;align-items:flex-start;padding:14px 16px 8px}.eje-hd b{font-size:15px}.eje-sub{font-size:12px;color:var(--text3);margin-top:2px}
+.eje-x{border:none;background:none;font-size:18px;color:var(--text3);cursor:pointer;min-width:40px;min-height:40px}
+.eje-q{display:flex;gap:8px;padding:0 16px 10px}.eje-qb{flex:1;min-height:42px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-weight:600;font-size:13px;cursor:pointer;font-family:inherit}
+.eje-body{overflow:auto;padding:0 16px 6px}.eje-row{padding:8px 0;border-top:1px solid var(--border)}.eje-rl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:6px}
+.eje-chips{display:flex;flex-wrap:wrap;gap:8px}.eje-chip{min-height:46px;min-width:84px;padding:6px 12px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;font-family:inherit}
+.eje-chip b{font-size:14px}.eje-chip small{font-size:10.5px;color:var(--text3)}.eje-chip.on{border-color:#B2121C;background:#B2121C;color:#fff}.eje-chip.on small{color:rgba(255,255,255,.85)}.eje-chip.on b::before{content:'✓ '}
+.eje-chip.mk{box-shadow:inset 0 -3px 0 #FAC775}.eje-note{font-size:11px;color:var(--text3);padding:4px 0 6px}.eje-dot{display:inline-block;width:14px;height:3px;background:#FAC775;vertical-align:middle}
+.eje-ft{display:flex;align-items:center;gap:10px;padding:10px 16px;border-top:1px solid var(--border)}.eje-sum{flex:1;font-size:12px;color:var(--text2);line-height:1.35}.eje-ok{min-height:42px;min-width:96px}
+@media(max-width:600px){.eje-ov{align-items:flex-end;padding:0}.eje-box{width:100%;border-radius:16px 16px 0 0;max-height:90vh}.eje-chip{flex:1 1 30%}}
 .g4.g-it{grid-template-columns:minmax(0,2fr) minmax(0,.9fr) minmax(0,.7fr) minmax(0,.9fr) minmax(0,1.2fr)}
 .it-eje{width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none}
 .it-eje:focus{border-color:#B2121C}
@@ -14293,7 +14356,7 @@ function refresh(ctx){
 function confirmPane(ctx){const t=totals(ctx),z=zonasList(ctx),L=lines[ctx]||[];
   const miss=[];if(!$id(ctx+'-cli-txt').value.trim())miss.push('cliente');if(ctx==='ot'&&!$id('ot-veh').value&&!$id('ot-veh-txt').value.trim())miss.push('vehículo');if(!L.length)miss.push('ítems');
   $id('wzc-'+ctx).innerHTML=`${miss.length?`<div class="wz-hint" style="border-color:#d97706">⚠ Falta: <b>${miss.join(', ')}</b></div>`:'<div class="wz-hint" style="border-color:#16a34a">✓ Todo listo. Revisa y guarda.</div>'}
-   <table><tr><th>Ítem</th><th>Eje/zona</th><th>Cant.</th><th style="text-align:right">P. unit.</th><th style="text-align:right">Subtotal</th></tr>${L.map(l=>`<tr><td>${esc(l.nombre)}</td><td>${esc(ejeNombre(l.eje,(ZONA_STATE[ctx]||{}).vtype)||'—')}</td><td>${esc(l.qty)} ${esc(l.unidad||'')}</td><td style="text-align:right">${money(l.pu)}</td><td style="text-align:right">${money(l.qty*l.pu*(1-(l.dto||0)/100))}</td></tr>`).join('')||'<tr><td colspan="5" style="color:var(--text2)">Sin ítems</td></tr>'}</table>
+   <table><tr><th>Ítem</th><th>Eje/zona</th><th>Cant.</th><th style="text-align:right">P. unit.</th><th style="text-align:right">Subtotal</th></tr>${L.map(l=>`<tr><td>${esc(l.nombre)}</td><td>${esc(ejeTexto(l.eje,(ZONA_STATE[ctx]||{}).vtype)||'—')}</td><td>${esc(l.qty)} ${esc(l.unidad||'')}</td><td style="text-align:right">${money(l.pu)}</td><td style="text-align:right">${money(l.qty*l.pu*(1-(l.dto||0)/100))}</td></tr>`).join('')||'<tr><td colspan="5" style="color:var(--text2)">Sin ítems</td></tr>'}</table>
    <div style="font-size:11px;color:var(--text2);margin-top:8px">Zonas: ${esc(z.join(', ')||'—')} · El documento impreso para el cliente muestra solo cantidades y el <b>total</b> (sin precios unitarios).</div>`;}
 function doSave(ctx){const C=W[ctx];const before=(DB[C.coll]||[]).length;const val=ctx==='cot'?parseInt($id('cot-validez')?.value)||0:0;
   window[C.save]();
@@ -14304,8 +14367,7 @@ function doSave(ctx){const C=W[ctx];const before=(DB[C.coll]||[]).length;const v
 function ejeCol(ctx){const wrap=$id(ctx+'-lineas-wrap');if(!wrap)return;const tb=wrap.querySelector('table');if(!tb||tb.dataset.eje)return;tb.dataset.eje=1;
   const th=tb.querySelector('thead tr th');if(th)th.insertAdjacentHTML('afterend','<th>Eje / zona</th>');
   tb.querySelectorAll('tbody tr').forEach((tr,i)=>{const l=lines[ctx][i];if(!l)return;
-    tr.firstElementChild.insertAdjacentHTML('afterend',`<td><select class="ln-eje" data-i="${i}">${ejeOptsHTML(ctx,l.eje||'')}</select></td>`);});
-  tb.querySelectorAll('.ln-eje').forEach(s=>s.onchange=()=>{lines[ctx][+s.dataset.i].eje=s.value||'';refresh(ctx);});}
+    tr.firstElementChild.insertAdjacentHTML('afterend',`<td>${ejeLnBtn(ctx,i,l.eje||'')}</td>`);});}
 const _rl=window.renderLineas;window.renderLineas=function(ctx){const r=_rl.apply(this,arguments);if(ctx==='ot'||ctx==='cot'){try{ejeCol(ctx);refresh(ctx);}catch(e){console.warn(e);}}return r;};
 const _rt=window.renderTotalesWrap;if(_rt)window.renderTotalesWrap=function(ctx){const r=_rt.apply(this,arguments);if(ctx==='ot'||ctx==='cot')try{refresh(ctx);}catch(e){}return r;};
 /* ---------- paquetes frecuentes ---------- */
@@ -14319,7 +14381,7 @@ function paintPk(ctx){const r=$id('pk-'+ctx);if(!r)return;r.innerHTML=`<span sty
     if(e.target.closest('[data-new]')){const L=lines[ctx]||[];if(!L.length){toast('Agrega ítems primero','warn');return;}const n=prompt('Nombre del paquete:');if(!n)return;CFG.paquetes=[...pks(),{n:n.trim(),it:L.map(l=>[l.nombre,l.qty,l.unidad||'und',l.pu,l.pid||null])}];saveCfg(CFG);save();paintPk('ot');paintPk('cot');toast('⚡ Paquete guardado');return;}
     const p=e.target.closest('.pk');if(!p)return;const pk=pks()[+p.dataset.i];lines[ctx]=lines[ctx]||[];
     pk.it.forEach(([nom,q,u,pu,pid])=>{const prod=(pid&&DB.inventario.find(x=>x.id===pid))||DB.inventario.find(x=>(x.nombre||'').toLowerCase()===String(nom).toLowerCase())||DB.inventario.find(x=>(x.nombre||'').toLowerCase().includes(String(nom).toLowerCase()));
-      const price=pu!=null&&pu!==''?+pu:(prod?+prod.precio||0:0);lines[ctx].push({pid:prod?.id||null,nombre:prod?prod.nombre:nom,unidad:prod?prod.unidad:u,cat:prod?.categoria||'Libre',qty:+q||1,pu:price,sub:(+q||1)*price,libre:!prod,eje:ejeSel(ctx)});});
+      const price=pu!=null&&pu!==''?+pu:(prod?+prod.precio||0:0);lines[ctx].push({pid:prod?.id||null,nombre:prod?prod.nombre:nom,unidad:prod?prod.unidad:u,cat:prod?.categoria||'Libre',qty:+q||1,pu:price,sub:(+q||1)*price,libre:!prod,...ejeObj(ctx)});});
     renderLineas(ctx);toast('⚡ '+esc(pk.n)+' agregado — revisa precios');};}
 /* ---------- timeline in OT detail ---------- */
 const _vr=window.verOTRapido;window.verOTRapido=function(folio){const r=_vr.apply(this,arguments);try{const o=DB.ordenes.find(x=>x.folio===folio),b=$id('ot-preview-body');if(o&&b&&!b.querySelector('.ot-tl')){
@@ -14333,7 +14395,7 @@ const _cv=window.cotAVenta;window.cotAVenta=function(folio){const c=DB.cotizacio
   const M=$id('tsx2-modal');$id('tsx2-mt').textContent='Convertir '+folio+' en orden de trabajo';
   $id('tsx2-mb').innerHTML=`<div class="wz-hint">Se creará la orden <b>${nf}</b> en estado <b>Recibido</b> y la cotización quedará como <b>Convertida</b> (enlazada a la OT).</div>
    <div class="wz-sum"><div class="wz-chip"><b>${esc(c.clienteNombre)}</b><span>Cliente ${esc(c.clienteRut||'')}</span></div><div class="wz-chip"><b>${esc(c.patente||'—')}</b><span>${esc([c.marca,c.modelo].filter(Boolean).join(' ')||'Vehículo')}</span></div><div class="wz-chip"><b>${esc((c.zonasVehiculo||[]).map(z=>z.codigo).join(' · ')||'—')}</b><span>Ejes / zonas</span></div><div class="wz-chip"><b>${money(c.total)}</b><span>Total${c.descuento>0?' (desc. '+money(c.descuento)+')':''}</span></div></div>
-   <div class="wz-confirm"><table><tr><th>Se copian ${(c.items||[]).length} ítems</th><th>Eje</th><th>Cant.</th><th style="text-align:right">Subtotal</th></tr>${(c.items||[]).map(l=>`<tr><td>${esc(l.nombre)}</td><td>${esc(ejeNombre(l.eje,c.vtype)||'—')}</td><td>${esc(l.qty)} ${esc(l.unidad||'')}</td><td style="text-align:right">${money(l.sub||l.qty*l.pu)}</td></tr>`).join('')}</table></div>
+   <div class="wz-confirm"><table><tr><th>Se copian ${(c.items||[]).length} ítems</th><th>Eje</th><th>Cant.</th><th style="text-align:right">Subtotal</th></tr>${(c.items||[]).map(l=>`<tr><td>${esc(l.nombre)}</td><td>${esc(ejeTexto(l.eje,c.vtype)||'—')}</td><td>${esc(l.qty)} ${esc(l.unidad||'')}</td><td style="text-align:right">${money(l.sub||l.qty*l.pu)}</td></tr>`).join('')}</table></div>
    <div style="font-size:11px;color:var(--text2);margin:8px 0">También se copian las notas como diagnóstico, la carrocería y la configuración de ejes. Mecánico, km y fecha estimada se completan después en la OT.</div>
    <div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn" onclick="tsx2Close()">Cancelar</button><button class="btn btn-primary" id="cv-ok">✓ Crear ${nf}</button></div>`;
   M.classList.add('on');$id('cv-ok').onclick=()=>{const oc=window.confirm;window.confirm=()=>true;try{_cv(folio);}finally{window.confirm=oc;}tsx2Close();};};
