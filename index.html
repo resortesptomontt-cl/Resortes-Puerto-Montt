@@ -14131,6 +14131,9 @@ setTimeout(()=>{try{dashExtra();}catch(e){}},600);
 #sec-cotizaciones .btn-purple{background:#B2121C!important;border-color:#B2121C!important}
 #sec-cotizaciones .folio-tag{color:#B2121C!important;background:#FDECEC!important}
 body.dark #sec-cotizaciones .folio-tag{background:#2A0E10!important;color:#ff9a9e!important}
+/* v19: que las listas de búsqueda (cliente, vehículo, producto) no queden cortadas por el recuadro de la sección */
+div[style*="overflow:hidden"]:has(.ac-wrap){overflow:visible!important}
+div[style*="overflow:hidden"]:has(.ac-wrap)>div:first-child{border-radius:var(--radius) var(--radius) 0 0}
 .wz-steps{display:flex;margin:0 0 12px;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface)}
 .wz-st{flex:1;display:flex;align-items:center;gap:8px;padding:9px 12px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;border-right:1px solid var(--border);background:transparent;border-top:0;border-bottom:0;border-left:0;font-family:inherit;text-align:left;transition:background .15s}
 .wz-st:last-child{border-right:0}.wz-st i{flex-shrink:0;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:11px;background:var(--surface2)}
