@@ -14522,9 +14522,7 @@ function checkVeh(pat,cid,ma,mo,an,ctx,orig,patId){
   const d=patDup(pat);
   if(d){ask('⛔ Esa patente ya existe',`La patente <b>${esc(normPat(pat))}</b> ya está registrada:${vehTxt(d)}`,
     [['Corregir patente','',()=>$i(patId)?.focus()],['✓ Usar existente','btn-primary',()=>usarVehCtx(d,ctx)]]);return;}
-  const s=vehSimil(cid,ma,mo,an);
-  if(s){ask('🤔 ¿Es el mismo vehículo?',`Este cliente ya tiene un vehículo igual (marca, modelo y año) con otra patente:${vehTxt(s)}<div style="margin-top:8px;color:var(--text2)">Si es otro vehículo de la flota, créalo igual.</div>`,
-    [['Crear igual','',()=>orig()],['✓ Usar existente','btn-primary',()=>usarVehCtx(s,ctx)]]);return;}
+  /* v17: solo se alerta por patente repetida, no por marca/modelo/año */
   return orig();
 }
 const _gv=window.guardarVehiculo;
