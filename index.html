@@ -5437,10 +5437,12 @@ function renderMecanicos(){
 }
 
 
+var _cotEditFolio=null,_cotEditOK=null,_cotEditVehTxt='';
 function guardarCot(){
   const cliNombre=($('cot-cli-txt')?.value||'').trim();
   if(!cliNombre){toast('Ingresa el nombre del cliente','err');return;}
   if(!lines.cot.length){toast('Agrega al menos un ítem','err');return;}
+  if(_cotEditFolio)return guardarCotEdicion(cliNombre);
   const cid=$('cot-cli-id').value||null;
   const c=cid?DB.clientes.find(x=>x.id===cid):null;
   const v=pillar('cot-veh',DB.vehiculos);
@@ -5462,9 +5464,106 @@ function guardarCot(){
   save();limpiarCot();renderCots();updateBadges();
   toast(`Cotización ${folio} guardada — ${fmt(total)}`);
 }
+// v22 — Editar una cotización existente con el mismo asistente de 5 pasos
+function guardarCotEdicion(cliNombre){
+  const folio=_cotEditFolio;
+  const c=DB.cotizaciones.find(x=>x.folio===folio);
+  if(!c){toast('No se encontró la cotización '+folio,'err');cotEditSalir();return;}
+  if(c.estado==='Convertida'||c.estado==='Aceptada'){toast('🔒 Cotización '+c.estado.toLowerCase()+' — no se puede modificar');return;}
+  const cid=$('cot-cli-id').value||null;
+  const cli=cid?DB.clientes.find(x=>x.id===cid):null;
+  if(cli){c.clienteId=cli.id;c.clienteNombre=cli.nombre;c.clienteRut=cli.rut||'';c.tel=cli.tel||c.tel||'';}
+  else if(cliNombre!==c.clienteNombre){c.clienteId=null;c.clienteNombre=cliNombre;c.clienteRut='';c.tel='';}
+  const v=pillar('cot-veh',DB.vehiculos);
+  const vtxt=($('cot-veh-txt')?.value||'').trim();
+  if(v){c.vehiculoId=v.id;c.patente=v.patente||'';c.marca=v.marca||'';c.modelo=v.modelo||'';}
+  else if(!vtxt){c.vehiculoId=null;c.patente='';c.marca='';c.modelo='';}
+  else if(vtxt!==_cotEditVehTxt){c.vehiculoId=null;c.patente=vtxt.split(/\s+/)[0].toUpperCase();c.marca='';c.modelo='';}
+  c.fecha=$('cot-fecha').value||c.fecha;
+  c.items=lines.cot.map(l=>({...l}));
+  const subtotal=calcTotales('cot').total;
+  c.descuento=parseFloat($('cot-descuento')?.value)||0;
+  c.total=Math.max(0,subtotal-c.descuento);
+  c.obs=$('cot-obs').value.trim();
+  c.ejeFront=ZONA_STATE.cot.front;c.ejeRear=ZONA_STATE.cot.rear;c.ejeTypes={...ZONA_STATE.cot.types};c.vtype=ZONA_STATE.cot.vtype;
+  c.zonasVehiculo=Object.keys(ZONA_STATE.cot.zonas).map(k=>({codigo:k,detalle:ZONA_STATE.cot.zonas[k]||''}));
+  const val=parseInt($('cot-validez')?.value)||0;if(val)c.validezDias=val;
+  c.editado=new Date().toISOString();
+  _cotEditOK=folio;
+  save();cotEditSalir();renderCots();updateBadges();
+  toast(`Cotización ${folio} actualizada — ${fmt(c.total)}`);
+}
+function cotEditUI(folio){
+  const sec=$('sec-cotizaciones');if(!sec)return;
+  const form=$('cot-cli-txt')?.closest('.card');if(!form)return;
+  const t=form.querySelector('.card-title .card-title-left');
+  const sb=document.querySelector('#wzb-cot [data-a="save"]');
+  form.classList.toggle('cot-editando',!!folio);
+  $('cot-edit-banner')?.remove();
+  if(folio){
+    const c=DB.cotizaciones.find(x=>x.folio===folio)||{};
+    if(t)t.textContent='✎ Editando '+folio;
+    if(sb)sb.textContent='✓ Guardar cambios';
+    form.querySelector('.card-title')?.insertAdjacentHTML('afterend',`<div id="cot-edit-banner" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#FFF7E6;border:1px solid #F5C26B;color:#7A4B00;border-radius:var(--radius);padding:9px 12px;margin:0 0 10px;font-size:13px">
+      <span style="flex:1;min-width:200px">✎ Estás editando <b>${folio}</b> (${c.estado||''}). Al guardar se actualiza esta misma cotización: mismo número, sin crear una nueva.</span>
+      <button type="button" class="btn btn-sm" onclick="cotEditCancelar()">✕ Cancelar edición</button></div>`);
+  }else{
+    if(t)t.textContent='Nueva cotización';
+    if(sb)sb.textContent='✓ Guardar cotización';
+  }
+}
+function cotEditSalir(){
+  _cotEditFolio=null;_cotEditVehTxt='';
+  limpiarCot();
+  if($('cot-validez'))$('cot-validez').value=(typeof CFG!=='undefined'&&CFG.validez)||30;
+  cotEditUI(null);
+}
+function cotEditCancelar(){
+  cotEditSalir();
+  try{wzOpen('cot',false);}catch(e){}
+  toast('Edición cancelada — la cotización no cambió');
+}
+function editarCotWizard(folio){
+  const c=DB.cotizaciones.find(x=>x.folio===folio);if(!c)return;
+  if(c.estado==='Convertida'||c.estado==='Aceptada'){
+    toast('🔒 Cotización '+c.estado.toLowerCase()+' — no se puede modificar');return;
+  }
+  if(!$('sec-cotizaciones')?.classList.contains('active'))nav('cotizaciones',null);
+  const borrador=!_cotEditFolio&&(lines.cot.length||($('cot-cli-txt')?.value||'').trim());
+  if(borrador&&!confirm('Hay una cotización nueva sin guardar en el formulario.\n¿Descartarla para editar '+folio+'?'))return;
+  limpiarCot();
+  _cotEditFolio=folio;_cotEditOK=null;
+  // Paso 1: cliente, vehículo, fecha
+  const cli=c.clienteId?DB.clientes.find(x=>x.id===c.clienteId):null;
+  $('cot-cli-txt').value=c.clienteNombre||cli?.nombre||'';$('cot-cli-txt').dataset.v=$('cot-cli-txt').value;
+  $('cot-cli-id').value=cli?cli.id:'';
+  const v=c.vehiculoId?DB.vehiculos.find(x=>x.id===c.vehiculoId):null;
+  _cotEditVehTxt=v?(v.patente+(v.marca?' — '+[v.marca,v.modelo].filter(Boolean).join(' '):'')):[c.patente,c.marca,c.modelo].filter(Boolean).join(' ');
+  $('cot-veh-txt').value=_cotEditVehTxt;
+  $('cot-veh').value=v?v.id:'';
+  if(cli){$('cot-pill').style.display='block';$('cot-pill').innerHTML=clientePill(cli,vehiculosDeCliente(cli.id));}
+  $('cot-fecha').value=c.fecha||today();
+  // Zonas del vehículo
+  const vt=(c.vtype&&VEH_CFG[c.vtype])?c.vtype:'camion';
+  const rear=+c.ejeRear||VEH_CFG[vt].dR;
+  const zonas={};(c.zonasVehiculo||[]).forEach(z=>{if(z&&z.codigo)zonas[z.codigo]=z.detalle||'';});
+  ZONA_STATE.cot={front:+(c.ejeFront??VEH_CFG[vt].dF),rear,types:{...(c.ejeTypes||ZONA_TIPO_DEFAULT[rear]||{})},zonas,expanded:false,vtype:vt};
+  ['camion','batea','camioneta','bus'].forEach(t=>{const b=$('cot-vtype-'+t);if(b){b.style.outline=t===vt?'2px solid var(--accent)':'';b.style.background=t===vt?'var(--accent-light)':'';}});
+  zonaRenderAll('cot');
+  // Trabajos
+  lines.cot=(c.items||[]).map(i=>{const l={...i};if(!Array.isArray(l.ejes))l.ejes=ejeSplit(l.eje||'');return l;});
+  renderLineas('cot');
+  // Notas, descuento, validez
+  if($('cot-descuento'))$('cot-descuento').value=c.descuento||'';
+  $('cot-obs').value=c.obs||'';
+  try{wzOpen('cot',true);}catch(e){console.warn('wz edit',e);}
+  if($('cot-validez'))$('cot-validez').value=+c.validezDias||(typeof CFG!=='undefined'&&CFG.validez)||30;
+  try{recalcTotalesCot();}catch(e){}
+  cotEditUI(folio);
+}
 function limpiarCot(){
   lines.cot=[];
-  if($('cot-cli-txt'))$('cot-cli-txt').value='';
+  if($('cot-cli-txt')){$('cot-cli-txt').value='';delete $('cot-cli-txt').dataset.v;}
   if($('cot-cli-id'))$('cot-cli-id').value='';
   if($('cot-veh'))$('cot-veh').value='';
   if($('cot-veh-txt'))$('cot-veh-txt').value='';
@@ -5582,7 +5681,8 @@ function addItemInline(tipo, folio){
 
 // ── Editar cabecera de cotización ──────────────────
 let _editCotFolio=null;
-function abrirEditCot(folio){
+function abrirEditCot(folio){return editarCotWizard(folio);}
+function abrirEditCotCabecera(folio){ // (v22: reemplazado por el asistente; se conserva el modal antiguo sin uso)
   const c=DB.cotizaciones.find(x=>x.folio===folio);if(!c)return;
   if(c.estado==='Convertida'||c.estado==='Aceptada'){
     toast('🔒 Cotización '+c.estado.toLowerCase()+' — no se puede modificar');return;
@@ -8602,9 +8702,13 @@ let _acCliCotIdx=-1;
 function acSearchCliCot(){
   const q=($('cot-cli-txt')?.value||'').trim().toLowerCase();
   const drop=$('cot-cli-drop');if(!drop)return;
+  // v22: solo borra cliente/vehículo si el texto cambió (antes, el solo foco los borraba)
+  const _t=$('cot-cli-txt');const _same=_t.dataset.v!==undefined&&_t.dataset.v===_t.value;_t.dataset.v=_t.value;
+  if(!_same){
   $('cot-cli-id').value='';
   $('cot-veh').value='';if($('cot-veh-txt'))$('cot-veh-txt').value='';
   $('cot-pill').style.display='none';
+  }
   if(!q){drop.style.display='none';return;}
   const hits=DB.clientes.filter(c=>c.nombre.toLowerCase().includes(q)||c.rut.toLowerCase().includes(q)||(c.email||'').toLowerCase().includes(q)).slice(0,8);
   let html=hits.map(c=>`<div class="ac-item" onmousedown="acSelCliCot('${c.id}')">
@@ -8625,7 +8729,7 @@ function acSearchCliCot(){
 }
 function acSelCliCot(id){
   const c=DB.clientes.find(x=>x.id===id);if(!c)return;
-  $('cot-cli-txt').value=c.nombre;$('cot-cli-id').value=c.id;
+  $('cot-cli-txt').value=c.nombre;$('cot-cli-id').value=c.id;$('cot-cli-txt').dataset.v=c.nombre;
   poblarVehsDe(c.id,'cot-veh');
   $('cot-pill').style.display='block';
   $('cot-pill').innerHTML=clientePill(c,vehiculosDeCliente(c.id));
@@ -8685,7 +8789,7 @@ function acSelVeh(ctx,id){
   // Si el vehículo tiene dueño registrado y no hay cliente seleccionado, autocompletar cliente
   const c=DB.clientes.find(x=>x.id===v.clienteId);
   if(c&&$(ctx+'-cli-id')&&!$(ctx+'-cli-id').value){
-    $(ctx+'-cli-txt').value=c.nombre;
+    $(ctx+'-cli-txt').value=c.nombre;$(ctx+'-cli-txt').dataset.v=c.nombre;
     $(ctx+'-cli-id').value=c.id;
     if(ctx==='cot'&&$('cot-pill')){$('cot-pill').style.display='block';$('cot-pill').innerHTML=clientePill(c,vehiculosDeCliente(c.id));}
   }
@@ -14331,7 +14435,7 @@ function build(ctx){
   const bar=document.createElement('div');bar.className='wz-bar';bar.id='wzb-'+ctx;
   bar.innerHTML=`<div class="nt"><small>Neto</small><span class="v" data-k="n">$0</span></div><div class="nt"><small>IVA 19%</small><span class="v" data-k="iva">$0</span></div><div class="tt"><small>Total</small><span class="v" data-k="tot">$0</span></div><span class="sp"></span>
    <button class="btn btn-sm" data-a="prev">← Anterior</button><button class="btn btn-sm" data-a="next">Siguiente →</button><button class="btn btn-sm btn-primary" data-a="save">✓ Guardar ${C.noun}</button><button class="btn btn-sm" data-a="close" title="Cerrar formulario">✕</button>`;
-  bar.onclick=e=>{const a=e.target.closest('[data-a]')?.dataset.a;if(!a)return;if(a==='prev')go(ctx,st[ctx]-1);if(a==='next')go(ctx,st[ctx]+1);if(a==='save')doSave(ctx);if(a==='close')toggleForm(ctx,false);};
+  bar.onclick=e=>{const a=e.target.closest('[data-a]')?.dataset.a;if(!a)return;if(a==='prev')go(ctx,st[ctx]-1);if(a==='next')go(ctx,st[ctx]+1);if(a==='save')doSave(ctx);if(a==='close'){if(ctx==='cot'&&_cotEditFolio)cotEditCancelar();else toggleForm(ctx,false);}};
   form.appendChild(bar);
   form.addEventListener('input',()=>refresh(ctx));form.addEventListener('change',()=>refresh(ctx));form.addEventListener('click',()=>setTimeout(()=>refresh(ctx),50));
   // Enter on qty/pu adds item
@@ -14359,9 +14463,11 @@ function confirmPane(ctx){const t=totals(ctx),z=zonasList(ctx),L=lines[ctx]||[];
    <table><tr><th>Ítem</th><th>Eje/zona</th><th>Cant.</th><th style="text-align:right">P. unit.</th><th style="text-align:right">Subtotal</th></tr>${L.map(l=>`<tr><td>${esc(l.nombre)}</td><td>${esc(ejeTexto(l.eje,(ZONA_STATE[ctx]||{}).vtype)||'—')}</td><td>${esc(l.qty)} ${esc(l.unidad||'')}</td><td style="text-align:right">${money(l.pu)}</td><td style="text-align:right">${money(l.qty*l.pu*(1-(l.dto||0)/100))}</td></tr>`).join('')||'<tr><td colspan="5" style="color:var(--text2)">Sin ítems</td></tr>'}</table>
    <div style="font-size:11px;color:var(--text2);margin-top:8px">Zonas: ${esc(z.join(', ')||'—')} · El documento impreso para el cliente muestra solo cantidades y el <b>total</b> (sin precios unitarios).</div>`;}
 function doSave(ctx){const C=W[ctx];const before=(DB[C.coll]||[]).length;const val=ctx==='cot'?parseInt($id('cot-validez')?.value)||0:0;
+  const ed=ctx==='cot'?_cotEditFolio:null;if(ed)_cotEditOK=null;
   window[C.save]();
-  if((DB[C.coll]||[]).length>before){if(ctx==='cot'&&val){DB.cotizaciones[0].validezDias=val;save();}toggleForm(ctx,false);go(ctx,0);
-    const fol=DB[C.coll][0].folio;setTimeout(()=>{const el=document.querySelector(`#${C.list} [onclick*="${fol}"]`);el&&el.scrollIntoView({block:'center',behavior:'smooth'});},200);}
+  const okEd=ed&&_cotEditOK===ed;
+  if(okEd||(DB[C.coll]||[]).length>before){if(ctx==='cot'&&val&&!okEd){DB.cotizaciones[0].validezDias=val;save();}toggleForm(ctx,false);go(ctx,0);
+    const fol=okEd?ed:DB[C.coll][0].folio;setTimeout(()=>{const el=document.querySelector(`#${C.list} [onclick*="${fol}"]`);el&&el.scrollIntoView({block:'center',behavior:'smooth'});},200);}
   else go(ctx,st[ctx]);}
 /* ---------- eje column in item table ---------- */
 function ejeCol(ctx){const wrap=$id(ctx+'-lineas-wrap');if(!wrap)return;const tb=wrap.querySelector('table');if(!tb||tb.dataset.eje)return;tb.dataset.eje=1;
@@ -15907,6 +16013,7 @@ window.cotTipoCerrar=()=>{document.getElementById('cot-tipo-modal')?.remove();};
 window.cotTipoElegir=function(t){
   cotTipoCerrar();
   if(t==='rapida')return _gw('cot',{directo:true});
+  try{if(_cotEditFolio)cotEditSalir();}catch(e){}
   try{nav('cotizaciones',null);}catch(e){}
   setTimeout(()=>{try{wzOpen('cot',true);const b=document.querySelector('#wz-cot .wz-st[data-i="0"]');b&&b.click();document.getElementById('sec-cotizaciones').querySelector('.wz-wrap')?.scrollIntoView({block:'start'});}catch(e){console.warn('cot formal',e);}},250);
 };
