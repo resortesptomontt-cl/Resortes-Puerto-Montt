@@ -7306,50 +7306,31 @@ function waPed(folio){
 
 function imprimirPedido(folio){
   const p=(DB.pedidos||[]).find(x=>x.folio===folio);if(!p)return;
-  const fmtF=d=>{if(!d)return'';const[y,m,dd]=d.split('-');return`${dd}/${m}/${y}`;};
-  const html=docCSS()+`<div class="doc">
-    ${hdrHtml()}
-    <div class="doc-folio">
-      <div class="tipo">Pedido de Fabricación</div>
-      <div class="num">${p.folio}</div>
-      <div class="meta">Fecha: ${fmtF(p.fechaIn)}</div>
-      <div class="meta">Entrega estimada: ${fmtF(p.fechaEst)||'—'}</div>
-      <div style="margin-top:6px"><span class="badge-est">${p.estado}</span></div>
-    </div></div>
-    <div class="info-grid">
-      <div>
-        <div class="sec-hdr">Cliente</div>
-        <div class="info-row"><span class="info-lbl">Nombre:</span><span class="info-val">${p.clienteNombre}</span></div>
-        ${p.clienteRut?`<div class="info-row"><span class="info-lbl">RUT:</span><span class="info-val">${p.clienteRut}</span></div>`:''}
-        ${p.tel?`<div class="info-row"><span class="info-lbl">Teléfono:</span><span class="info-val">${p.tel}</span></div>`:''}
-      </div>
-      <div>
-        <div class="sec-hdr">Asignado a</div>
-        <div class="info-row"><span class="info-val">${p.mecanicos?.map(m=>m.nombre).join(', ')||'—'}</span></div>
-        <div class="info-row"><span class="info-lbl">Forma pago:</span><span class="info-val">${p.fpago||'Contado'}</span></div>
-      </div>
-    </div>
-    ${p.desc?`<div class="obs-box"><strong>Especificaciones:</strong> ${p.desc}</div>`:''}
-    <div class="sec-hdr">Materiales e ítems</div>
-    <table><thead><tr><th>#</th><th>Descripción</th><th>Cant.</th><th>Unidad</th><th class="tr">P.Unit.</th><th class="tr">Subtotal</th></tr></thead>
-    <tbody>${(p.items||[]).map((it,i)=>`<tr>
-      <td style="color:#aaa">${i+1}</td><td style="font-weight:500">${it.nombre}</td>
-      <td>${it.qty}</td><td>${it.unidad||'und'}</td>
-      <td class="tr" style="font-family:monospace">${fmt(it.pu||0)}</td>
-      <td class="tr" style="font-family:monospace;font-weight:600">${fmt(it.sub||0)}</td>
-    </tr>`).join('')}</tbody></table>
-    ${p.descuento>0?`<div style="display:flex;justify-content:flex-end;gap:12px;margin-top:6px;font-size:11px;color:#666"><span>Descuento: -${fmt(p.descuento)}</span></div>`:''}
-    <div class="total-box"><div><div class="lbl">Total pedido</div></div><div class="amt">${fmt(p.total)}</div></div>
-    ${p.sena>0?`<div style="display:flex;justify-content:flex-end;gap:20px;margin-top:8px;font-size:12px">
-      <span>Seña recibida: <strong style="color:green">${fmt(p.sena)}</strong></span>
-      <span>Saldo a pagar: <strong style="color:red">${fmt(Math.max(0,p.total-p.sena))}</strong></span>
-    </div>`:''}
-    ${p.obs?`<div class="obs-box"><strong>Observaciones:</strong> ${p.obs}</div>`:''}
-    <div class="firma-grid"><div class="firma-line">Firma del cliente</div><div class="firma-line">Firma / sello taller</div></div>
-    ${CFG.notaLegal?`<div class="footer">${CFG.notaLegal}</div>`:''}
-    <div class="footer">Documento generado el ${today()} — ${CFG.nombre||'Taller Mecánico'}</div>
-  </div>`;
-  abrirPrint(`Pedido ${folio}`,html);
+  _doPrint('Pedido '+p.folio, dosCopiasHtml(buildDocPedido(p)));
+}
+function buildDocPedido(p){
+  const mec=(p.mecanicos&&p.mecanicos.length)?p.mecanicos.map(m=>m.nombre).join(' · '):'—';
+  const metas=['Fecha '+_fF(p.fechaIn||today())];
+  if(p.fechaEst)metas.push('Entrega est. '+_fF(p.fechaEst));
+  const r=(l,x)=>`<div class="d2-r"><span class="l">${l}</span><span class="v">${x?_e(x):'—'}</span></div>`;
+  const itemsHtml=`<table><thead><tr><th style="width:28px">#</th><th>Descripción</th><th style="width:70px">Cant.</th><th style="width:70px">Unidad</th></tr></thead><tbody>${(p.items||[]).map((it,i)=>`<tr><td style="color:#9a9ea5">${i+1}</td><td style="font-weight:600">${_e(it.nombre)}</td><td>${_e(it.qty??it.cant??'')}</td><td>${_e(it.unidad||'und')}</td></tr>`).join('')}</tbody></table>`;
+  const sena=+p.sena||0;
+  const saldo=Math.max(0,(+p.total||0)-sena);
+  const senaHtml=sena>0?`<div class="d2-tot" style="margin-top:4px"><div>
+    <div class="ln"><span>Seña recibida</span><b>${fmt(sena)}</b></div>
+    <div class="ln"><span>Saldo pendiente</span><b>${fmt(saldo)}</b></div>
+  </div></div>`:'';
+  return docCSS2()+`<div class="d2">${docHdr2('Pedido de fabricación',p.folio,metas,p.estado)}
+  <div class="d2-g2"><div><div class="d2-h">Cliente</div>${docCli2(p)}</div><div><div class="d2-h">Detalle del pedido</div>${r('Asignado a',mec)}${r('Forma de pago',p.fpago||'Contado')}${p.docTipo&&p.docTipo!=='Sin Boleta/Factura'?r('Documento',p.docTipo+(p.docFolio?' Nº '+p.docFolio:'')):''}</div></div>
+  ${p.desc?`<div class="d2-h">Especificaciones</div><div class="d2-box">${_e(p.desc)}</div>`:''}
+  <div class="d2-h">Ítems del pedido</div>${itemsHtml}
+  ${docTot2(p.total,+p.descuento||0,'Total pedido')}
+  ${senaHtml}
+  ${p.obs?`<div class="d2-h">Observaciones</div><div class="d2-box">${_e(p.obs)}</div>`:''}
+  ${docBank2()}
+  <div class="d2-note"><b>Importante:</b> los valores son referenciales y pueden variar según materiales y especificaciones finales; cualquier cambio se informa y aprueba antes de fabricar.</div>
+  <div class="d2-sig"><div><div class="ln">Aceptación del cliente (nombre, RUT y firma)</div></div><div><div class="ln">Firma / timbre taller</div></div></div>
+  <div class="d2-ft"><span>${CFG.notaLegal?_e(CFG.notaLegal):_e(CFG.nombre||'Resortes Puerto Montt')}${CFG.web?' · '+_e(String(CFG.web).replace(/^https?:\/\//,'').replace(/\/$/,'')):''}</span><span>Generado ${_fF(today())}</span></div></div>`;
 }
 
 // ══════════════════════════════════════════════════
