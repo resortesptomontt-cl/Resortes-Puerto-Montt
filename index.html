@@ -12944,9 +12944,11 @@ function buildPDFVac(m,v){
 }
 
 function _aplicarUpdateFirebase(data){
-  if(data&&data._updated)window._srvUpdated=data._updated;
+  _fbMarcarRecibido(data); // v24: _updated por documento
   _ocultarBannerDatosNuevos();
+  const _firmas=_fbFirmasLocales(data); // v24: firmas solo en este equipo
   Object.keys(DB).forEach(k=>{if(Array.isArray(data[k]))DB[k]=data[k];});
+  _fbReponerFirmas(_firmas);
   if(data.comisionesAjustadas&&typeof data.comisionesAjustadas==='object')
     DB.comisionesAjustadas=data.comisionesAjustadas;
   migrarMeses();
@@ -12954,6 +12956,7 @@ function _aplicarUpdateFirebase(data){
   _lsGuardarDB();
   if(data._cfg&&typeof data._cfg==='object'){CFG=_cfgMigV14(Object.assign({},CFG_DEFAULT,data._cfg));if(!CFG.logo)CFG.logo=BRAND_LOGO;saveCfg(CFG);}
   llenarSelectsCat();renderDashboard();updateBadges();
+  _fbTrasAplicar(data);
 }
 
 // Apply pending Firebase update when user stops interacting
@@ -13283,6 +13286,63 @@ function renderCompras(){
     </tr>`).join('')+'</tbody></table></div>';
 }
 
+// ══════════════════════════════════════════════════
+// v24 — BASE PARTIDA: taller/datos (núcleo) + taller/inventario + taller/ventas + taller/ordenes
+// Cada documento tiene su propio _updated; se escriben solo los que cambiaron, en UNA transacción.
+// ══════════════════════════════════════════════════
+const FB_SCHEMA=2,FB_APPV=8;
+const FB_PARTES={inventario:['inventario','categorias'],ventas:['ventas'],ordenes:['ordenes']};
+const FB_DOCS=['datos','inventario','ventas','ordenes'];
+const FB_BIG=[].concat(...Object.values(FB_PARTES));
+window._srvUpd={};window._fbHash={};window._fbSchema=0;window._fbRefs=null;window._fbEnVuelo=null;
+function _fbMeta(k){return k==='_updated'||k==='_schema'||k==='_appv'||k==='_parte'||k==='_partes'||k==='_srvUpd'||k==='_legacy'||k==='_snapDe'||k==='_snapFecha'||k==='_snapMotivo'||k==='_snapCounts';}
+function _fbParteDe(k){for(const p in FB_PARTES)if(FB_PARTES[p].includes(k))return p;return 'datos';}
+function _fbPartir(flat){const o={};FB_DOCS.forEach(d=>o[d]={});Object.keys(flat||{}).forEach(k=>{if(_fbMeta(k))return;o[_fbParteDe(k)][k]=flat[k];});return o;}
+function _fbKey(x){return x&&typeof x==='object'?(x.id!=null?'i:'+x.id:x.folio!=null?'f:'+x.folio:'j:'+JSON.stringify(x)):'v:'+String(x);}
+// Une lo que escribió un equipo con versión antigua (legacy) con lo que ya estaba en las partes: no se pierde nada
+function _fbUnion(legacy,actual){if(!Array.isArray(legacy))return actual;if(!Array.isArray(actual))return legacy;
+  const ks=new Set(legacy.map(_fbKey));return legacy.concat(actual.filter(x=>!ks.has(_fbKey(x))));}
+// docs: {datos:data, ventas:data, ...} (los que existan) -> objeto plano para _aplicarUpdateFirebase
+function _fbUnir(docs){
+  const out={_srvUpd:{}};const D=docs.datos;
+  if(D&&D._schema===FB_SCHEMA)window._fbSchema=FB_SCHEMA;
+  const migrado=window._fbSchema===FB_SCHEMA||FB_DOCS.some(d=>d!=='datos'&&docs[d]);
+  if(D){
+    const legacy=migrado&&D._schema!==FB_SCHEMA&&FB_BIG.some(k=>Array.isArray(D[k]));
+    Object.keys(D).forEach(k=>{if(_fbMeta(k))return;if(migrado&&!legacy&&FB_BIG.includes(k))return;out[k]=D[k];});
+    out._srvUpd.datos=D._updated||null;
+    if(legacy){out._legacy=true;
+      FB_BIG.forEach(k=>{const P=docs[_fbParteDe(k)];const act=P&&(k in P)?P[k]:DB[k];
+        out[k]=k==='categorias'?[...new Set([...(D[k]||[]),...(act||[])])]:_fbUnion(D[k],act);});}
+  }
+  FB_DOCS.forEach(d=>{if(d==='datos'||!docs[d])return;const P=docs[d];
+    if(!out._legacy)FB_PARTES[d].forEach(k=>{if(k in P)out[k]=P[k];});
+    out._srvUpd[d]=P._updated||null;});
+  return out;}
+function _fbMarcarRecibido(data){
+  if(!data)return;
+  if(data._srvUpd)Object.keys(data._srvUpd).forEach(d=>{window._srvUpd[d]=data._srvUpd[d];});
+  else if(data._updated)window._srvUpd.datos=data._updated;
+  window._srvUpdated=window._srvUpd.datos||null;
+}
+function _fbTrasAplicar(data){
+  if(!data)return;
+  if(data._legacy){ // un equipo con versión antigua escribió todo en taller/datos -> se vuelve a partir
+    window._fbHash={};window._fbDirtyFlag=true;window._fbReparto=true;
+    try{window.sgAvisoLegacy&&window.sgAvisoLegacy();}catch(e){}
+    try{fbSave();}catch(e){}
+    return;
+  }
+  if(data._srvUpd&&window.sgRehash)window.sgRehash(Object.keys(data._srvUpd));
+}
+// Las firmas (tsxFirmas) no suben a la nube: al llegar datos de otro equipo se conservan las de este equipo
+function _fbFirmasLocales(data){if(!data||!Array.isArray(data.ordenes))return null;const m=new Map();
+  (DB.ordenes||[]).forEach(o=>{if(o&&o.tsxFirmas&&Object.keys(o.tsxFirmas).length)m.set(String(o.folio),o.tsxFirmas);});return m.size?m:null;}
+function _fbReponerFirmas(m){if(!m)return;(DB.ordenes||[]).forEach(o=>{if(o&&(!o.tsxFirmas||!Object.keys(o.tsxFirmas).length)&&m.has(String(o.folio)))o.tsxFirmas=m.get(String(o.folio));});}
+async function _fbLeerTodos(opts){
+  const snaps=await Promise.all(FB_DOCS.map(d=>window._fbRefs[d].get(opts)));
+  const docs={};snaps.forEach((s,i)=>{if(s.exists)docs[FB_DOCS[i]]=s.data();});return docs;}
+
 let _fbDb=null, _fbSaveTimer=null, _fbListening=false;
 
 async function fbInit(){
@@ -13307,15 +13367,19 @@ async function fbInit(){
     if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     _fbDb=firebase.firestore();
 
-    const docRef=_fbDb.collection('taller').doc('datos');
+    // v24: 4 documentos (núcleo + inventario + ventas + ordenes)
+    window._fbRefs={};FB_DOCS.forEach(d=>{window._fbRefs[d]=_fbDb.collection('taller').doc(d);});
+    const docRef=window._fbRefs.datos;
     window._fbDocRef=docRef;
 
     // Load initial data
-    const snap=await docRef.get();
-    if(snap.exists){
-      const data=snap.data();
-      window._srvUpdated=data._updated||null;
+    const docs0=await _fbLeerTodos();
+    if(docs0.datos){
+      const data=_fbUnir(docs0);
+      _fbMarcarRecibido(data);
+      const _firmas=_fbFirmasLocales(data);
       Object.keys(DB).forEach(k=>{if(Array.isArray(data[k]))DB[k]=data[k];});
+      _fbReponerFirmas(_firmas);
       if(data.comisionesAjustadas&&typeof data.comisionesAjustadas==='object')
         DB.comisionesAjustadas=data.comisionesAjustadas;
       migrarMeses(); // Migrar meses cortos → completos
@@ -13326,21 +13390,21 @@ async function fbInit(){
         saveCfg(CFG);
       }
       llenarSelectsCat();renderDashboard();updateBadges();
+      _fbTrasAplicar(data);
       toast('✓ Datos sincronizados desde la nube','info');
     } else {
       await fbSaveNow();
       toast('✓ Datos subidos a la nube por primera vez','info');
     }
 
-    // Real-time listener
-    docRef.onSnapshot(snap=>{
+    // Real-time listeners (uno por documento)
+    FB_DOCS.forEach(d=>window._fbRefs[d].onSnapshot(snap=>{
       if(!snap.exists)return;
 
       if(snap.metadata&&snap.metadata.hasPendingWrites){setSyncUI('online');return;}
-      const data=snap.data();
-      _recibirRemoto(data,'snapshot');
+      _recibirRemoto(_fbUnir({[d]:snap.data()}),'snapshot:'+d);
       setSyncUI('online');
-    });
+    }));
     window.addEventListener('focus',_recheckServidor);
     document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')_recheckServidor();});
 
@@ -13420,10 +13484,13 @@ function _hayFormAbierto(){
   return !!m||!!(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.tagName==='SELECT'));
 }
 function _recibirRemoto(data,origen){
-  if(!data||!data._updated)return;
-  if(data._updated===window._srvUpdated)return; // ya lo tenemos (o es nuestro propio guardado)
+  if(!data||!data._srvUpd)return;
+  // v24: solo cuentan los documentos con _updated distinto al que ya tenemos (o al que estamos guardando)
+  const nuevos=Object.keys(data._srvUpd).filter(d=>{const u=data._srvUpd[d];return u&&u!==window._srvUpd[d]&&u!==window._fbEnVuelo;});
+  if(!nuevos.length)return; // ya lo tenemos (o es nuestro propio guardado)
   if(_fbDirty()||_hayFormAbierto()){
-    window._pendingFBUpdate={data};
+    const p=window._pendingFBUpdate&&window._pendingFBUpdate.data;
+    window._pendingFBUpdate={data:p?Object.assign({},p,data,{_srvUpd:Object.assign({},p._srvUpd,data._srvUpd),_legacy:!!(p._legacy||data._legacy)}):data};
     _mostrarBannerDatosNuevos();
     return;
   }
@@ -13433,9 +13500,9 @@ function _recibirRemoto(data,origen){
 }
 async function _recheckServidor(){
   try{
-    if(!window._fbDocRef)return;
-    const snap=await window._fbDocRef.get({source:'server'});
-    if(snap.exists)_recibirRemoto(snap.data(),'recheck');
+    if(!window._fbRefs)return;
+    const docs=await _fbLeerTodos({source:'server'});
+    if(docs.datos)_recibirRemoto(_fbUnir(docs),'recheck');
   }catch(e){}
 }
 function _mostrarBannerDatosNuevos(){
@@ -15579,16 +15646,23 @@ function docSize(d){return fsz(d)+100;}
 window.sgDocSize=docSize;
 /* ---------- arma el documento que se sube (igual que antes + logo fuera) ---------- */
 function buildData(){const data={};
-  Object.keys(DB).forEach(k=>{if(Array.isArray(DB[k])){data[k]=DB[k].map(it=>{if(it&&(it.docAdj||it.imgs||it.tsxFotosRec)){const c={...it};if(c.docAdj)c.docAdj='';if(c.imgs)c.imgs=[];if(c.tsxFotosRec)c.tsxFotosRec=[];return c;}return it;});}else data[k]=DB[k];});
+  Object.keys(DB).forEach(k=>{if(Array.isArray(DB[k])){data[k]=DB[k].map(it=>{if(it&&(it.docAdj||it.imgs||it.tsxFotosRec||(it.tsxFirmas&&Object.keys(it.tsxFirmas).length))){const c={...it};if(c.docAdj)c.docAdj='';if(c.imgs)c.imgs=[];if(c.tsxFotosRec)c.tsxFotosRec=[];if(c.tsxFirmas)c.tsxFirmas={};return c;}return it;});}else data[k]=DB[k];});
   const cfg={...CFG};if(cfg.logo===LOGO_DOC||cfg.logo===(typeof BRAND_LOGO!=='undefined'?BRAND_LOGO:null))cfg.logo='@doc';data._cfg=cfg;return data;}
 window.sgBuildData=buildData;
 /* logo: el doc guarda '@doc' y cada equipo usa la copia incluida en la app */
 const _sc=window.saveCfg;window.saveCfg=function(c){if(c&&c.logo==='@doc')c.logo=LOGO_DOC;return _sc.apply(this,arguments);};
 if(CFG&&CFG.logo==='@doc'){CFG.logo=LOGO_DOC;try{_sc(CFG);}catch(e){}}
-function medir(data){const b=docSize(data||buildData());const p=b/MAX*100;localStorage.setItem('sg_size',String(b));pintarMedidor();
-  if(p>=95)banner('red',`⚠ La base de datos en la nube está al ${p.toFixed(0)}% del máximo (1 MB). Avisar a Palavecino Digital YA: pronto no se podrá guardar.`,'');
-  else if(p>=85&&!_bannerTipo)banner('amber',`⚠ La base de datos en la nube está al ${p.toFixed(0)}% de su capacidad. Hay que archivar datos antiguos pronto.`,'<button onclick="sgOcultar()">Entendido</button>');
-  return b;}
+/* v24: tamaño por documento */
+const DOC_NOM={datos:'Núcleo (clientes, vehículos, cotizaciones, créditos…)',inventario:'Inventario + categorías',ventas:'Ventas',ordenes:'Órdenes de trabajo'};
+const META_B=120; // _updated/_schema/_appv/_partes
+function hsh(o){const t=JSON.stringify(o);let h=2166136261;for(let i=0;i<t.length;i++){h^=t.charCodeAt(i);h=Math.imul(h,16777619);}return t.length+':'+(h>>>0).toString(36);}
+window.sgRehash=function(docs){try{const P=_fbPartir(buildData());(docs||FB_DOCS).forEach(d=>{if(P[d])window._fbHash[d]=hsh(P[d]);});}catch(e){console.warn('sgRehash',e);}};
+function medir(P){P=P||_fbPartir(buildData());const sz={};FB_DOCS.forEach(d=>sz[d]=docSize(P[d])+META_B);
+  localStorage.setItem('sg_sizes',JSON.stringify(sz));localStorage.removeItem('sg_size');pintarMedidor();
+  let top=FB_DOCS[0];FB_DOCS.forEach(d=>{if(sz[d]>sz[top])top=d;});const p=sz[top]/MAX*100;
+  if(p>=95)banner('red',`⚠ El documento «${DOC_NOM[top]}» en la nube está al ${p.toFixed(0)}% del máximo (1 MB). Avisar a Palavecino Digital YA: pronto no se podrá guardar.`,'');
+  else if(p>=85&&!_bannerTipo)banner('amber',`⚠ El documento «${DOC_NOM[top]}» en la nube está al ${p.toFixed(0)}% de su capacidad. Avisar a Palavecino Digital.`,'<button onclick="sgOcultar()">Entendido</button>');
+  return sz;}
 window.sgMedir=medir;
 /* ---------- banner ---------- */
 let _bannerTipo=null;
@@ -15609,47 +15683,74 @@ async function idbDel(id){const d=await idb();await new Promise(ok=>{const t=d.t
 const hoyStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 async function snapshot(data,motivo,id){
   id=id||hoyStr();const meta={_snapFecha:new Date().toISOString(),_snapMotivo:motivo||'diario',_snapCounts:cnt(data)};
+  const limpio={};Object.keys(data||{}).forEach(k=>{if(k!=='_srvUpd'&&k!=='_legacy')limpio[k]=data[k];});data=limpio;
   let nube=false;
-  try{if(FBDB()){await FBDB().collection('taller_hist').doc(id).set({...data,...meta});nube=true;}}catch(e){console.warn('snapshot nube no permitido',e&&e.code);}
+  // v24: la versión en la nube también va partida: taller_hist/<id> (núcleo + datos de la versión) y taller_hist/<id>__<parte>
+  try{if(FBDB()){const H=FBDB().collection('taller_hist');const P=_fbPartir(data);const partes=Object.keys(FB_PARTES);const bt=FBDB().batch();
+    partes.forEach(d=>bt.set(H.doc(id+'__'+d),{...P[d],_snapDe:id}));
+    bt.set(H.doc(id),{...P.datos,...meta,_partes:partes});await bt.commit();nube=true;}}catch(e){console.warn('snapshot nube no permitido',e&&e.code);}
   try{await idbPut({id,data,...meta,nube});}catch(e){console.warn('snapshot local',e);}
   try{const L=(await idbAll()).sort((a,b)=>b.id.localeCompare(a.id));for(const x of L.slice(30))await idbDel(x.id);}catch(e){}
-  try{if(nube){const q=await FBDB().collection('taller_hist').get();const ids=q.docs.map(d=>d.id).sort().reverse();for(const x of ids.slice(30))await FBDB().collection('taller_hist').doc(x).delete();}}catch(e){}
+  try{if(nube){const H=FBDB().collection('taller_hist');const q=await H.get();const ids=q.docs.map(d=>d.id).filter(x=>!x.includes('__')).sort().reverse();
+    for(const x of ids.slice(30)){await H.doc(x).delete();for(const d of Object.keys(FB_PARTES))await H.doc(x+'__'+d).delete();}}}catch(e){}
   localStorage.setItem('sg_last_snap',id.slice(0,10));return {id,nube};}
 window.sgSnapshot=snapshot;
 const ahoraId=m=>hoyStr()+'_'+new Date().toTimeString().slice(0,8).replace(/:/g,'')+'_'+m;
 /* ---------- guardado nuevo ---------- */
 let _retry=null;
 window.fbSaveNow=async function(){
-  if(!FBDB()||!window._fbDocRef){if(window._fbDirtyFlag)noSync('No hay conexión con la nube: los cambios quedan solo en este equipo.');return;}
-  let srvData=null,antes=null,bloq=null;
+  if(!FBDB()||!window._fbRefs){if(window._fbDirtyFlag)noSync('No hay conexión con la nube: los cambios quedan solo en este equipo.');return;}
+  let srvDocs=null,antes=null,bloq=null,grande=null;
   try{
     setSyncUI('saving');
-    const data=buildData();data._updated=new Date().toISOString();data._appv=7;
-    const b=medir(data);
-    if(b>MAX-2048)throw new Error('DOC_TOO_BIG');
-    const base=window._srvUpdated||null;
+    // buildData() debe seguir siendo sincrónico (antes del primer await)
+    const flat=buildData();const P=_fbPartir(flat);const ahora=new Date().toISOString();
+    const H={};FB_DOCS.forEach(d=>H[d]=hsh(P[d]));
+    const migrar=window._fbSchema!==FB_SCHEMA;
+    const sucios=FB_DOCS.filter(d=>migrar||H[d]!==window._fbHash[d]);
+    const sz=medir(P);
+    for(const d of sucios)if(sz[d]>MAX-2048){grande=d;throw new Error('DOC_TOO_BIG');}
+    if(!sucios.length){window._fbDirtyFlag=false;if(_bannerTipo==='nosync')sgOcultar();setSyncUI('online');return;}
+    const base={...window._srvUpd};
+    window._fbEnVuelo=ahora;
     await FBDB().runTransaction(async tx=>{
-      const cur=await tx.get(window._fbDocRef);
-      const cd=cur.exists?cur.data():null;const srvUpd=cd?(cd._updated||null):null;
-      if(cd&&srvUpd&&srvUpd!==base){srvData=cd;throw new Error('STALE_DATA');}
-      if(cd&&!(window._sgPermitir>Date.now())){const e=encogidos(cnt(cd),cnt(data));if(e.length){bloq=e;throw new Error('SHRINK');}}
-      antes=cd;tx.set(window._fbDocRef,data);
+      srvDocs=null;antes=null;
+      const cur=await Promise.all(FB_DOCS.map(d=>tx.get(window._fbRefs[d])));
+      const docs={};cur.forEach((s,i)=>{if(s.exists)docs[FB_DOCS[i]]=s.data();});
+      // datos viejos: algún documento que vamos a escribir cambió en el servidor
+      let stale=sucios.some(d=>docs[d]&&(docs[d]._updated||null)!==(base[d]||null));
+      // equipo con versión antigua escribió todo en taller/datos después de partir
+      if(!migrar&&docs.datos&&docs.datos._schema!==FB_SCHEMA&&(docs.datos._updated||null)!==(base.datos||null))stale=true;
+      if(stale){srvDocs=docs;throw new Error('STALE_DATA');}
+      const srvFlat=docs.datos?_fbUnir(docs):null;
+      if(srvFlat&&!(window._sgPermitir>Date.now())){const e=encogidos(cnt(srvFlat),cnt(flat));if(e.length){bloq=e;throw new Error('SHRINK');}}
+      antes=srvFlat;
+      sucios.forEach(d=>tx.set(window._fbRefs[d],Object.assign({},P[d],{_updated:ahora,_appv:FB_APPV},d==='datos'?{_schema:FB_SCHEMA,_partes:Object.keys(FB_PARTES)}:{_parte:d})));
     });
-    window._srvUpdated=data._updated;window._fbDirtyFlag=false;window._sgPermitir=0;clearInterval(_retry);_retry=null;
+    sucios.forEach(d=>{window._srvUpd[d]=ahora;window._fbHash[d]=H[d];});
+    window._srvUpdated=window._srvUpd.datos||null;window._fbSchema=FB_SCHEMA;window._fbEnVuelo=null;
+    window._fbDirtyFlag=false;window._fbReparto=false;window._sgPermitir=0;clearInterval(_retry);_retry=null;
     if(_bannerTipo==='nosync'||_bannerTipo==='shrink')sgOcultar();
     setSyncUI('online');
+    // v24: con 4 documentos, otro equipo pudo guardar OTRO documento mientras guardábamos: aplicarlo ya si no hay cambios locales nuevos
+    if(window._pendingFBUpdate&&!_hayFormAbierto()){try{const P2=_fbPartir(buildData());if(FB_DOCS.every(d=>hsh(P2[d])===H[d])){const pd=window._pendingFBUpdate.data;window._pendingFBUpdate=null;_ocultarBannerDatosNuevos();_aplicarUpdateFirebase(pd);try{window._renderActual&&window._renderActual();}catch(e){}toast('🔄 Datos actualizados desde otro equipo','info');}}catch(e){console.error(e);}}
+    try{pintarMedidor();}catch(e){}
+    if(migrar){console.log('v24: base partida en '+FB_DOCS.length+' documentos',sz);toast('✓ Base de datos en la nube reorganizada en 4 documentos','info');}
     if(antes&&localStorage.getItem('sg_last_snap')!==hoyStr())snapshot(antes,'diario (antes del primer guardado del día)').catch(()=>{});
   }catch(err){
+    window._fbEnVuelo=null;
     const m=err&&err.message;
-    if(m==='STALE_DATA'){try{if(srvData){_aplicarUpdateFirebase(srvData);try{window._renderActual&&window._renderActual();}catch(e){}}}catch(e){console.error(e);}window._fbDirtyFlag=false;setSyncUI('online');_alertaStale();return;}
+    if(m==='STALE_DATA'&&window._fbReparto&&srvDocs&&srvDocs.datos&&srvDocs.datos._schema===FB_SCHEMA){window._fbReparto=false;try{_aplicarUpdateFirebase(_fbUnir(srvDocs));window._renderActual&&window._renderActual();}catch(e){console.error(e);}setSyncUI('online');return;} // otro equipo ya volvió a partir la base: sin alerta
+    if(m==='STALE_DATA'){try{if(srvDocs){_aplicarUpdateFirebase(_fbUnir(srvDocs));try{window._renderActual&&window._renderActual();}catch(e){}}}catch(e){console.error(e);}if(!(srvDocs&&srvDocs.datos&&srvDocs.datos._schema!==FB_SCHEMA&&window._fbSchema===FB_SCHEMA))window._fbDirtyFlag=false;setSyncUI('online');_alertaStale();return;}
     window._fbDirtyFlag=true;setSyncUI('error');
     if(m==='SHRINK'){banner('red','⛔ GUARDADO BLOQUEADO: se iban a borrar muchos registros ('+bloq.join(' · ')+'). No se subió nada a la nube.','<button onclick="sgRecargarNube()">Descartar y recargar de la nube</button><button onclick="if(sgPermitirConPIN(\'Autorizar la reducción: \'+'+JSON.stringify(bloq.join(', '))+'))fbSaveNow()">Es correcto (PIN admin)</button>');_bannerTipo='shrink';return;}
-    if(m==='DOC_TOO_BIG'){noSync('La base de datos llegó al límite de 1 MB.');return;}
+    if(m==='DOC_TOO_BIG'){noSync('El documento «'+(DOC_NOM[grande]||grande)+'» llegó al límite de 1 MB.');return;}
     console.error('Firestore save error:',err);noSync('Error guardando en la nube ('+(err&&err.code||m||'?')+').');
     if(!_retry)_retry=setInterval(()=>{if(navigator.onLine&&window._fbDirtyFlag)fbSaveNow();},30000);
   }
 };
-window.sgRecargarNube=async function(){if(!confirm('¿Descartar los cambios locales no guardados y recargar los datos de la nube?'))return;try{const s=await _fbDocRef.get({source:'server'});_aplicarUpdateFirebase(s.data());window._fbDirtyFlag=false;sgOcultar();window._renderActual&&window._renderActual();toast('Datos recargados desde la nube');}catch(e){toast('No se pudo recargar','err');}};
+window.sgAvisoLegacy=function(){banner('amber','⚠ Un equipo con una versión antigua de TallerSys guardó datos. Se integraron automáticamente; recarga la app en ese equipo (botón «Recargar» o F5).','<button onclick="sgOcultar()">Entendido</button>');};
+window.sgRecargarNube=async function(){if(!confirm('¿Descartar los cambios locales no guardados y recargar los datos de la nube?'))return;try{const docs=await _fbLeerTodos({source:'server'});_aplicarUpdateFirebase(_fbUnir(docs));window._fbDirtyFlag=false;sgOcultar();window._renderActual&&window._renderActual();toast('Datos recargados desde la nube');}catch(e){toast('No se pudo recargar','err');}};
 let _sgEst=FBDB()?'online':(typeof firebase==='undefined'?'offline':'connecting');const _su=window.setSyncUI;window.setSyncUI=function(st){_sgEst=st;return _su.apply(this,arguments);};
 const _fs=window.fbSave;window.fbSave=function(){if(!FBDB()){if(_sgEst==='offline'||_sgEst==='error'){window._fbDirtyFlag=true;noSync('No hay conexión con la nube: los cambios quedan solo en este equipo.');}return;}return _fs.apply(this,arguments);};
 const reint=()=>{if(window._fbDirtyFlag&&FBDB()&&navigator.onLine)fbSaveNow();};
@@ -15665,21 +15766,27 @@ const _bt=window.borrarTodo;window.borrarTodo=async function(){
   try{await snapshot(buildData(),'antes de borrar todo',ahoraId('pre-borrar'));}catch(e){}
   return _bt.apply(this,arguments);};
 /* ---------- Configuración: medidor + versiones ---------- */
-function pintarMedidor(){const el=$i('sg-med');if(!el)return;const b=+localStorage.getItem('sg_size')||docSize(buildData());const p=b/MAX*100;const c=p>=95?'#B2121C':p>=85?'#d97706':'#16a34a';
-  el.innerHTML=`<div style="display:flex;justify-content:space-between;font-size:12px"><span>Tamaño de la base en la nube</span><b>${(b/1024).toFixed(0)} KB de 1024 KB · ${p.toFixed(1)}%</b></div><div class="sg-meter"><i style="width:${Math.min(100,p)}%;background:${c}"></i></div><div style="font-size:11px;color:var(--text2)">Firestore no permite documentos de más de 1 MB. Sobre 85% hay que archivar ventas/OT antiguas.</div>`;}
+function pintarMedidor(){const el=$i('sg-med');if(!el)return;let sz=null;try{sz=JSON.parse(localStorage.getItem('sg_sizes')||'null');}catch(e){}
+  if(!sz){const P=_fbPartir(buildData());sz={};FB_DOCS.forEach(d=>sz[d]=docSize(P[d])+META_B);}
+  const est=window._fbSchema===FB_SCHEMA?'✓ Base partida en 4 documentos (cada uno tiene su propio límite de 1 MB).':'⏳ Pendiente: la base se reorganiza en 4 documentos con el próximo guardado.';
+  el.innerHTML=`<div style="font-size:12px;font-weight:700;margin-bottom:6px">Tamaño de la base en la nube</div>`+FB_DOCS.map(d=>{const b=sz[d]||0,p=b/MAX*100,c=p>=95?'#B2121C':p>=85?'#d97706':'#16a34a';
+    return `<div style="display:flex;justify-content:space-between;font-size:12px;margin-top:6px"><span>${DOC_NOM[d]}</span><b>${(b/1024).toFixed(0)} KB · ${p.toFixed(1)}%</b></div><div class="sg-meter" style="margin:3px 0"><i style="width:${Math.min(100,p)}%;background:${c}"></i></div>`;}).join('')+
+    (window._fbSchema===FB_SCHEMA?'':(()=>{const t=FB_DOCS.reduce((a,d)=>a+(sz[d]||0),0)-META_B*(FB_DOCS.length-1),p=t/MAX*100;return `<div style="display:flex;justify-content:space-between;font-size:12px;margin-top:10px;color:#B2121C"><span>Hoy (todo en 1 solo documento)</span><b>${(t/1024).toFixed(0)} KB · ${p.toFixed(1)}%</b></div><div class="sg-meter" style="margin:3px 0"><i style="width:${Math.min(100,p)}%;background:${p>=95?'#B2121C':'#d97706'}"></i></div>`;})())+
+    `<div style="font-size:11px;color:var(--text2);margin-top:6px">${est} Firestore no permite documentos de más de 1 MB; sobre 85% avisar a Palavecino Digital.</div>`;}
 function cfgCard(){const s=$i('sec-config');if(!s||$i('sg-cfg'))return;
   s.insertAdjacentHTML('afterbegin',`<div class="card" id="sg-cfg" style="margin-bottom:14px"><div class="card-title"><div class="card-title-left">🛡️ Seguridad de datos</div></div><div id="sg-med"></div>
    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm btn-primary" onclick="sgVersiones()">🕒 Restaurar versión</button><button class="btn btn-sm" onclick="sgSnapManual()">💾 Guardar versión ahora</button></div><div id="sg-vers" style="margin-top:10px"></div></div>`);pintarMedidor();}
 window.sgSnapManual=async()=>{const r=await snapshot(buildData(),'manual',ahoraId('manual'));toast('✓ Versión guardada'+(r.nube?' (nube + este equipo)':' (en este equipo)'));if($i('sg-vers').innerHTML)sgVersiones(true);};
 window.sgVersiones=async function(sinPin){if(!sinPin&&!sgPermitirConPIN('Ver y restaurar versiones anteriores.'))return;window._sgPermitir=0;
   let L=[];try{L=(await idbAll()).map(x=>({...x,src:'local'}));}catch(e){}
-  try{if(FBDB()){const q=await FBDB().collection('taller_hist').get();q.docs.forEach(d=>{if(!L.find(x=>x.id===d.id)){const x=d.data();L.push({id:d.id,_snapFecha:x._snapFecha,_snapMotivo:x._snapMotivo,_snapCounts:x._snapCounts,src:'nube'});}});}}catch(e){}
+  try{if(FBDB()){const q=await FBDB().collection('taller_hist').get();q.docs.forEach(d=>{if(d.id.includes('__'))return;if(!L.find(x=>x.id===d.id)){const x=d.data();L.push({id:d.id,_snapFecha:x._snapFecha,_snapMotivo:x._snapMotivo,_snapCounts:x._snapCounts,src:'nube'});}});}}catch(e){}
   L.sort((a,b)=>String(b._snapFecha).localeCompare(String(a._snapFecha)));
   const F=s=>s?new Date(s).toLocaleString('es-CL'):'—';
   $i('sg-vers').innerHTML=L.length?`<table class="sg-tab"><tr><th>Fecha</th><th>Motivo</th><th>Registros</th><th>Dónde</th><th></th></tr>${L.map(x=>{const c=x._snapCounts||{};return `<tr><td>${F(x._snapFecha)}</td><td>${tsxEsc(x._snapMotivo||'')}</td><td style="font-size:11px">${c.clientes||0} clientes · ${c.ventas||0} ventas · ${c.ordenes||0} OT · ${c.creditos||0} créditos · ${c.inventario||0} productos</td><td>${x.src==='nube'?'☁ nube':x.nube?'☁ nube + 💻 equipo':'💻 este equipo'}</td><td><button class="btn btn-xs btn-red" onclick="sgRestaurar('${tsxEsc(x.id)}','${x.src}')">Restaurar</button></td></tr>`;}).join('')}</table>`:'<div style="font-size:12px;color:var(--text2)">Aún no hay versiones guardadas. Se crea una automáticamente cada día con el primer guardado.</div>';};
 window.sgRestaurar=async function(id,src){
   let x=null;try{x=(await idbAll()).find(s=>s.id===id);}catch(e){}
-  let data=x&&x.data;if(!data&&FBDB()){const d=await FBDB().collection('taller_hist').doc(id).get();data=d.exists?d.data():null;}
+  let data=x&&x.data;if(!data&&FBDB()){const H=FBDB().collection('taller_hist');const d=await H.doc(id).get();data=d&&d.exists?d.data():null;
+    if(data&&Array.isArray(data._partes)){for(const p of data._partes){const pd=await H.doc(id+'__'+p).get();if(pd.exists){const v=pd.data();Object.keys(v).forEach(k=>{if(!_fbMeta(k))data[k]=v[k];});}}}}
   if(!data){toast('No se encontró esa versión','err');return;}
   if(!confirm('¿Restaurar la versión del '+(x?new Date(x._snapFecha).toLocaleString('es-CL'):id)+'?\n\nSe guarda primero una copia de los datos actuales.'))return;
   if(!sgPermitirConPIN('Confirmar restauración.'))return;
