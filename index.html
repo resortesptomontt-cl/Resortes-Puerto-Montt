@@ -1614,10 +1614,13 @@ window.abrirWA=function(url){
     </div>
     <div class="modal-body">
       <div class="g3" style="margin-bottom:12px">
-        <div class="field" style="grid-column:1/-1">
-          <label>Cliente</label>
-          <input id="edit-ped-cli" placeholder="Nombre del cliente">
+        <div class="field ac-wrap" style="grid-column:1/-1">
+          <label>Cliente <span style="color:var(--text3);font-weight:400;font-size:9px">— busca o ingresa libre</span></label>
+          <input id="edit-ped-cli" placeholder="Buscar cliente o ingresar libre..." autocomplete="off"
+            oninput="acSearchEditPedCli(true)" onkeydown="acKeyEditPedCli(event)" onfocus="acSearchEditPedCli(false)" onblur="setTimeout(()=>{const d=$('edit-ped-cli-drop');if(d)d.style.display='none'},180)">
+          <div id="edit-ped-cli-drop" class="ac-dropdown" style="display:none"></div>
           <input type="hidden" id="edit-ped-cli-id">
+          <div id="edit-ped-cli-status" style="font-size:10px;margin-top:3px"></div>
         </div>
         <div class="field"><label>Teléfono</label><input id="edit-ped-tel" placeholder="+56 9..."></div>
         <div class="field"><label>Fecha pedido</label><input id="edit-ped-fecha-in" type="date"></div>
@@ -1649,8 +1652,14 @@ window.abrirWA=function(url){
       <div id="edit-ped-items"></div>
       <hr style="margin:12px 0">
       <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text2)">Agregar ítem</div>
-      <div class="g4" style="align-items:end;margin-bottom:8px">
-        <div class="field"><label>Descripción</label><input id="edit-ped-prod-txt" placeholder="Material o servicio..."></div>
+      <div class="g4" style="align-items:end;margin-bottom:8px;position:relative;z-index:10">
+        <div class="field ac-wrap">
+          <label>Producto / Material <span style="color:var(--text3);font-weight:400;font-size:9px">— busca o ingresa libre</span></label>
+          <input id="edit-ped-prod-txt" placeholder="Buscar o ingresar libre..." autocomplete="off"
+            oninput="acSearchEditPed()" onkeydown="acKeyEditPed(event)" onfocus="acSearchEditPed()" onblur="setTimeout(()=>{const d=$('edit-ped-ac-drop');if(d)d.style.display='none'},180)">
+          <div id="edit-ped-ac-drop" class="ac-dropdown" style="display:none;z-index:300;min-width:360px;right:auto"></div>
+          <input type="hidden" id="edit-ped-prod-id">
+        </div>
         <div class="field"><label>Unidad</label>
           <select id="edit-ped-uni" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none">
             <option value="und">Unidad</option><option value="lt">Litro</option><option value="kg">Kg</option>
@@ -7186,14 +7195,20 @@ function pedidoAVenta(folio){
 }
 
 // ── Editar Pedido ──────────────────────────────────
+// v26: el modal trabaja sobre una COPIA de los ítems (_editPedItems); Cancelar descarta.
 let _editPedFolio=null;
+let _editPedItems=[];
+const _escPed=t=>String(t==null?'':t).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
 function abrirEditPed(folio){
   const p=(DB.pedidos||[]).find(x=>x.folio===folio);if(!p)return;
   _editPedFolio=folio;
+  _editPedItems=(p.items||[]).map(i=>({...i}));
   if($('edit-ped-folio-lbl'))$('edit-ped-folio-lbl').textContent=folio;
   if($('edit-ped-cli'))$('edit-ped-cli').value=p.clienteNombre||'';
   if($('edit-ped-cli-id'))$('edit-ped-cli-id').value=p.clienteId||'';
+  if($('edit-ped-cli-drop'))$('edit-ped-cli-drop').style.display='none';
+  _editPedCliStatus();
   if($('edit-ped-tel'))$('edit-ped-tel').value=p.tel||'';
   if($('edit-ped-fecha-in'))$('edit-ped-fecha-in').value=p.fechaIn||'';
   if($('edit-ped-fecha-est'))$('edit-ped-fecha-est').value=p.fechaEst||'';
@@ -7206,6 +7221,9 @@ function abrirEditPed(folio){
   if($('edit-ped-doc-tipo'))$('edit-ped-doc-tipo').value=p.docTipo||'Sin Boleta/Factura';
   if($('edit-ped-doc-folio'))$('edit-ped-doc-folio').value=p.docFolio||'';
   if($('edit-ped-doc-fecha'))$('edit-ped-doc-fecha').value=p.docFecha||'';
+  ['edit-ped-prod-txt','edit-ped-prod-id','edit-ped-pu'].forEach(id=>{if($(id))$(id).value='';});
+  if($('edit-ped-qty'))$('edit-ped-qty').value=1;
+  if($('edit-ped-ac-drop'))$('edit-ped-ac-drop').style.display='none';
   const mecIds=(p.mecanicos||[]).map(m=>m.id);
   initMecPicker('edit-ped',mecIds);
   renderEditPedItems();
@@ -7217,20 +7235,119 @@ function cerrarEditPed(){
   $('modal-edit-ped').style.display='none';
   document.body.style.overflow='';
   _editPedFolio=null;
+  _editPedItems=[];
+}
+
+// ── v26: buscador de cliente en edición de pedido ──
+let _acEditPedCliIdx=-1,_acEditPedCliHits=[];
+function _editPedCliStatus(){
+  const st=$('edit-ped-cli-status');if(!st)return;
+  const id=$('edit-ped-cli-id')?.value||'';
+  const c=id?DB.clientes.find(x=>x.id===id):null;
+  st.innerHTML=c?`<span style="color:var(--green)">✓ Cliente registrado${c.rut?' · '+_escPed(c.rut):''}</span>`:'<span style="color:var(--text3)">Cliente libre (sin registrar)</span>';
+}
+function acSearchEditPedCli(typed){
+  const inp=$('edit-ped-cli');const drop=$('edit-ped-cli-drop');if(!inp||!drop)return;
+  if(typed){ // al escribir, el nombre ya no corresponde al cliente asignado
+    const id=$('edit-ped-cli-id')?.value||'';
+    const c=id?DB.clientes.find(x=>x.id===id):null;
+    if(c&&c.nombre!==inp.value.trim()){$('edit-ped-cli-id').value='';}
+    _editPedCliStatus();
+  }
+  const raw=inp.value.trim();const q=raw.toLowerCase();
+  if(!q){drop.style.display='none';return;}
+  _acEditPedCliHits=(DB.clientes||[]).filter(c=>(c.nombre||'').toLowerCase().includes(q)||(c.rut||'').toLowerCase().includes(q)||(c.tel||'').replace(/\D/g,'').includes(q.replace(/\D/g,'')||'§')).slice(0,8);
+  let html=_acEditPedCliHits.map((c,i)=>`<div class="ac-item" onmousedown="acSelEditPedCli(${i})">
+    <div><span class="ac-item-name">${_escPed(c.nombre)}</span>${c.rut?` <span class="ac-item-meta">${_escPed(c.rut)}</span>`:''}</div>
+    ${c.tel?`<div><span class="ac-item-meta">${_escPed(c.tel)}</span></div>`:''}
+  </div>`).join('');
+  html+=`<div class="ac-item ac-item-new" onmousedown="acSelEditPedCliLibre()">
+    <div><span class="ac-item-name" style="color:var(--accent2)">⚡ Usar "${_escPed(raw)}" como cliente libre</span></div>
+    <div><span class="ac-badge-new">sin registrar</span></div>
+  </div>`;
+  drop.innerHTML=html;drop.style.display='block';_acEditPedCliIdx=-1;
+}
+function acSelEditPedCli(i){
+  const c=_acEditPedCliHits[i];if(!c)return;
+  if($('edit-ped-cli'))$('edit-ped-cli').value=c.nombre;
+  if($('edit-ped-cli-id'))$('edit-ped-cli-id').value=c.id;
+  if($('edit-ped-tel')&&c.tel&&!$('edit-ped-tel').value.trim())$('edit-ped-tel').value=c.tel;
+  if($('edit-ped-cli-drop'))$('edit-ped-cli-drop').style.display='none';
+  _editPedCliStatus();
+}
+function acSelEditPedCliLibre(){
+  if($('edit-ped-cli-id'))$('edit-ped-cli-id').value='';
+  if($('edit-ped-cli-drop'))$('edit-ped-cli-drop').style.display='none';
+  _editPedCliStatus();
+}
+function acKeyEditPedCli(e){
+  const drop=$('edit-ped-cli-drop');if(!drop||drop.style.display==='none')return;
+  const items=drop.querySelectorAll('.ac-item');if(!items.length)return;
+  if(e.key==='ArrowDown'){e.preventDefault();_acEditPedCliIdx=Math.min(_acEditPedCliIdx+1,items.length-1);items.forEach((it,i)=>it.classList.toggle('ac-active',i===_acEditPedCliIdx));}
+  else if(e.key==='ArrowUp'){e.preventDefault();_acEditPedCliIdx=Math.max(_acEditPedCliIdx-1,0);items.forEach((it,i)=>it.classList.toggle('ac-active',i===_acEditPedCliIdx));}
+  else if(e.key==='Enter'){e.preventDefault();if(_acEditPedCliIdx>=0&&items[_acEditPedCliIdx])items[_acEditPedCliIdx].dispatchEvent(new MouseEvent('mousedown'));else drop.style.display='none';}
+  else if(e.key==='Escape'){drop.style.display='none';}
+}
+
+// ── v26: buscador de inventario en edición de pedido (igual que Editar OT, con tsInvSearch) ──
+let _acEditPedIdx=-1,_acEditPedHits=[];
+function acSearchEditPed(){
+  const inp=$('edit-ped-prod-txt');const drop=$('edit-ped-ac-drop');if(!inp||!drop)return;
+  if($('edit-ped-prod-id'))$('edit-ped-prod-id').value='';
+  const raw=inp.value.trim();const q=raw.toLowerCase();
+  if(!q){drop.style.display='none';return;}
+  _acEditPedHits=window.tsInvSearch?tsInvSearch(raw,10):(DB.inventario||[]).filter(p=>(p.nombre||'').toLowerCase().includes(q)||(p.codigo||'').toLowerCase().includes(q)).slice(0,8);
+  let html=_acEditPedHits.map((p,i)=>{
+    const stockInfo=p.categoria==='Mano de obra'?'servicio':`stock: ${p.stock??0} ${p.unidad||''}`;
+    return`<div class="ac-item" onmousedown="acSelEditPedProd(${i})">
+      <div><span class="ac-item-name">${_escPed(p.nombre)}</span>${p.codigo?`<span style="font-size:10px;color:var(--text3);margin-left:6px">${_escPed(p.codigo)}</span>`:''}${p.categoria?`<span class="badge ${getCatBadge(p.categoria)}" style="margin-left:6px;font-size:9px">${_escPed(p.categoria)}</span>`:''}</div>
+      <div class="ac-item-meta"><div>${fmt(p.precio||0)}</div><span class="ac-badge-inv">${stockInfo}</span></div>
+    </div>`;
+  }).join('');
+  const exact=(DB.inventario||[]).find(p=>(p.nombre||'').toLowerCase()===q);
+  if(!exact)html+=`<div class="ac-item ac-item-new" onmousedown="acSelEditPedLibre()">
+    <div><span class="ac-item-name" style="color:var(--accent2)">➕ Agregar "${_escPed(raw)}" como ítem libre</span></div>
+    <div><span class="ac-badge-new">sin inventario</span></div>
+  </div>`;
+  drop.innerHTML=html;drop.style.display='block';_acEditPedIdx=-1;
+}
+function acSelEditPedProd(i){
+  const p=_acEditPedHits[i];if(!p)return;
+  if($('edit-ped-prod-txt'))$('edit-ped-prod-txt').value=p.nombre;
+  if($('edit-ped-prod-id'))$('edit-ped-prod-id').value=p.id;
+  if($('edit-ped-pu'))$('edit-ped-pu').value=p.precio||0;
+  if($('edit-ped-uni')&&p.unidad)$('edit-ped-uni').value=p.unidad;
+  if($('edit-ped-ac-drop'))$('edit-ped-ac-drop').style.display='none';
+  $('edit-ped-qty')?.focus();
+}
+function acSelEditPedLibre(){
+  if($('edit-ped-prod-id'))$('edit-ped-prod-id').value='';
+  if($('edit-ped-ac-drop'))$('edit-ped-ac-drop').style.display='none';
+  $('edit-ped-pu')?.focus();
+}
+function acKeyEditPed(e){
+  const drop=$('edit-ped-ac-drop');
+  if(!drop||drop.style.display==='none'){if(e.key==='Enter'){e.preventDefault();addItemEditPed();}return;}
+  const items=drop.querySelectorAll('.ac-item');if(!items.length)return;
+  if(e.key==='ArrowDown'){e.preventDefault();_acEditPedIdx=Math.min(_acEditPedIdx+1,items.length-1);items.forEach((it,i)=>it.classList.toggle('ac-active',i===_acEditPedIdx));}
+  else if(e.key==='ArrowUp'){e.preventDefault();_acEditPedIdx=Math.max(_acEditPedIdx-1,0);items.forEach((it,i)=>it.classList.toggle('ac-active',i===_acEditPedIdx));}
+  else if(e.key==='Enter'){e.preventDefault();if(_acEditPedIdx>=0&&items[_acEditPedIdx])items[_acEditPedIdx].dispatchEvent(new MouseEvent('mousedown'));else{drop.style.display='none';addItemEditPed();}}
+  else if(e.key==='Escape'){drop.style.display='none';}
 }
 
 function renderEditPedItems(){
-  const p=(DB.pedidos||[]).find(x=>x.folio===_editPedFolio);if(!p)return;
+  if(!_editPedFolio)return;
+  const items=_editPedItems;
   const el=$('edit-ped-items');if(!el)return;
   const descuento=parseFloat($('edit-ped-descuento')?.value)||0;
   const sena=parseFloat($('edit-ped-sena')?.value)||0;
-  const subtotal=p.items.reduce((s,it)=>s+(it.sub||0),0);
+  const subtotal=items.reduce((s,it)=>s+(it.sub||0),0);
   const total=Math.max(0,subtotal-descuento);
   const INP='padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;background:var(--bg);color:var(--text)';
-  el.innerHTML=p.items.length?`<div class="tw"><table>
+  el.innerHTML=items.length?`<div class="tw"><table>
     <thead><tr><th>Descripción</th><th>Cant.</th><th>P.Unit.</th><th class="tr">Subtotal</th><th></th></tr></thead>
-    <tbody>${p.items.map((it,i)=>`<tr>
-      <td><input value="${(it.nombre||'').replace(/"/g,'&quot;')}" style="width:100%;${INP}" onchange="updateItemPed(${i},'nombre',this.value)"></td>
+    <tbody>${items.map((it,i)=>`<tr>
+      <td><input value="${(it.nombre||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}" style="width:100%;${INP}" onchange="updateItemPed(${i},'nombre',this.value)">${it.pid?'<div style="font-size:9px;color:var(--teal)">📦 inventario</div>':''}</td>
       <td><input type="number" value="${it.qty||1}" min="0.01" style="width:60px;${INP};text-align:center" onchange="updateItemPed(${i},'qty',parseFloat(this.value)||1)"></td>
       <td><input type="number" value="${it.pu||0}" min="0" style="width:80px;${INP};font-family:'JetBrains Mono',monospace;text-align:right" onchange="updateItemPed(${i},'pu',parseFloat(this.value)||0)"></td>
       <td class="tr" style="font-family:'JetBrains Mono',monospace;font-weight:600">${fmt(it.sub||0)}</td>
@@ -7244,37 +7361,46 @@ function renderEditPedItems(){
 }
 
 function updateItemPed(idx,field,val){
-  const p=(DB.pedidos||[]).find(x=>x.folio===_editPedFolio);if(!p||!p.items[idx])return;
-  p.items[idx][field]=val;
-  p.items[idx].sub=Math.round((p.items[idx].qty||1)*(p.items[idx].pu||0));
+  const it=_editPedItems[idx];if(!it)return;
+  it[field]=val;
+  it.sub=Math.round((it.qty||1)*(it.pu||0));
   renderEditPedItems();
 }
 
 function deleteItemPed(idx){
-  const p=(DB.pedidos||[]).find(x=>x.folio===_editPedFolio);if(!p)return;
+  if(!_editPedItems[idx])return;
   if(!confirm('¿Eliminar este ítem?'))return;
-  p.items.splice(idx,1);
+  _editPedItems.splice(idx,1);
   renderEditPedItems();
 }
 
 function addItemEditPed(){
-  const p=(DB.pedidos||[]).find(x=>x.folio===_editPedFolio);if(!p)return;
+  if(!_editPedFolio)return;
   const nom=($('edit-ped-prod-txt')?.value||'').trim();
-  if(!nom){toast('Ingresa una descripción','err');return;}
+  if(!nom){toast('Ingresa un producto o descripción','err');return;}
   const qty=parseFloat($('edit-ped-qty')?.value)||1;
   const pu=parseFloat($('edit-ped-pu')?.value)||0;
   const uni=$('edit-ped-uni')?.value||'und';
-  p.items.push({nombre:nom,qty,pu,unidad:uni,sub:Math.round(qty*pu),dto:0,iva:false,libre:true});
-  if($('edit-ped-prod-txt'))$('edit-ped-prod-txt').value='';
-  if($('edit-ped-pu'))$('edit-ped-pu').value='';
+  const pid=$('edit-ped-prod-id')?.value||null;
+  const prod=pid?(DB.inventario||[]).find(p=>p.id===pid):null;
+  _editPedItems.push({nombre:prod?prod.nombre:nom,qty,pu,unidad:prod?.unidad||uni,sub:Math.round(qty*pu),dto:0,iva:false,pid:prod?.id||null,cat:prod?.categoria||'Libre',libre:!prod});
+  ['edit-ped-prod-txt','edit-ped-prod-id','edit-ped-pu'].forEach(id=>{if($(id))$(id).value='';});
   if($('edit-ped-qty'))$('edit-ped-qty').value=1;
+  if($('edit-ped-ac-drop'))$('edit-ped-ac-drop').style.display='none';
   renderEditPedItems();
+  $('edit-ped-prod-txt')?.focus();
 }
 
 function guardarEditPed(){
   const p=(DB.pedidos||[]).find(x=>x.folio===_editPedFolio);if(!p)return;
-  p.clienteNombre=($('edit-ped-cli')?.value||'').trim()||p.clienteNombre;
-  p.clienteId=$('edit-ped-cli-id')?.value||p.clienteId||null;
+  const cliNom=($('edit-ped-cli')?.value||'').trim();
+  if(!cliNom){toast('El nombre del cliente es obligatorio','err');return;}
+  const cid=($('edit-ped-cli-id')?.value||'').trim()||null;
+  const c=cid?DB.clientes.find(x=>x.id===cid):null;
+  p.clienteNombre=cliNom;
+  p.clienteId=c?.id||null;
+  p.clienteRut=c?(c.rut||''):'';
+  p.items=_editPedItems.map(i=>({...i}));
   p.tel=($('edit-ped-tel')?.value||'').trim();
   p.fechaIn=$('edit-ped-fecha-in')?.value||p.fechaIn;
   p.fechaEst=$('edit-ped-fecha-est')?.value||'';
@@ -7292,9 +7418,10 @@ function guardarEditPed(){
   p.saldoPendiente=Math.max(0,p.total-p.sena);
   const mecs=getMecsFromPicker('edit-ped');
   p.mecanicos=mecs.map(m=>({id:m.id,nombre:m.nombre}));
+  const folio=p.folio;
   save();cerrarEditPed();renderPedidos();updateBadges();
-  showSaveConfirm(`✓ Pedido ${p.folio} actualizado`);
-  toast(`Pedido ${p.folio} actualizado`);
+  showSaveConfirm(`✓ Pedido ${folio} actualizado`);
+  toast(`Pedido ${folio} actualizado`);
 }
 
 function waPed(folio){
