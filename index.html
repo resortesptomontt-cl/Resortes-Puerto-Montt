@@ -2681,12 +2681,12 @@ window.abrirWA=function(url){
         <span style="font-size:12px;font-weight:600;color:var(--text2)">💰 Calcular precio de venta:</span>
         <div style="display:flex;align-items:center;gap:6px">
           <label style="font-size:12px;color:var(--text2)">Margen sobre costo</label>
-          <input type="number" id="pdf-margen" value="125" min="0" max="9999" step="1"
+          <input type="number" id="pdf-margen" value="125" min="0" max="9999" step="1" oninput="actualizarPreviewMargen()"
             style="width:80px;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--text);outline:none;text-align:right">
           <span style="font-size:13px;color:var(--text2)">%</span>
         </div>
         <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer">
-          <input type="checkbox" id="pdf-iva-check" checked style="width:15px;height:15px;accent-color:var(--accent)">
+          <input type="checkbox" id="pdf-iva-check" checked style="width:15px;height:15px;accent-color:var(--accent)" onchange="actualizarPreviewMargen()">
           Incluir IVA 19%
         </label>
         <button class="btn btn-xs btn-teal" onclick="recalcPreciosFactura()">↺ Aplicar a todos</button>
@@ -2745,6 +2745,11 @@ window.abrirWA=function(url){
           <div class="field"><label>Forma de pago</label>
             <select id="compra-fpago" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none">
               <option>Contado</option><option>Transferencia</option><option>Crédito 30 días</option><option>Crédito 60 días</option><option>Otro</option>
+            </select>
+          </div>
+          <div class="field"><label>Categoría</label>
+            <select id="compra-cat" style="padding:8px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);outline:none">
+              <option>Repuestos</option><option>Lubricantes</option><option>Herramientas</option><option>Servicios</option><option>Insumos</option><option selected>Otro</option>
             </select>
           </div>
         </div>
@@ -3402,13 +3407,13 @@ window.abrirWA=function(url){
         </div>
         <div style="background:var(--teal-light);border:1px solid var(--teal);border-radius:var(--radius);padding:8px 12px;font-size:11px;color:var(--teal);margin-top:8px">
           🏦 El cheque quedará registrado como pendiente de cobro hasta su fecha.
+        </div>
+      </div>
       <div id="fpago-ot-oc-wrap" style="display:none;margin-bottom:10px">
         <div style="background:var(--amber-light);border-left:3px solid var(--amber);padding:8px 12px;margin-bottom:8px;font-size:12px;color:var(--amber)">
           📋 OT entregada pendiente de OC — ingresa el N° de orden de compra para trazabilidad
         </div>
         <div class="field"><label>N° Orden de Compra (OC)</label><input id="fpago-ot-oc" placeholder="Ej: OC-2026-1234"></div>
-      </div>
-        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -4297,7 +4302,7 @@ function calcTotales(ctx){
     const subDto=Math.round(l.qty*l.pu*(1-dto/100));
     return s+(l.iva?Math.round(subDto*0.19):0);
   },0);
-  const descGlobal = ctx==='v'?(parseFloat($('v-desc')?.value)||0):0;
+  const descGlobal = ctx==='v'?(parseFloat($('v-descuento')?.value)||0):0;
   const total = Math.max(0,subNeto+ivaAmt-descGlobal);
   return{sub:subNeto,subBruto,dtoTotal,ivaAmt,descGlobal,total};
 }
@@ -6577,6 +6582,10 @@ function confirmarFpagoOT(){
     vehiculoId:rec.vehiculoId||null,patente:rec.patente||'',marca:rec.marca||'',modelo:rec.modelo||'',
     items:[...rec.items],total:rec.total,descuento:rec.descuento||0,fpago,
     obs:rec.obs||rec.diag||rec.desc||'',
+    docTipo:rec.docTipo||'Sin Boleta/Factura',
+    docFolio:rec.docFolio||'',
+    docFecha:rec.docFecha||'',
+    docMonto:rec.docMonto||0,
     otOrigen:isPed?'':realFolio,
     pedidoOrigen:isPed?realFolio:'',
     cotOrigen:rec.cotizacionOrigen||'',
@@ -6596,6 +6605,7 @@ function confirmarFpagoOT(){
       if(pr&&pr.categoria!=='Mano de obra')pr.stock=Math.max(0,pr.stock-l.qty);
     });
   }
+  if(!isPed)rec.ventaFolio=vFolio;
   const origen=isPed?`(Pedido: ${realFolio})`:`(OT: ${realFolio})`;
   if(fpago==='Crédito'){
     DB.creditos.unshift({id:uid(),
@@ -6764,11 +6774,7 @@ function toggleCreditoFecha(ctx){
 }
 // ── Descuento y adjunto documentos ──────────────
 function recalcTotalesV(){
-  const {total:subtotal}=calcTotales('v');
-  const descuento=parseFloat($('v-descuento')?.value)||0;
-  const total=Math.max(0,subtotal-descuento);
-  const el=$('v-total-display');
-  if(el)el.innerHTML=descuento>0?`${fmt(total)} <span style="font-size:10px;color:var(--amber)">(-${fmt(descuento)} dto.)</span>`:fmt(total);
+  renderTotalesWrap('v');
 }
 function recalcTotalesCot(){
   const descuento=parseFloat($('cot-descuento')?.value)||0;
@@ -6839,9 +6845,8 @@ function guardarVenta(){
   const cid=$('v-cli-id').value||null;
   const c=cid?DB.clientes.find(x=>x.id===cid):null;
   const v=pillar('v-veh',DB.vehiculos);
-  const {total:subtotal,desc}=calcTotales('v');
+  const {total}=calcTotales('v');
   const descuento=parseFloat($('v-descuento')?.value)||0;
-  const total=Math.max(0,subtotal-descuento);
   const fpago=$('v-fpago')?.value||'Contado';
   const vcto=$('v-fecha-vcto')?.value||'';
   const docTipo=$('v-doc-tipo')?.value||'Sin Boleta/Factura';
@@ -7669,11 +7674,6 @@ function lpConvertir(dest){
 
   // Clear LP after transfer
   lpLimpiar();
-}
-
-function lpVolverPaso1(){
-  $('lp-paso2').style.display='none';
-  $('lp-paso1').style.display='block';
 }
 
 function lpLimpiar(){
@@ -8582,10 +8582,10 @@ function globalSearch(q){
   const res=[];
   // Clientes
   DB.clientes.filter(c=>(c.nombre||'').toLowerCase().includes(ql)||(c.rut||'').toLowerCase().includes(ql)).slice(0,3)
-    .forEach(c=>res.push({tipo:'Cliente',icon:'👤',label:c.nombre,sub:c.rut||'',action:`nav('clientes',null);setTimeout(()=>{const el=$('s-cli');if(el){el.value='${c.nombre.replace(/'/g,"\\'").slice(0,30)}';renderClientes();}},300)`}));
+    .forEach(c=>res.push({tipo:'Cliente',icon:'👤',label:c.nombre,sub:c.rut||'',action:`nav('clientes',null);setTimeout(()=>{const el=$('sc');if(el){el.value='${c.nombre.replace(/'/g,"\\'").slice(0,30)}';renderClientes();}},300)`}));
   // Vehículos
   DB.vehiculos.filter(v=>(v.patente||'').toLowerCase().includes(ql)||(v.clienteNombre||'').toLowerCase().includes(ql)).slice(0,3)
-    .forEach(v=>res.push({tipo:'Vehículo',icon:'🚗',label:v.patente,sub:`${v.marca||''} ${v.modelo||''} — ${v.clienteNombre||''}`,action:`nav('vehiculos',null);setTimeout(()=>{const el=$('s-veh');if(el){el.value='${v.patente}';renderVehiculos();}},300)`}));
+    .forEach(v=>res.push({tipo:'Vehículo',icon:'🚗',label:v.patente,sub:`${v.marca||''} ${v.modelo||''} — ${v.clienteNombre||''}`,action:`nav('vehiculos',null);setTimeout(()=>{const el=$('svh');if(el){el.value='${v.patente}';renderVehiculos();}},300)`}));
   // OTs
   DB.ordenes.filter(o=>(o.folio||'').toLowerCase().includes(ql)||(o.clienteNombre||'').toLowerCase().includes(ql)||(o.patente||'').toLowerCase().includes(ql)).slice(0,3)
     .forEach(o=>res.push({tipo:'OT',icon:'🔧',label:o.folio,sub:`${o.clienteNombre} — ${o.estado}`,action:`nav('ordenes',null);setTimeout(()=>{const el=$('s-ot');if(el){el.value='${o.folio}';renderOTs();}},300)`}));
@@ -8597,7 +8597,7 @@ function globalSearch(q){
     .forEach(v=>res.push({tipo:'Venta',icon:'💰',label:v.folio,sub:`${v.clienteNombre} — ${fmt(v.total)}`,action:`nav('ventas',null);setTimeout(()=>{const el=$('sv');if(el){el.value='${v.folio}';renderVentas();}},300)`}));
   // Inventario
   DB.inventario.filter(p=>(p.nombre||'').toLowerCase().includes(ql)||(p.codigo||'').toLowerCase().includes(ql)).slice(0,2)
-    .forEach(p=>res.push({tipo:'Producto',icon:'📦',label:p.nombre,sub:`${p.codigo||''} · Stock: ${p.stock} · ${fmt(p.precio)}`,action:`nav('inventario',null);setTimeout(()=>{const el=$('s-inv');if(el){el.value='${p.nombre.replace(/'/g,"\\'").slice(0,30)}';renderInventario();}},300)`}));
+    .forEach(p=>res.push({tipo:'Producto',icon:'📦',label:p.nombre,sub:`${p.codigo||''} · Stock: ${p.stock} · ${fmt(p.precio)}`,action:`nav('inventario',null);setTimeout(()=>{const el=$('sp');if(el){el.value='${p.nombre.replace(/'/g,"\\'").slice(0,30)}';renderInventario();}},300)`}));
 
   if(!res.length){el.innerHTML='<div style="padding:12px;font-size:12px;color:var(--text2)">Sin resultados para "'+q+'"</div>';el.style.display='block';return;}
   el.innerHTML=res.map((r,i)=>`
@@ -9550,13 +9550,19 @@ function guardarDocOT(){
   const adjData=$('doc-ot-adj-data')?.value||'';
   const adjNom=$('doc-ot-adj-nom')?.textContent||'';
   if(adjData){o.docAdj=adjData;o.docAdjNom=adjNom!=='Sin archivo'?adjNom:'';}
+  const v=ventaLigadaOT(o.folio);
+  if(v){v.docTipo=o.docTipo;v.docFolio=o.docFolio;v.docFecha=o.docFecha;v.docMonto=o.docMonto;}
   save();cerrarDocOT();renderOTs();
+  try{renderVentas();}catch(e){}
   toast(tipo?`Documento ${tipo} asignado a ${o.folio}`:`Documento quitado de ${o.folio}`);
 }
 function quitarDocOT(){
   const o=DB.ordenes.find(x=>x.folio===_docOTFolio);if(!o){cerrarDocOT();return;}
   o.docTipo='';o.docFolio='';o.docFecha='';o.docMonto=0;
+  const v=ventaLigadaOT(o.folio);
+  if(v){v.docTipo='';v.docFolio='';v.docFecha='';v.docMonto=0;}
   save();cerrarDocOT();renderOTs();
+  try{renderVentas();}catch(e){}
   toast(`Documento quitado de ${o.folio}`);
 }
 
@@ -13227,6 +13233,28 @@ function setSyncUI(state){
 // ══════════════════════════════════════════════════
 let _facturaData=null;
 
+function _factEsc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function _factItems(data){return (data&&(data.inventario||data.items))||[];}
+function _factHeader(data){
+  const c=(data&&data.compras&&data.compras[0])||(data&&data.factura)||{};
+  const prov=(data&&data.proveedor)||c.proveedor||{};
+  return {
+    proveedor:prov,
+    folio:data.folio||c.folio||'',
+    fecha:data.fecha||c.fecha||'',
+    total:data.total||c.monto||c.total||0,
+    neto:data.neto||c.neto||0
+  };
+}
+function _precioFactura(costo,margen,conIva){
+  return Math.round((+costo||0)*(1+(+margen||0)/100)*(conIva?1.19:1));
+}
+function _matchInvFactura(item){
+  if(!item)return null;
+  const porCodigo=item.codigo?DB.inventario.find(p=>p.codigo&&p.codigo.toLowerCase()===String(item.codigo).toLowerCase()):null;
+  if(porCodigo)return porCodigo;
+  return item.nombre?DB.inventario.find(p=>p.nombre&&p.nombre.toLowerCase()===String(item.nombre).toLowerCase()):null;
+}
 function importarFacturasJSON(input){
   const file=input.files[0];if(!file)return;
   const r=new FileReader();
@@ -13234,37 +13262,161 @@ function importarFacturasJSON(input){
     try{
       const data=JSON.parse(e.target.result);
       if(data.tipo!=='importacion_facturas'){toast('Archivo no válido','err');return;}
-      let nuevos=0,actualizados=0,conflictos=[];
-      // Add proveedor if not exists
-      if(data.proveedor){
-        const existe=DB.proveedores.find(p=>p.rut===data.proveedor.rut||p.nombre===data.proveedor.nombre);
-        if(!existe)DB.proveedores.push(data.proveedor);
-      }
-      // Process inventario — detect duplicates by codigo OR nombre
-      (data.inventario||[]).forEach(item=>{
-        const porCodigo=item.codigo?DB.inventario.find(p=>p.codigo&&p.codigo.toLowerCase()===item.codigo.toLowerCase()):null;
-        const porNombre=DB.inventario.find(p=>p.nombre.toLowerCase()===item.nombre.toLowerCase());
-        const existe=porCodigo||porNombre;
-        if(existe){
-          existe.stock=(existe.stock||0)+item.stock;
-          existe.costo=item.costo;
-          if(item.precio>0&&!existe.precio)existe.precio=item.precio;
-          actualizados++;
-        } else {
-          DB.inventario.push(item);
-          nuevos++;
-        }
+      const items=_factItems(data).map(it=>{
+        const stock=parseFloat(it.stock??it.cantidad??it.qty)||0;
+        return Object.assign({},it,{stock,costo:+it.costo||0,precio:+it.precio||0});
       });
-      // Add compras
-      (data.compras||[]).forEach(c=>{
-        if(!DB.compras.find(x=>x.folio===c.folio))DB.compras.unshift(c);
-      });
-      save();llenarSelectsCat();renderInventario();
-      toast(`✅ ${nuevos} productos nuevos · ${actualizados} actualizados`);
+      _facturaData={
+        tipo:data.tipo,
+        proveedor:data.proveedor?Object.assign({},data.proveedor):null,
+        folio:data.folio,fecha:data.fecha,total:data.total,neto:data.neto,
+        factura:data.factura?Object.assign({},data.factura):null,
+        inventario:items,
+        compras:(data.compras||[]).map(c=>Object.assign({},c))
+      };
+      mostrarPreviewFactura();
     }catch(err){toast('Error leyendo JSON: '+err.message,'err');}
     input.value='';
   };
   r.readAsText(file);
+}
+function mostrarPreviewFactura(){
+  const data=_facturaData;if(!data)return;
+  const h=_factHeader(data);
+  if($('pdf-prov-nom'))$('pdf-prov-nom').textContent=h.proveedor.nombre||h.proveedor.razon||'—';
+  if($('pdf-folio'))$('pdf-folio').textContent=h.folio||'—';
+  if($('pdf-fecha'))$('pdf-fecha').textContent=h.fecha||'—';
+  if($('pdf-total'))$('pdf-total').textContent=fmt(+h.total||0);
+  if($('pdf-neto'))$('pdf-neto').textContent=fmt(+h.neto||0);
+  renderItemsFactura();
+  const el=$('compra-pdf-datos');if(el)el.style.display='block';
+  const st=$('compra-pdf-status');
+  if(st){st.style.display='block';st.style.background='var(--teal-light)';st.style.color='var(--teal)';st.textContent='Factura cargada — revisa los precios y confirma para importar al inventario.';}
+}
+function actualizarPreviewMargen(){
+  const margen=parseFloat($('pdf-margen')?.value)||0;
+  const conIva=!!$('pdf-iva-check')?.checked;
+  const el=$('pdf-margen-preview');if(!el)return;
+  const ejemplo=1000;
+  el.textContent='Ej: costo '+fmt(ejemplo)+' → venta '+fmt(_precioFactura(ejemplo,margen,conIva))+(conIva?' (IVA incl.)':'');
+}
+function renderItemsFactura(){
+  const data=_facturaData;if(!data)return;
+  const items=data.inventario||[];
+  if($('pdf-items-count'))$('pdf-items-count').textContent='('+items.length+')';
+  const el=$('pdf-items-tabla');if(!el)return;
+  actualizarPreviewMargen();
+  if(!items.length){el.innerHTML='<div class="empty">Sin ítems en el JSON</div>';return;}
+  el.innerHTML='<table><thead><tr><th>#</th><th>Código</th><th>Producto</th><th class="tr">Cant.</th><th class="tr">Costo</th><th class="tr">P. Venta</th><th>En inventario</th></tr></thead><tbody>'+
+    items.map((it,i)=>{
+      const ex=_matchInvFactura(it);
+      const badge=ex
+        ?'<span style="background:var(--green-light);color:var(--green);padding:2px 8px;border-radius:10px;font-size:10px">✅ Ya en inventario</span>'
+        :'<span style="background:var(--accent-light);color:var(--accent);padding:2px 8px;border-radius:10px;font-size:10px">➕ Nuevo</span>';
+      return '<tr>'+
+        '<td style="color:var(--text3)">'+ (i+1) +'</td>'+
+        '<td style="font-family:\'JetBrains Mono\',monospace;font-size:11px">'+_factEsc(it.codigo||'—')+'</td>'+
+        '<td style="font-weight:500">'+_factEsc(it.nombre||'—')+'</td>'+
+        '<td class="tr">'+(it.stock??'—')+'</td>'+
+        '<td class="tr" style="font-family:\'JetBrains Mono\',monospace">'+fmt(it.costo||0)+'</td>'+
+        '<td class="tr"><input type="number" min="0" value="'+(it.precio||0)+'" oninput="_facturaData.inventario['+i+'].precio=parseFloat(this.value)||0" style="width:110px;padding:4px 6px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:\'JetBrains Mono\',monospace;background:var(--bg);color:var(--text);text-align:right"></td>'+
+        '<td>'+badge+'</td></tr>';
+    }).join('')+'</tbody></table>';
+}
+function recalcPreciosFactura(){
+  if(!_facturaData){toast('Primero carga un JSON de factura','warn');return;}
+  const margen=parseFloat($('pdf-margen')?.value)||0;
+  const conIva=!!$('pdf-iva-check')?.checked;
+  (_facturaData.inventario||[]).forEach(it=>{it.precio=_precioFactura(it.costo||0,margen,conIva);});
+  renderItemsFactura();
+  toast('Precios de venta recalculados');
+}
+function cancelarImportacionFactura(){
+  _facturaData=null;
+  const el=$('compra-pdf-datos');if(el)el.style.display='none';
+  const st=$('compra-pdf-status');if(st)st.style.display='none';
+  if($('pdf-items-tabla'))$('pdf-items-tabla').innerHTML='';
+  toast('Importación cancelada');
+}
+function confirmarImportacionFactura(){
+  const data=_facturaData;
+  if(!data){toast('No hay factura cargada','err');return;}
+  if(!DB.proveedores)DB.proveedores=[];
+  if(!DB.inventario)DB.inventario=[];
+  if(!DB.compras)DB.compras=[];
+  let nuevos=0,actualizados=0;
+  let prov=data.proveedor;
+  if(prov&&(prov.rut||prov.nombre)){
+    const existe=DB.proveedores.find(p=>(prov.rut&&p.rut===prov.rut)||(prov.nombre&&p.nombre===prov.nombre));
+    if(!existe){
+      if(!prov.id)prov.id=uid();
+      DB.proveedores.push(prov);
+    } else prov=existe;
+  }
+  (data.inventario||[]).forEach(item=>{
+    if(!item.nombre)return;
+    const existe=_matchInvFactura(item);
+    const stock=parseFloat(item.stock??item.cantidad??item.qty)||0;
+    if(existe){
+      existe.stock=(existe.stock||0)+stock;
+      if(item.costo)existe.costo=item.costo;
+      if(item.precio>0)existe.precio=item.precio;
+      actualizados++;
+    } else {
+      DB.inventario.push({
+        id:item.id||uid(),
+        nombre:item.nombre,
+        codigo:item.codigo||'',
+        categoria:item.categoria||'Repuestos',
+        unidad:item.unidad||'und',
+        stock,
+        smin:item.smin||0,
+        costo:item.costo||0,
+        precio:item.precio||0,
+        creado:new Date().toISOString()
+      });
+      nuevos++;
+    }
+  });
+  const h=_factHeader(data);
+  const fpago=$('pdf-fpago')?.value||'Contado';
+  const obs=($('pdf-obs')?.value||'').trim();
+  if(data.compras&&data.compras.length){
+    data.compras.forEach(c=>{
+      if(c.folio&&DB.compras.find(x=>x.folio===c.folio))return;
+      const compra=Object.assign({},c);
+      if(!compra.id)compra.id=uid();
+      if(!compra.proveedorId&&prov)compra.proveedorId=prov.id;
+      if(!compra.proveedorNombre&&prov)compra.proveedorNombre=prov.nombre;
+      if(!compra.fpago)compra.fpago=fpago;
+      if(obs&&!compra.desc)compra.desc=obs;
+      if(!compra.fecha)compra.fecha=h.fecha||today();
+      if(compra.monto==null)compra.monto=+h.total||0;
+      if(!compra.creado)compra.creado=new Date().toISOString();
+      DB.compras.unshift(compra);
+    });
+  } else if(h.folio||h.total){
+    if(!(h.folio&&DB.compras.find(x=>x.folio===h.folio))){
+      const monto=+h.total||0;
+      const neto=+h.neto||(monto?Math.round(monto/1.19):0);
+      const descItems=(data.inventario||[]).map(i=>i.nombre).filter(Boolean).slice(0,8).join(', ');
+      DB.compras.unshift({
+        id:uid(),proveedorId:prov?.id||null,proveedorNombre:prov?.nombre||'—',
+        folio:h.folio||'',fecha:h.fecha||today(),
+        monto,neto,iva:Math.max(0,monto-neto),tieneIva:true,
+        fpago,categoria:'Repuestos',
+        desc:obs||descItems,
+        creado:new Date().toISOString()
+      });
+    }
+  }
+  save();llenarSelectsCat();renderInventario();
+  try{renderCompras();renderProvStats();renderProveedores();poblarProvSelect();}catch(e){}
+  _facturaData=null;
+  const el=$('compra-pdf-datos');if(el)el.style.display='none';
+  const st=$('compra-pdf-status');
+  if(st){st.style.display='block';st.style.background='var(--green-light)';st.style.color='var(--green)';st.textContent='✅ Importado: '+nuevos+' productos nuevos · '+actualizados+' actualizados';}
+  toast('✅ '+nuevos+' productos nuevos · '+actualizados+' actualizados');
 }
 
 
@@ -13474,6 +13626,7 @@ function limpiarCompra(){
   ['compra-prov','compra-folio','compra-desc'].forEach(i=>{if($(i))$(i).value='';});
   if($('compra-monto'))$('compra-monto').value='';
   if($('compra-fpago'))$('compra-fpago').value='Contado';
+  if($('compra-cat'))$('compra-cat').value='Otro';
   if($('compra-iva-detalle'))$('compra-iva-detalle').style.display='none';
   setToday('compra-fecha');
 }
@@ -14856,6 +15009,7 @@ function crearVentaOT(folio,fpago){
     vehiculoId:o.vehiculoId||null,patente:o.patente||'',marca:o.marca||'',modelo:o.modelo||'',
     items:(o.items||[]).map(i=>Object.assign({},i)),total:+o.total||0,descuento:+o.descuento||0,fpago,
     obs:o.obs||o.diag||'',otOrigen:folio,pedidoOrigen:'',cotOrigen:o.cotizacionOrigen||'',numOC:'',
+    docTipo:o.docTipo||'Sin Boleta/Factura',docFolio:o.docFolio||'',docFecha:o.docFecha||'',docMonto:o.docMonto||0,
     chequeNum:'',chequeBanco:'',chequeFecha:'',chequeEstado:'',autoDesdeOT:true,creado:new Date().toISOString()};
   DB.ventas.unshift(v);
   /* guardarOT original no descuenta (limpia lines.ot antes); se descuenta aquí, una sola vez. Si una OT trae stockDescontado (otra vía), solo ítems libres */
