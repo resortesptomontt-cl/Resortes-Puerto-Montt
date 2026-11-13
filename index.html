@@ -1491,11 +1491,17 @@ window.abrirWA=function(url){
     </div>
   </div>
   <div class="card">
-    <div class="card-title"><div class="card-title-left">Historial de ventas</div></div>
+    <div class="card-title">
+      <div class="card-title-left">Historial de ventas</div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)">
+        <span id="v-vista-label">Mes actual</span>
+        <button class="btn btn-xs" id="v-ver-todas-btn" type="button" onclick="toggleVentasVerTodas()">Ver todas</button>
+      </div>
+    </div>
     <div class="sbar">
       <input id="sv" placeholder="Buscar folio, cliente, patente..." oninput="renderVentas()">
-      <input id="sv-desde" type="date" oninput="renderVentas()">
-      <input id="sv-hasta" type="date" oninput="renderVentas()">
+      <input id="sv-desde" type="date" oninput="renderVentas()" title="Desde">
+      <input id="sv-hasta" type="date" oninput="renderVentas()" title="Hasta">
     </div>
     <div id="resumen-ventas" style="font-size:11px;color:var(--text2);margin-bottom:10px"></div>
     <div id="lista-ventas"></div>
@@ -3517,11 +3523,189 @@ function save(){
   _lastSaveTime=Date.now();
   // v18: fotos -> IndexedDB (y repone las que vengan vacías); localStorage sin fotos
   _fotosSync();
+  _syTrack(); // v29: registra qué registros cambiaron (pendientes de subir)
   _lsGuardarDB();
   // push to Firestore if connected
-  fbSave();
+  _syNoTrack=true;try{fbSave();}finally{_syNoTrack=false;}
 }
+// ══════════════════════════════════════════════════
+// v29 — SINCRONIZACIÓN POR REGISTRO
+// · Cambios locales pendientes persistentes (localStorage ts3__sync_v29): sobreviven a recargas
+// · Al guardar: transacción que lee la nube y FUSIONA por id/folio (no reemplaza listas completas)
+// · Conflictos: gana el más reciente (_u = ms del último cambio del registro)
+// · Borrados: lápidas (_del[col][clave]=ms) para que no resuciten
+// · Folios nuevos repetidos entre equipos: se renumera el del equipo que sube después
+// ══════════════════════════════════════════════════
+const SY_LS='ts3__sync_v29',SY_DEL_DIAS=120;
+const SY_SKIP=['imgs','tsxFotosRec','docAdj','tsxFirmas']; // solo locales: no cuentan como cambio
+const SY_OBJ=['comisionesAjustadas','_cfg'];                 // valores que no son listas
+const SY_DEV=(()=>{try{let d=localStorage.getItem('ts3__dev');if(!d){d=Date.now().toString(36).slice(-4)+Math.random().toString(36).slice(2,6);localStorage.setItem('ts3__dev',d);}return d;}catch(e){return 'x'+Math.random().toString(36).slice(2,8);}})();
+let SY={pend:{},del:{},err:null};
+try{const s=JSON.parse(localStorage.getItem(SY_LS)||'null');if(s&&typeof s==='object')SY={pend:s.pend||{},del:s.del||{},err:s.err||null};}catch(e){}
+let _sySeen=null,_syNoTrack=false,_syLsFallo=false;
+function _syH(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return s.length+':'+(h>>>0).toString(36);}
+function _syRecH(it){if(!it||typeof it!=='object')return 'v:'+String(it);let o=it;if(SY_SKIP.some(k=>k in it)){o={...it};SY_SKIP.forEach(k=>delete o[k]);}return _syH(JSON.stringify(o));}
+function _syKey(x){if(x&&typeof x==='object'){if(x.id!=null&&x.id!=='')return 'i:'+x.id;if(x.folio!=null&&x.folio!=='')return 'f:'+x.folio;return 'j:'+_syRecH(x);}return 'v:'+String(x);}
+function _syKeys(arr){const c=new Map();return arr.map(x=>{const k=_syKey(x);const n=c.get(k)||0;c.set(k,n+1);return n?k+'#'+n:k;});}
+function _syCfgVal(){try{return typeof CFG!=='undefined'?CFG:undefined;}catch(e){return undefined;}}
+function _syObjH(k){const v=k==='_cfg'?_syCfgVal():DB[k];if(v===undefined||v===null)return null;try{return _syH(JSON.stringify(v));}catch(e){return null;}}
+function _syCols(){const c=Object.keys(DB);return c.concat(['_cfg']);}
+function _sySeenReset(){_sySeen={};_syCols().forEach(col=>{
+  if(SY_OBJ.includes(col)){_sySeen['@'+col]=_syObjH(col);return;}
+  const v=DB[col];if(!Array.isArray(v))return;const m=new Map();const ks=_syKeys(v);v.forEach((it,i)=>m.set(ks[i],_syRecH(it)));_sySeen[col]=m;});}
+// Compara DB con lo último visto y registra altas/ediciones (pend) y borrados (del)
+function _syTrack(){
+  if(!_sySeen){_sySeenReset();return false;}
+  const now=Date.now();let ch=false;
+  _syCols().forEach(col=>{
+    if(SY_OBJ.includes(col)){const h=_syObjH(col),o=_sySeen['@'+col];if(h!==null&&o!=null&&h!==o){(SY.pend['@']||(SY.pend['@']={}))[col]=now;ch=true;}if(h!==null)_sySeen['@'+col]=h;return;}
+    const v=DB[col];if(!Array.isArray(v))return;
+    const seen=_sySeen[col]||(_sySeen[col]=new Map());const ks=_syKeys(v);const vis=new Set();
+    const P=SY.pend[col]||{},D=SY.del[col]||{};let cc=false;
+    v.forEach((it,i)=>{const k=ks[i];vis.add(k);let h=_syRecH(it);const old=seen.get(k);if(old===h)return;
+      if(it&&typeof it==='object'&&k[0]!=='j'){it._u=now;if(old===undefined&&!it._ci)it._ci=SY_DEV+now.toString(36);h=_syRecH(it);}
+      seen.set(k,h);P[k]=now;delete D[k];cc=true;});
+    seen.forEach((h,k)=>{if(vis.has(k))return;seen.delete(k);D[k]=now;delete P[k];cc=true;});
+    if(cc){ch=true;if(Object.keys(P).length)SY.pend[col]=P;else delete SY.pend[col];if(Object.keys(D).length)SY.del[col]=D;else delete SY.del[col];}
+  });
+  if(ch)_sySave();return ch;}
+function _syCount(){let n=0;['pend','del'].forEach(t=>Object.values(SY[t]||{}).forEach(m=>{n+=Object.keys(m||{}).length;}));return n;}
+function _syOldest(){let o=Infinity;['pend','del'].forEach(t=>Object.values(SY[t]||{}).forEach(m=>Object.values(m||{}).forEach(ts=>{if(ts<o)o=ts;})));return o;}
+function _sySave(){try{localStorage.setItem(SY_LS,JSON.stringify(SY));}catch(e){_syLsFallo=true;}window._fbDirtyFlag=_syCount()>0;_syUI();}
+// Quita de pendientes lo que ya se resolvió en la nube (solo si no se volvió a cambiar mientras subía)
+function _syLimpiar(snap){['pend','del'].forEach(t=>Object.keys(snap[t]||{}).forEach(c=>{const S=SY[t][c];if(!S)return;Object.keys(snap[t][c]).forEach(k=>{if(S[k]===snap[t][c][k])delete S[k];});if(!Object.keys(S).length)delete SY[t][c];}));}
+function _syVacio(v){return !v||(Array.isArray(v)?!v.length:(typeof v==='object'&&!Object.keys(v).length));}
+function _syKeepLocal(c,l){if(!l||!c||typeof c!=='object'||typeof l!=='object')return c;if((c._ci||'')!==(l._ci||''))return c;let r=c;SY_SKIP.forEach(f=>{if(!_syVacio(l[f])&&_syVacio(c[f])){if(r===c)r={...c};r[f]=l[f];}});return r;}
+function _syNextFolio(old,arrs){const m=/^(.*?)(\d+)$/.exec(String(old));if(!m)return String(old)+'-'+SY_DEV.slice(0,3);
+  let mx=0;arrs.forEach(a=>(a||[]).forEach(x=>{if(!x||x.folio==null)return;const q=/^(.*?)(\d+)$/.exec(String(x.folio));if(q&&q[1]===m[1])mx=Math.max(mx,parseInt(q[2],10)||0);}));
+  return m[1]+String(mx+1).padStart(m[2].length,'0');}
+// Fusión nube + local. cloud/local: objetos planos {col:[...], _cfg:{}, ...}; sy: {pend,del}
+function _syMergeFlat(cloud,local,sy){
+  cloud=cloud||{};sy=sy||SY;const out={},ren=[],drop={pend:[],del:[]},dirty=new Set(),pendObjs=new Set();let changed=false;
+  const CDall=cloud._del||{};
+  const cols=new Set();[cloud,local].forEach(o=>Object.keys(o||{}).forEach(k=>{if(!_fbMeta(k)&&k!=='_del')cols.add(k);}));
+  cols.forEach(col=>{
+    const C=cloud[col],L=local[col];
+    if(SY_OBJ.includes(col)||(!Array.isArray(C)&&!Array.isArray(L))){
+      const pl=sy.pend['@']&&sy.pend['@'][col];if(pl)dirty.add(col);
+      if(pl||C===undefined)out[col]=L;else{out[col]=C;try{if(L!==undefined&&JSON.stringify(C)!==JSON.stringify(L))changed=true;}catch(e){}}
+      return;}
+    const P=sy.pend[col]||{},D=sy.del[col]||{},CD=CDall[col]||{};
+    if(Object.keys(P).length||Object.keys(D).length)dirty.add(col);
+    if(!Array.isArray(C)){out[col]=L;return;}
+    if(!Array.isArray(L)){out[col]=C;if(L!==undefined)changed=true;return;}
+    const lk=_syKeys(L),ck=_syKeys(C),Lm=new Map(),Cm=new Map();L.forEach((x,i)=>Lm.set(lk[i],x));C.forEach((x,i)=>Cm.set(ck[i],x));
+    const res=[],resK=[],toRen=[];
+    C.forEach((c,i)=>{const k=ck[i],cu=(c&&c._u)||0;
+      if(D[k]!=null){if(cu>D[k]){res.push(c);resK.push(k);drop.del.push([col,k]);changed=true;}return;} // borrado aquí (salvo que otro equipo lo editara después)
+      const l=Lm.get(k);
+      if(P[k]!=null&&l!==undefined){
+        if(k[0]==='f'&&l&&l._ci&&(c&&c._ci)!==l._ci){res.push(c);resK.push(k);toRen.push({l,i:res.length-1});changed=true;return;} // mismo folio creado en 2 equipos
+        if(cu>P[k]){res.push(_syKeepLocal(c,l));resK.push(k);drop.pend.push([col,k]);changed=true;return;} // otro equipo lo editó después
+        res.push(l);resK.push(k);pendObjs.add(l);return;}
+      if(l===undefined||_syRecH(l)!==_syRecH(c))changed=true;
+      res.push(l!==undefined?_syKeepLocal(c,l):c);resK.push(k);});
+    L.forEach((l,i)=>{const k=lk[i];if(Cm.has(k))return;
+      if(P[k]==null){changed=true;return;}                       // ya no está en la nube y no es cambio local
+      if(CD[k]!=null&&CD[k]>=P[k]){drop.pend.push([col,k]);changed=true;return;} // otro equipo lo borró después
+      if(l&&typeof l==='object'&&l._ci&&l.folio!=null&&C.some(c=>c&&c.folio===l.folio&&c._ci!==l._ci)){toRen.push({l,i:-1});return;}
+      let pos=0;for(let j=i-1;j>=0;j--){const p=resK.indexOf(lk[j]);if(p>=0){pos=p+1;break;}}
+      res.splice(pos,0,l);resK.splice(pos,0,k);pendObjs.add(l);});
+    toRen.forEach(({l})=>{const old=l.folio;const nw=_syNextFolio(old,[res,L,toRen.map(t=>t.l)]);const n={...l,folio:nw};
+      ren.push({col,old,nw});const p=resK.indexOf('f:'+old);const pos=p>=0?p:0;res.splice(pos,0,n);resK.splice(pos,0,_syKey(n));pendObjs.add(n);dirty.add(col);changed=true;});
+    out[col]=res;});
+  if(ren.length)Object.keys(out).forEach(col=>{const a=out[col];if(!Array.isArray(a))return;
+    for(let i=0;i<a.length;i++){const r=a[i];if(!r||typeof r!=='object'||!pendObjs.has(r))continue;let c2=null;
+      for(const f in r){const v=r[f];if(typeof v!=='string')continue;const R=ren.find(x=>x.old===v&&!(x.col===col&&f==='folio'));if(R){c2=c2||{...r};c2[f]=R.nw;}}
+      if(c2){a[i]=c2;pendObjs.add(c2);dirty.add(col);}}});
+  return {flat:out,ren,drop,changed,dirty};}
+// Aplica datos de la nube SIN perder cambios locales pendientes (modifica 'data' en el lugar)
+function _syAplicarNube(data){
+  if(!data)return null;
+  try{
+    _syTrack();
+    const local={};Object.keys(DB).forEach(k=>local[k]=DB[k]);const cf=_syCfgVal();if(cf!==undefined)local._cfg=cf;
+    const m=_syMergeFlat(data,local,SY);
+    Object.keys(m.flat).forEach(k=>{if(k in data)data[k]=m.flat[k];});
+    if(SY.pend['@']&&SY.pend['@']._cfg)delete data._cfg;
+    m.drop.pend.forEach(([c,k])=>{if(SY.pend[c]){delete SY.pend[c][k];if(!Object.keys(SY.pend[c]).length)delete SY.pend[c];}});
+    m.drop.del.forEach(([c,k])=>{if(SY.del[c]){delete SY.del[c][k];if(!Object.keys(SY.del[c]).length)delete SY.del[c];}});
+    if(m.ren.length){const now=Date.now();m.ren.forEach(r=>{const P=SY.pend[r.col]||(SY.pend[r.col]={});delete P['f:'+r.old];
+      const n=(data[r.col]||[]).find(x=>x&&x.folio===r.nw);if(n)P[_syKey(n)]=now;});
+      setTimeout(()=>{try{toast('⚠ Folio repetido con otro equipo: '+m.ren.map(r=>r.old+' → '+r.nw).join(', '),'warn');}catch(e){}},50);}
+    _sySave();
+    return m;
+  }catch(e){console.error('v29 fusión',e);return null;}
+}
+function _syErrTxt(e){const c=(e&&e.code)||'',m=(e&&e.msg)||'';
+  if(c==='sdk')return 'no cargó Firebase al abrir la app (sin internet)';
+  if(c==='ls')return 'la memoria del navegador está llena';
+  if(c==='too-big')return 'el documento «'+m+'» llegó al límite de 1 MB';
+  if(c==='shrink')return 'guardado bloqueado: se iban a borrar muchos registros';
+  if(c==='permission-denied')return 'la nube rechazó el guardado (permiso denegado)';
+  if(c==='unauthenticated')return 'la sesión con la nube no es válida';
+  if(c==='resource-exhausted')return 'se agotó la cuota diaria de la nube';
+  if(c==='deadline-exceeded'||m==='TIMEOUT')return 'la nube no respondió (conexión lenta)';
+  if(!navigator.onLine||c==='unavailable'||/offline/i.test(m))return 'sin conexión a internet';
+  return 'error de la nube ('+(c||m||'desconocido')+')';}
+let _syUIt=null,_syVisto=false,_syOkT=null,_syEst='connecting';
+function _syUI(st){
+  try{
+    if(st)_syEst=st;
+    const n=_syCount();window._fbDirtyFlag=n>0;
+    const dot=document.getElementById('sync-dot'),txt=document.getElementById('sync-txt'),wrap=document.getElementById('sync-status');
+    let bar=document.getElementById('sy-bar');
+    if(!bar&&document.body){bar=document.createElement('div');bar.id='sy-bar';bar.setAttribute('role','status');
+      bar.innerHTML='<span id="sy-bar-msg"></span><button type="button" id="sy-bar-btn" onclick="sySubirPendientes()">⬆ Subir pendientes</button>';document.body.appendChild(bar);}
+    let db=null;try{db=_fbDb;}catch(e){}
+    const busy=!!window._syBusy,off=!navigator.onLine,err=SY.err||(_syLsFallo?{code:'ls'}:null);
+    const edad=n?Date.now()-_syOldest():0;
+    const alerta=n>0&&!busy&&(!!err||off||edad>4000);
+    clearTimeout(_syUIt);if(n>0&&!alerta&&!busy)_syUIt=setTimeout(()=>_syUI(),4200);
+    if(wrap){wrap.classList.toggle('sy-warn',alerta);wrap.style.cursor=n?'pointer':'default';wrap.onclick=n?()=>sySubirPendientes():null;
+      wrap.title=n?'Cambios sin subir a la nube: '+n+' (toca para subir)':'Estado sincronización';}
+    if(dot&&txt){
+      if(n>0&&busy){dot.style.background='var(--accent2)';txt.textContent='Subiendo ('+n+')…';}
+      else if(alerta){dot.style.background='var(--red)';txt.textContent='Sin subir ('+n+')';}
+      else if(n>0){dot.style.background='var(--amber)';txt.textContent='Guardando…';}
+      else if(_syEst==='online'){dot.style.background='var(--green)';txt.textContent='Guardado en la nube ✓';}
+    }
+    if(!bar)return;
+    const msg=document.getElementById('sy-bar-msg'),btn=document.getElementById('sy-bar-btn');
+    if(n>0&&(alerta||(busy&&_syVisto))){
+      clearTimeout(_syOkT);_syVisto=true;
+      const mot=err?_syErrTxt(err):off?'sin conexión a internet':!db||!window._syInitOk?'la nube todavía no conecta':'aún no se confirma en la nube';
+      bar.className='on '+(err||off?'red':'amber');
+      msg.innerHTML=busy?'⏳ Subiendo '+n+' cambio'+(n>1?'s':'')+' a la nube…':'⚠ <b>Sin subir ('+n+')</b> — '+mot+'. Tus cambios están guardados solo en este equipo: no borres los datos del navegador.';
+      btn.style.display='';btn.disabled=busy;btn.textContent=busy?'Subiendo…':'⬆ Subir pendientes';
+    }else if(n===0&&_syVisto){
+      _syVisto=false;bar.className='on green';msg.innerHTML='✓ Guardado en la nube. No quedan cambios pendientes.';btn.style.display='none';
+      clearTimeout(_syOkT);_syOkT=setTimeout(()=>{if(!_syCount())bar.className='';},3500);
+    }else if(n===0&&bar.className.indexOf('green')<0)bar.className='';
+  }catch(e){}
+}
+function _syCargarJS(src){return new Promise((ok,ko)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>{s.remove();ko(new Error('SDK'));};document.head.appendChild(s);});}
+function _syUnlisten(){
+  (window._syUnsubs||[]).forEach(u=>{try{if(typeof u==='function')u();}catch(e){}});
+  window._syUnsubs=[];window._syListen=false;
+}
+async function _syReinit(){
+  if(window._syIniciando)return;
+  _syUnlisten();
+  try{if(typeof firebase==='undefined'){await _syCargarJS('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');await _syCargarJS('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js');}}
+  catch(e){SY.err={code:'sdk',t:Date.now()};_sySave();return;}
+  try{await fbInit();}catch(e){console.warn('v29 reinit',e);}
+}
+window.sySubirPendientes=function(){
+  if(window._syBusy)return;
+  SY.err=null;_syLsFallo=false;_sySave();
+  if(!navigator.onLine)toast('Sin internet: se subirá solo apenas vuelva la conexión','warn');
+  let db=null;try{db=_fbDb;}catch(e){}
+  if(!db||!window._syInitOk)return _syReinit();
+  return fbSaveNow();
+};
 load();
+_sySeenReset(); // v29: punto de partida = lo guardado en este equipo
 // ══════════════════════════════════════════════════
 // v18 — FOTOS LOCALES: IndexedDB 'tallersys_fotos' (nunca a Firestore ni a localStorage)
 // claves: 'ot:<folio>' (o.imgs), 'rec:<folio>' (o.tsxFotosRec), 'veh:<id>' (v.imgs)
@@ -3569,7 +3753,8 @@ function _fotoSinImgs(k,arr){
   if(!_fotoListo||(k!=='ordenes'&&k!=='vehiculos')||!Array.isArray(arr))return arr;
   return arr.map(it=>{if(it&&((it.imgs&&it.imgs.length)||(it.tsxFotosRec&&it.tsxFotosRec.length))){const c={...it};if(c.imgs&&c.imgs.length)c.imgs=[];if(c.tsxFotosRec&&c.tsxFotosRec.length)c.tsxFotosRec=[];return c;}return it;});
 }
-function _lsGuardarDB(){Object.keys(DB).forEach(k=>{try{localStorage.setItem('ts3_'+k,JSON.stringify(_fotoSinImgs(k,DB[k])));}catch(e){}});}
+function _lsGuardarDB(){let f=false;Object.keys(DB).forEach(k=>{try{localStorage.setItem('ts3_'+k,JSON.stringify(_fotoSinImgs(k,DB[k])));}catch(e){f=true;}});
+  if(f&&!_syLsFallo){_syLsFallo=true;console.warn('v29: localStorage lleno — los datos de este equipo no quedan respaldados localmente');try{_syUI();}catch(e){}}}
 // Captura sincrónica de las fotos que ya existen (localStorage antiguo) antes de que llegue la nube
 const _fotoInicial=[];
 _FOTO_CAMPOS.forEach(([col,campo,pref])=>(DB[col]||[]).forEach(it=>{if(it&&Array.isArray(it[campo])&&it[campo].length)_fotoInicial.push({k:_fotoKey(pref,it),campo,col,orig:it[campo],creado:it.creado||''});}));
@@ -3614,7 +3799,7 @@ function migrarMeses(){
 }
 migrarMeses(); // Ejecutar al cargar desde localStorage
 // Inicializar categorías con defaults si está vacío
-if(!DB.categorias||DB.categorias.length===0){DB.categorias=[...CATS_DEFAULT];save();}
+if(!DB.categorias||DB.categorias.length===0){DB.categorias=[...CATS_DEFAULT];_sySeenReset();_lsGuardarDB();} // v29: los valores por defecto no cuentan como cambio a subir
 
 // ══════════════════════════════════════════════════
 // CATEGORÍAS — helpers
@@ -4379,7 +4564,13 @@ function dashMesActual(){
   renderDashboard();
 }
 
+function _dashEstaVisible(){
+  try{const d=document.getElementById('sec-dashboard');return !!(d&&d.classList.contains('active'));}catch(e){return false;}
+}
+window._dashEstaVisible=_dashEstaVisible;
 function renderDashboard(){
+  if(!window._dashForzar&&!_dashEstaVisible()){window._dashPendiente=true;return;}
+  window._dashPendiente=false;
   const mesActual=today().slice(0,7);
   const esMesActual=_dashMes===mesActual;
 
@@ -5682,6 +5873,7 @@ function editItemInline(tipo, folio, idx, field, val){
     return s+sub+iva;
   },0)-(+rec.descuento||0)); // fix v8: antes se perdía el descuento global
   save();
+  if(tipo==='v')_vOpen.add(folio);
   if(tipo==='ot')renderOTs();
   else if(tipo==='v')renderVentas();
   else renderCots();
@@ -5707,6 +5899,7 @@ function addItemInline(tipo, folio){
     return s+s2+(it.iva?Math.round(s2*0.19):0);
   },0)-(+rec.descuento||0)); // fix v8
   save();
+  if(tipo==='v')_vOpen.add(folio);
   if(tipo==='ot')renderOTs();
   else if(tipo==='v')renderVentas();
   else renderCots();
@@ -6459,17 +6652,7 @@ function renderOTs(){
           <span>Monto: <strong style="font-family:'JetBrains Mono',monospace">${fmt(o.docMonto||o.total)}</strong></span>
           ${o.docAdj?`<button class="btn btn-xs btn-teal" onclick="event.stopPropagation();verDocAdj(DB.ordenes.find(x=>x.folio==='${o.folio}')?.docAdj,'${o.docAdjNom||'factura'}')">📎 Ver factura adjunta</button>`:''}
         </div>`:''}
-        ${(o.imgs&&o.imgs.length)?`
-          <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">📷 Fotos de evidencia (${o.imgs.length})</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-            ${o.imgs.map((img,ix)=>`
-              <div style="position:relative;display:inline-block">
-                <img src="${img}" onclick="abrirLightbox(DB.ordenes.find(x=>x.folio==='${o.folio}')?.imgs||[],${ix})"
-                  style="width:88px;height:68px;object-fit:cover;border-radius:var(--radius);cursor:zoom-in;border:1px solid var(--border);transition:transform .15s"
-                  onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">
-                <div style="position:absolute;bottom:3px;right:3px;background:rgba(0,0,0,.5);border-radius:3px;padding:1px 4px;font-size:9px;color:#fff;pointer-events:none">${ix+1}/${o.imgs.length}</div>
-              </div>`).join('')}
-          </div>`:''}
+        ${(o.imgs&&o.imgs.length)?`<div class="ot-fotos-ph" data-ot-fotos="${o.folio}" style="font-size:11px;color:var(--text2);margin-bottom:12px">📷 ${o.imgs.length} foto${o.imgs.length!==1?'s':''} de evidencia — se muestran al abrir la orden</div>`:''}
         ${(()=>{
           const r=reaprieteEstado(o);
           if(!r||r.tipo==='esperaEntrega')return'';
@@ -6519,6 +6702,7 @@ function renderOTs(){
     html+=entregadas.map(o=>renderRow(o)).join('');
   }
   el.innerHTML=html;
+  try{document.querySelectorAll('#lista-ots .exp-body.open[id^="ot-"]').forEach(b=>fillOTFotos(b.id.slice(3)));}catch(e){}
 }
 // ── Modal forma de pago OT → Venta ────────────────
 let _fpagoOTFolio=null;
@@ -8051,6 +8235,7 @@ function eliminarVenta(folio){
   save();renderVentas();renderDashboard();toast('Venta eliminada');
 }
 function renderVentas(){
+  ventasAsegurarFechas();
   const q=($('sv')?.value||'').toLowerCase();
   const desde=$('sv-desde')?.value||'';
   const hasta=$('sv-hasta')?.value||'';
@@ -8060,7 +8245,8 @@ function renderVentas(){
   if(hasta)lista=lista.filter(v=>v.fecha<=hasta);
   const tot=lista.reduce((s,v)=>s+v.total,0);
   const rv=$('resumen-ventas');
-  rv.textContent=lista.length?`${lista.length} venta${lista.length!==1?'s':''} — Total: ${fmt(tot)}`:'';
+  rv.textContent=lista.length?`${lista.length} venta${lista.length!==1?'s':''} — Total: ${fmt(tot)} · Pulsa una venta para ver o editar ítems`:'';
+  ventasSyncLabel();
   const el=$('lista-ventas');
   if(!lista.length){el.innerHTML='<div class="empty"><div class="empty-icon">🧾</div>No hay ventas</div>';return;}
   el.innerHTML=lista.map(v=>`
@@ -8080,7 +8266,49 @@ function renderVentas(){
           <div style="font-size:10px;color:var(--text2)">${v.fecha||''} · ${v.items.length} ítem${v.items.length!==1?'s':''}</div>
         </div>
       </div>
-      <div class="exp-body" id="v-${v.folio}">
+      <div class="exp-body" id="v-${v.folio}" data-vfolio="${v.folio}"></div>
+    </div>`).join('');
+  // Restaura filas que ya estaban abiertas (editar ítem, etc.)
+  (_vOpen||new Set()).forEach(f=>{const b=$('v-'+f);if(b){b.classList.add('open');fillVentaBody(f);}});
+}
+let _vVerTodas=false,_vFechasInit=false,_vOpen=new Set();
+function _vMesFechas(){
+  const t=today(),m=t.slice(0,7);
+  const last=new Date(+m.slice(0,4),+m.slice(5,7),0).getDate();
+  return {desde:m+'-01',hasta:m+'-'+String(last).padStart(2,'0')};
+}
+function ventasAsegurarFechas(){
+  if(_vVerTodas||_vFechasInit)return;
+  _vFechasInit=true;
+  const r=_vMesFechas(),d=$('sv-desde'),h=$('sv-hasta');
+  if(d&&!d.value)d.value=r.desde;
+  if(h&&!h.value)h.value=r.hasta;
+}
+function ventasSyncLabel(){
+  const btn=$('v-ver-todas-btn'),lbl=$('v-vista-label');
+  const r=_vMesFechas(),d=$('sv-desde')?.value||'',h=$('sv-hasta')?.value||'';
+  if(_vVerTodas&&!d&&!h){if(lbl)lbl.textContent='Todas las ventas';if(btn)btn.textContent='← Volver a mes actual';return;}
+  if(d===r.desde&&h===r.hasta){if(lbl)lbl.textContent='Mes actual';if(btn)btn.textContent='Ver todas';_vVerTodas=false;return;}
+  if(lbl)lbl.textContent=(d||h)?'Rango personalizado':'Todas las ventas';
+  if(btn)btn.textContent='← Volver a mes actual';
+}
+function toggleVentasVerTodas(){
+  const r=_vMesFechas(),d=$('sv-desde'),h=$('sv-hasta');
+  const all=_vVerTodas&&!(d&&d.value)&&!(h&&h.value);
+  if(all){
+    _vVerTodas=false;
+    if(d)d.value=r.desde;if(h)h.value=r.hasta;
+  }else{
+    _vVerTodas=true;
+    if(d)d.value='';if(h)h.value='';
+  }
+  renderVentas();
+}
+function fillVentaBody(folio){
+  const el=$('v-'+folio);if(!el)return;
+  const v=(DB.ventas||[]).find(x=>x.folio===folio);if(!v)return;
+  if(el.dataset.filled==='1'&&el.dataset.filledFolio===folio)return;
+  el.innerHTML=`
         ${v.mecanico?`<div style="font-size:12px;color:var(--text2);margin-bottom:8px">👷 ${v.mecanico}</div>`:''}
         <div class="tw" style="margin-bottom:10px"><table><thead><tr><th>Producto</th><th>Cant.</th><th>P.Unit.</th><th>Dto %</th><th class="tr">Subtotal</th><th></th></tr></thead>
           <tbody>${v.items.map((it,ix)=>{
@@ -8120,14 +8348,13 @@ function renderVentas(){
         </div>`:''}
           <button class="btn btn-xs" onclick="event.stopPropagation();imprimirVenta('${v.folio}')">🖨 PDF</button>
           <button class="btn btn-xs btn-red" onclick="event.stopPropagation();eliminarVenta('${v.folio}')">🗑 Eliminar</button>
-        </div>
-      </div>
-    </div>`).join('');
+        `;
+  el.dataset.filled='1';el.dataset.filledFolio=folio;
 }
+window.toggleVentasVerTodas=toggleVentasVerTodas;
+window.fillVentaBody=fillVentaBody;
 
-// ══════════════════════════════════════════════════
-// CRÉDITOS / CUENTAS POR COBRAR
-// ══════════════════════════════════════════════════
+
 function estadoCredito(cr){
   const hoy=today();
   if(cr.saldo<=0)return'Pagado';
@@ -10918,12 +11145,38 @@ function buildDocVenta(v,vh){
 function toggle(id){
   const el=$(id);if(!el)return;
   // If element has inline display:none, toggle inline style (cli-cred panels)
-  if(el.style.display==='none'){el.style.display='block';return;}
+  if(el.style.display==='none'){el.style.display='block';_expOpened(id,true);return;}
   if(el.style.display==='block'&&!el.classList.contains('exp-body')){el.style.display='none';return;}
   // Otherwise use .open class (exp-body elements)
   el.classList.toggle('open');
+  _expOpened(id,el.classList.contains('open'));
 }
+function _expOpened(id,open){
+  if(!id)return;
+  if(id.indexOf('v-')===0){const f=id.slice(2);if(open){_vOpen.add(f);try{fillVentaBody(f);}catch(e){}}else _vOpen.delete(f);}
+  if(open&&id.indexOf('ot-')===0){try{fillOTFotos(id.slice(3));}catch(e){}}
+}
+window.addEventListener('beforeprint',()=>{
+  try{document.querySelectorAll('#lista-ventas .exp-body[data-vfolio]').forEach(el=>fillVentaBody(el.dataset.vfolio));}catch(e){}
+  try{document.querySelectorAll('[data-ot-fotos]').forEach(el=>fillOTFotos(el.getAttribute('data-ot-fotos')));}catch(e){}
+});
 
+function fillOTFotos(folio){
+  const box=document.querySelector('[data-ot-fotos="'+String(folio).replace(/"/g,'')+'"]');
+  if(!box||box.dataset.filled==='1')return;
+  const o=(DB.ordenes||[]).find(x=>x.folio===folio);
+  if(!o||!o.imgs||!o.imgs.length){if(box)box.remove();return;}
+  box.innerHTML=`<div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">📷 Fotos de evidencia (${o.imgs.length})</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${o.imgs.map((img,ix)=>`
+      <div style="position:relative;display:inline-block">
+        <img src="${img}" onclick="abrirLightbox(DB.ordenes.find(x=>x.folio==='${o.folio}')?.imgs||[],${ix})"
+          style="width:88px;height:68px;object-fit:cover;border-radius:var(--radius);cursor:zoom-in;border:1px solid var(--border);transition:transform .15s"
+          onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">
+        <div style="position:absolute;bottom:3px;right:3px;background:rgba(0,0,0,.5);border-radius:3px;padding:1px 4px;font-size:9px;color:#fff;pointer-events:none">${ix+1}/${o.imgs.length}</div>
+      </div>`).join('')}</div>`;
+  box.dataset.filled='1';
+}
+window.fillOTFotos=fillOTFotos;
 // ══════════════════════════════════════════════════
 // AGENDA — Notas, Recordatorios, Reservas
 // ══════════════════════════════════════════════════
@@ -13178,6 +13431,7 @@ function buildPDFVac(m,v){
 }
 
 function _aplicarUpdateFirebase(data){
+  _syAplicarNube(data); // v29: fusiona con cambios locales pendientes (no los pisa)
   _fbMarcarRecibido(data); // v24: _updated por documento
   _ocultarBannerDatosNuevos();
   const _firmas=_fbFirmasLocales(data); // v24: firmas solo en este equipo
@@ -13189,8 +13443,12 @@ function _aplicarUpdateFirebase(data){
   _fotosSync(); // v18: reponer fotos locales
   _lsGuardarDB();
   if(data._cfg&&typeof data._cfg==='object'){CFG=_cfgMigV14(Object.assign({},CFG_DEFAULT,data._cfg));if(!CFG.logo)CFG.logo=BRAND_LOGO;saveCfg(CFG);}
-  llenarSelectsCat();renderDashboard();updateBadges();
+  _sySeenReset(); // v29
+  llenarSelectsCat();updateBadges();
+  try{vencerCots();pintar();}catch(e){}
+  if(_dashEstaVisible())renderDashboard();else window._dashPendiente=true;
   _fbTrasAplicar(data);
+  if(_syCount())setTimeout(()=>{try{fbSave();}catch(e){}},400); // v29: subir lo pendiente
 }
 
 // Apply pending Firebase update when user stops interacting
@@ -13201,7 +13459,6 @@ document.addEventListener('focusout',()=>{
     setTimeout(()=>{
       const activeModal=document.querySelector('.modal-overlay[style*="flex"]');
       if(!activeModal){
-        if(_fbDirty()){window._pendingFBUpdate={data};return;}
         _aplicarUpdateFirebase(data);
         toast('🔄 Sincronizado con otro dispositivo','info');
       }
@@ -13215,7 +13472,7 @@ function setSyncUI(state){
   if(!dot||!txt)return;
   const map={
     connecting:{color:'var(--amber)',label:'Conectando...'},
-    online:     {color:'var(--green)', label:'Sincronizado ✓'},
+    online:     {color:'var(--green)', label:'Guardado en la nube ✓'},
     saving:     {color:'var(--accent2)',label:'Guardando...'},
     offline:    {color:'var(--text3)', label:'Sin conexión'},
     error:      {color:'var(--red)',   label:'Error sync'}
@@ -13223,6 +13480,7 @@ function setSyncUI(state){
   const s=map[state]||map.offline;
   dot.style.background=s.color;
   txt.textContent=s.label;
+  _syUI(state); // v29: muestra «Sin subir (N)» si hay pendientes
 }
 
 // ══════════════════════════════════════════════════
@@ -13671,12 +13929,12 @@ function renderCompras(){
 // v24 — BASE PARTIDA: taller/datos (núcleo) + taller/inventario + taller/ventas + taller/ordenes
 // Cada documento tiene su propio _updated; se escriben solo los que cambiaron, en UNA transacción.
 // ══════════════════════════════════════════════════
-const FB_SCHEMA=2,FB_APPV=8;
+const FB_SCHEMA=2,FB_APPV=9;
 const FB_PARTES={inventario:['inventario','categorias'],ventas:['ventas'],ordenes:['ordenes']};
 const FB_DOCS=['datos','inventario','ventas','ordenes'];
 const FB_BIG=[].concat(...Object.values(FB_PARTES));
 window._srvUpd={};window._fbHash={};window._fbSchema=0;window._fbRefs=null;window._fbEnVuelo=null;
-function _fbMeta(k){return k==='_updated'||k==='_schema'||k==='_appv'||k==='_parte'||k==='_partes'||k==='_srvUpd'||k==='_legacy'||k==='_snapDe'||k==='_snapFecha'||k==='_snapMotivo'||k==='_snapCounts';}
+function _fbMeta(k){return k==='_del'||k==='_updated'||k==='_schema'||k==='_appv'||k==='_parte'||k==='_partes'||k==='_srvUpd'||k==='_legacy'||k==='_snapDe'||k==='_snapFecha'||k==='_snapMotivo'||k==='_snapCounts';}
 function _fbParteDe(k){for(const p in FB_PARTES)if(FB_PARTES[p].includes(k))return p;return 'datos';}
 function _fbPartir(flat){const o={};FB_DOCS.forEach(d=>o[d]={});Object.keys(flat||{}).forEach(k=>{if(_fbMeta(k))return;o[_fbParteDe(k)][k]=flat[k];});return o;}
 function _fbKey(x){return x&&typeof x==='object'?(x.id!=null?'i:'+x.id:x.folio!=null?'f:'+x.folio:'j:'+JSON.stringify(x)):'v:'+String(x);}
@@ -13699,6 +13957,8 @@ function _fbUnir(docs){
   FB_DOCS.forEach(d=>{if(d==='datos'||!docs[d])return;const P=docs[d];
     if(!out._legacy)FB_PARTES[d].forEach(k=>{if(k in P)out[k]=P[k];});
     out._srvUpd[d]=P._updated||null;});
+  // v29: lápidas (registros borrados) de todos los documentos
+  out._del={};FB_DOCS.forEach(d=>{const P=docs[d];if(P&&P._del&&typeof P._del==='object')Object.keys(P._del).forEach(c=>{out._del[c]=Object.assign(out._del[c]||{},P._del[c]);});});
   return out;}
 function _fbMarcarRecibido(data){
   if(!data)return;
@@ -13727,9 +13987,11 @@ async function _fbLeerTodos(opts){
 let _fbDb=null, _fbSaveTimer=null, _fbListening=false;
 
 async function fbInit(){
+  if(window._syIniciando)return;window._syIniciando=true; // v29: se puede reintentar
   setSyncUI('connecting');
   try{
     if(typeof firebase==='undefined'){
+      SY.err={code:'sdk',t:Date.now()};_sySave();
       setSyncUI('offline');
       toast('Firebase SDK no cargó — sin conexión','warn');
       return;
@@ -13755,8 +14017,10 @@ async function fbInit(){
 
     // Load initial data
     const docs0=await _fbLeerTodos();
+    window._syInitOk=true;if(SY.err&&SY.err.code==='sdk'){SY.err=null;_sySave();}
     if(docs0.datos){
       const data=_fbUnir(docs0);
+      _syAplicarNube(data); // v29: NO pisa los cambios locales pendientes (se fusionan)
       _fbMarcarRecibido(data);
       const _firmas=_fbFirmasLocales(data);
       Object.keys(DB).forEach(k=>{if(Array.isArray(data[k]))DB[k]=data[k];});
@@ -13770,31 +14034,42 @@ async function fbInit(){
         CFG=_cfgMigV14(Object.assign({},CFG_DEFAULT,data._cfg));if(!CFG.logo)CFG.logo=BRAND_LOGO;
         saveCfg(CFG);
       }
+      _sySeenReset(); // v29
       llenarSelectsCat();renderDashboard();updateBadges();
       _fbTrasAplicar(data);
-      toast('✓ Datos sincronizados desde la nube','info');
+      toast(_syCount()?'✓ Datos de la nube unidos con '+_syCount()+' cambio(s) sin subir de este equipo':'✓ Datos sincronizados desde la nube','info');
     } else {
       await fbSaveNow();
       toast('✓ Datos subidos a la nube por primera vez','info');
     }
 
-    // Real-time listeners (uno por documento)
-    FB_DOCS.forEach(d=>window._fbRefs[d].onSnapshot(snap=>{
+    // Real-time listeners (uno por documento). Se desuscriben antes de volver a unir.
+    _syUnlisten();
+    window._syListen=true;window._syUnsubs=window._syUnsubs||[];
+    FB_DOCS.forEach(d=>window._syUnsubs.push(window._fbRefs[d].onSnapshot(snap=>{
       if(!snap.exists)return;
 
       if(snap.metadata&&snap.metadata.hasPendingWrites){setSyncUI('online');return;}
       _recibirRemoto(_fbUnir({[d]:snap.data()}),'snapshot:'+d);
       setSyncUI('online');
-    }));
-    window.addEventListener('focus',_recheckServidor);
-    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')_recheckServidor();});
+    },err=>{ // v29: antes los errores del listener se perdían en silencio
+      console.error('Firestore listener '+d+':',err);
+      _syUnlisten();window._syInitOk=false;
+      SY.err={code:(err&&err.code)||'listener',msg:(err&&err.message)||'',t:Date.now()};_sySave();setSyncUI('error');
+    })));
+    if(!window._syFocoOk){window._syFocoOk=true;
+    window.addEventListener('focus',_onTabBack);
+    document.addEventListener('visibilitychange',_onTabBack);}
 
     setSyncUI('online');
+    if(_syCount())setTimeout(()=>{try{fbSaveNow();}catch(e){}},300); // v29: al abrir, subir lo pendiente
   } catch(err){
     console.error('Firebase error:',err);
+    window._syInitOk=false;
+    SY.err={code:(err&&err.code)||'init',msg:(err&&err.message)||'',t:Date.now()};_sySave();
     setSyncUI('error');
     toast('Firebase no disponible — trabajando sin conexión','warn');
-  }
+  } finally{window._syIniciando=false;}
 }
 
 async function fbSaveNow(){
@@ -13849,10 +14124,10 @@ async function fbSaveNow(){
 }
 
 function fbSave(){
-  try{ if(!_fbDb)return; }catch(e){ return; } // fix: evita error TDZ en primer arranque
+  if(!_syNoTrack)_syTrack(); // v29
+  try{ if(!_fbDb){_syUI();return;} }catch(e){ return; } // fix: evita error TDZ en primer arranque
   // Debounce: wait 1.2s after last change before writing to Firestore
   clearTimeout(_fbSaveTimer);
-  window._fbDirtyFlag=true;
   setSyncUI('saving');
   _fbSaveTimer=setTimeout(()=>fbSaveNow(),1200);
 }
@@ -13869,7 +14144,7 @@ function _recibirRemoto(data,origen){
   // v24: solo cuentan los documentos con _updated distinto al que ya tenemos (o al que estamos guardando)
   const nuevos=Object.keys(data._srvUpd).filter(d=>{const u=data._srvUpd[d];return u&&u!==window._srvUpd[d]&&u!==window._fbEnVuelo;});
   if(!nuevos.length)return; // ya lo tenemos (o es nuestro propio guardado)
-  if(_fbDirty()||_hayFormAbierto()){
+  if(_hayFormAbierto()){ // v29: con cambios locales pendientes ya no hace falta esperar (se fusionan)
     const p=window._pendingFBUpdate&&window._pendingFBUpdate.data;
     window._pendingFBUpdate={data:p?Object.assign({},p,data,{_srvUpd:Object.assign({},p._srvUpd,data._srvUpd),_legacy:!!(p._legacy||data._legacy)}):data};
     _mostrarBannerDatosNuevos();
@@ -13879,13 +14154,28 @@ function _recibirRemoto(data,origen){
   try{window._renderActual&&window._renderActual();}catch(e){}
   toast('🔄 Datos actualizados desde otro equipo','info');
 }
+let _recheckAt=0,_recheckBusy=false,_tabBackT=null;
 async function _recheckServidor(){
+  const now=Date.now();
+  if(_recheckBusy)return;
+  if(now-_recheckAt<12000)return; // 12 s entre lecturas al volver a la pestaña
+  _recheckAt=now;_recheckBusy=true;
   try{
     if(!window._fbRefs)return;
     const docs=await _fbLeerTodos({source:'server'});
     if(docs.datos)_recibirRemoto(_fbUnir(docs),'recheck');
   }catch(e){}
+  finally{_recheckBusy=false;}
 }
+function _onTabBack(){
+  if(document.visibilityState==='hidden')return;
+  clearTimeout(_tabBackT);
+  _tabBackT=setTimeout(()=>{
+    try{_recheckServidor();}catch(e){}
+    try{if(typeof window._syReint==='function')window._syReint();}catch(e){}
+  },80);
+}
+window._onTabBack=_onTabBack;
 function _mostrarBannerDatosNuevos(){
   let b=document.getElementById('banner-datos-nuevos');
   if(!b){
@@ -13899,7 +14189,7 @@ function _mostrarBannerDatosNuevos(){
 function _ocultarBannerDatosNuevos(){const b=document.getElementById('banner-datos-nuevos');if(b)b.style.display='none';}
 function _aplicarPendienteAhora(){
   const p=window._pendingFBUpdate;if(!p)return _ocultarBannerDatosNuevos();
-  window._pendingFBUpdate=null;clearTimeout(_fbSaveTimer);window._fbDirtyFlag=false;
+  window._pendingFBUpdate=null; // v29: los cambios locales pendientes se conservan (fusión)
   document.querySelectorAll('.modal-overlay').forEach(m=>{if(m.style.display==='flex')m.style.display='none';});
   _aplicarUpdateFirebase(p.data);try{window._renderActual&&window._renderActual();}catch(e){}
   toast('🔄 Datos actualizados desde otro equipo','info');
@@ -13908,9 +14198,20 @@ function _alertaStale(){
   alert('Otro equipo guardó cambios. Se recargaron los datos; repite tu último cambio.');
 }
 // Re-render de la sección visible tras recargar datos
+let _raT=null;
 window._renderActual=function(){
-  try{const act=document.querySelector('.nav-item.active');if(act&&act.onclick)act.onclick();}catch(e){}
+  clearTimeout(_raT);
+  _raT=setTimeout(_renderActualAhora,200);
 };
+function _renderActualAhora(){
+  try{
+    const sec=document.querySelector('.section.active');
+    if(sec&&sec.id==='sec-dashboard'){renderDashboard();return;}
+    if(sec&&sec.id==='sec-inicio'){if(typeof gdRenderInicio==='function')gdRenderInicio();else if(window.gdRenderInicio)window.gdRenderInicio();return;}
+    const act=document.querySelector('.nav-item.active');if(act&&act.onclick)act.onclick();
+  }catch(e){}
+}
+window._renderActualAhora=_renderActualAhora;
 
 // ── PWA: instalación y actualizaciones ──
 let _pwaPrompt=null;
@@ -13927,7 +14228,7 @@ function _bannerNuevaVersion(reg){
   b.style.cssText='position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:99999;background:#121214;color:#fff;border:1px solid #B2121C;padding:10px 16px;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.4);font:600 13px system-ui,sans-serif;display:flex;gap:12px;align-items:center';
   b.innerHTML='<span>✨ Nueva versión disponible</span><button style="background:#B2121C;color:#fff;border:0;border-radius:6px;padding:6px 12px;font-weight:700;cursor:pointer">Recargar</button>';
   b.querySelector('button').onclick=()=>{
-    if(_fbDirty()){alert('Espera a que termine de guardar e intenta de nuevo.');return;}
+    if(window._syBusy){alert('Espera a que termine de guardar e intenta de nuevo.');return;} // v29: los pendientes sobreviven a la recarga
     if(reg&&reg.waiting)reg.waiting.postMessage('SKIP_WAITING');else location.reload();
   };
   document.body.appendChild(b);
@@ -14284,6 +14585,7 @@ function ensureChartsDom(){
   w.querySelector('#tsx-period').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;period=b.dataset.p;w.querySelectorAll('#tsx-period button').forEach(x=>x.classList.toggle('on',x===b));drawCharts();});
 }
 function drawCharts(){
+  if(typeof _dashEstaVisible==='function'&&!_dashEstaVisible()){window._dashPendiente=true;return;}
   ensureChartsDom();
   if(!window.Chart){setTimeout(drawCharts,800);return;}
   const sk=document.getElementById('tsx-sk1');if(sk)sk.remove();
@@ -14318,6 +14620,7 @@ window.tsxDrawCharts=drawCharts;
 /* count-up + clickable stats */
 const statMap=[[/ventas hoy|ingresos/i,'ventas'],[/gastos/i,'gastos'],[/utilidad|acum/i,'informes'],[/órdenes|ordenes/i,'ordenes'],[/cotiz/i,'cotizaciones'],[/cobrar/i,'creditos']];
 function enhanceStats(){
+  if(typeof _dashEstaVisible==='function'&&!_dashEstaVisible())return;
   document.querySelectorAll('#stats-bar .stat').forEach(st=>{
     const lbl=st.querySelector('.stat-lbl')?.textContent||'';const m=statMap.find(x=>x[0].test(lbl));
     if(m&&!st.getAttribute('onclick')){st.classList.add('tsx-click');st.title='Ir a '+m[1];st.onclick=()=>nav(m[1],null);}
@@ -15999,7 +16302,8 @@ function scan(){IDS.forEach(id=>{const e=document.getElementById(id);if(e)poner(
   if(pn&&!document.getElementById('gd-prt-new')){const st=window.gdW&&gdW()&&gdW().st;
     pn.closest('.gd-help').insertAdjacentHTML('afterend',`<div class="gd-card" id="gd-prt-new"><button type="button" class="prt-btn" style="margin:0 0 6px" onclick="prtAbrir({pat:(gdW()&&gdW().st.pat)||''})">🔎 Abrir PRT con ${String((st&&st.pat)||'').replace(/[^A-Z0-9]/g,'')}</button><div class="prt-help">Se copia la patente y se abre la consulta de revisión técnica. Pégala con Ctrl+V, resuelve el "No soy un robot" y vuelve aquí a escribir marca, modelo y año.</div></div>`);}
 }
-new MutationObserver(()=>{try{scan()}catch(e){}}).observe(document.body,{childList:true,subtree:true});
+let _prtScanT=null;
+new MutationObserver(()=>{clearTimeout(_prtScanT);_prtScanT=setTimeout(()=>{try{scan()}catch(e){}},150);}).observe(document.body,{childList:true,subtree:true});
 setTimeout(scan,900);
 })();
 </script>
@@ -16009,6 +16313,13 @@ setTimeout(scan,900);
 #sg-banner{position:fixed;left:0;right:0;bottom:0;z-index:99990;display:none;padding:10px 16px;font:600 13px system-ui,sans-serif;color:#fff;align-items:center;gap:10px;justify-content:center;flex-wrap:wrap;box-shadow:0 -4px 16px rgba(0,0,0,.3)}
 #sg-banner.on{display:flex}#sg-banner.red{background:#B2121C}#sg-banner.amber{background:#b45309}
 #sg-banner button{background:#fff;color:#B2121C;border:0;border-radius:6px;padding:5px 10px;font-weight:700;cursor:pointer}
+/* v29: aviso «Sin subir» */
+#sy-bar{position:fixed;top:62px;left:50%;transform:translateX(-50%);z-index:99995;display:none;max-width:min(680px,94vw);padding:10px 14px;border-radius:10px;font:600 13px/1.35 system-ui,sans-serif;color:#fff;align-items:center;gap:12px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+#sy-bar.on{display:flex}#sy-bar.red{background:#B2121C}#sy-bar.amber{background:#b45309}#sy-bar.green{background:#15803d}
+#sy-bar button{flex-shrink:0;background:#fff;color:#B2121C;border:0;border-radius:7px;padding:7px 12px;font:800 13px system-ui,sans-serif;cursor:pointer;white-space:nowrap}
+#sy-bar.amber button{color:#b45309}#sy-bar button:disabled{opacity:.6;cursor:wait}
+#sync-status.sy-warn{background:rgba(178,18,28,.12)!important;border-color:#B2121C!important;color:#B2121C;font-weight:800}
+@media(max-width:768px){#sy-bar{top:66px;left:8px;right:8px;transform:none;max-width:none;font-size:12px;padding:9px 10px;gap:8px}#sy-bar button{padding:8px 10px;font-size:12px}}
 .sg-meter{height:12px;border-radius:7px;background:var(--surface2);overflow:hidden;margin:6px 0}.sg-meter i{display:block;height:100%}
 .sg-tab{width:100%;border-collapse:collapse;font-size:12px}.sg-tab td,.sg-tab th{padding:6px;border-bottom:1px solid var(--border);text-align:left}
 </style>
@@ -16078,65 +16389,86 @@ async function snapshot(data,motivo,id){
   localStorage.setItem('sg_last_snap',id.slice(0,10));return {id,nube};}
 window.sgSnapshot=snapshot;
 const ahoraId=m=>hoyStr()+'_'+new Date().toTimeString().slice(0,8).replace(/:/g,'')+'_'+m;
-/* ---------- guardado nuevo ---------- */
-let _retry=null;
+/* ---------- v29: guardado con FUSIÓN por registro (no reemplaza listas completas) ---------- */
+const _syTO=(p,ms)=>Promise.race([p,new Promise((_,ko)=>setTimeout(()=>ko(Object.assign(new Error('TIMEOUT'),{code:'deadline-exceeded'})),ms))]);
+function _syDelDoc(d,cloudDoc,snapDel){const lim=Date.now()-SY_DEL_DIAS*864e5,o={};
+  const cols=new Set();Object.keys((cloudDoc&&cloudDoc._del)||{}).forEach(c=>cols.add(c));Object.keys(snapDel||{}).forEach(c=>{if(_fbParteDe(c)===d)cols.add(c);});
+  cols.forEach(c=>{const m=Object.assign({},(cloudDoc&&cloudDoc._del&&cloudDoc._del[c])||{},(snapDel&&snapDel[c])||{});Object.keys(m).forEach(k=>{if(!(m[k]>lim))delete m[k];});if(Object.keys(m).length)o[c]=m;});return o;}
 window.fbSaveNow=async function(){
-  if(!FBDB()||!window._fbRefs){if(window._fbDirtyFlag)noSync('No hay conexión con la nube: los cambios quedan solo en este equipo.');return;}
-  let srvDocs=null,antes=null,bloq=null,grande=null;
+  try{_syTrack();}catch(e){console.warn('v29 track',e);}
+  if(!FBDB()||!window._fbRefs||!window._syInitOk){_syUI();if(_syCount()&&navigator.onLine)_syReinit();return;}
+  if(window._syBusy){window._syOtra=true;return;}
+  if(!_syCount()&&!window._fbReparto&&window._fbSchema===FB_SCHEMA){setSyncUI('online');return;}
+  window._syBusy=true;
+  let srvDocs=null,antes=null,bloq=null,grande=null,res=null;
+  const snap=JSON.parse(JSON.stringify({pend:SY.pend,del:SY.del}));
   try{
     setSyncUI('saving');
     // buildData() debe seguir siendo sincrónico (antes del primer await)
-    const flat=buildData();const P=_fbPartir(flat);const ahora=new Date().toISOString();
-    const H={};FB_DOCS.forEach(d=>H[d]=hsh(P[d]));
-    const migrar=window._fbSchema!==FB_SCHEMA;
-    const sucios=FB_DOCS.filter(d=>migrar||H[d]!==window._fbHash[d]);
-    const sz=medir(P);
-    for(const d of sucios)if(sz[d]>MAX-2048){grande=d;throw new Error('DOC_TOO_BIG');}
-    if(!sucios.length){window._fbDirtyFlag=false;if(_bannerTipo==='nosync')sgOcultar();setSyncUI('online');return;}
-    const base={...window._srvUpd};
+    const flat=buildData();const ahora=new Date().toISOString();
     window._fbEnVuelo=ahora;
-    await FBDB().runTransaction(async tx=>{
-      srvDocs=null;antes=null;
+    await _syTO(FBDB().runTransaction(async tx=>{
+      res=null;antes=null;bloq=null;grande=null;
       const cur=await Promise.all(FB_DOCS.map(d=>tx.get(window._fbRefs[d])));
-      const docs={};cur.forEach((s,i)=>{if(s.exists)docs[FB_DOCS[i]]=s.data();});
-      // datos viejos: algún documento que vamos a escribir cambió en el servidor
-      let stale=sucios.some(d=>docs[d]&&(docs[d]._updated||null)!==(base[d]||null));
-      // equipo con versión antigua escribió todo en taller/datos después de partir
-      if(!migrar&&docs.datos&&docs.datos._schema!==FB_SCHEMA&&(docs.datos._updated||null)!==(base.datos||null))stale=true;
-      if(stale){srvDocs=docs;throw new Error('STALE_DATA');}
-      const srvFlat=docs.datos?_fbUnir(docs):null;
-      if(srvFlat&&!(window._sgPermitir>Date.now())){const e=encogidos(cnt(srvFlat),cnt(flat));if(e.length){bloq=e;throw new Error('SHRINK');}}
-      antes=srvFlat;
-      sucios.forEach(d=>tx.set(window._fbRefs[d],Object.assign({},P[d],{_updated:ahora,_appv:FB_APPV},d==='datos'?{_schema:FB_SCHEMA,_partes:Object.keys(FB_PARTES)}:{_parte:d})));
-    });
-    sucios.forEach(d=>{window._srvUpd[d]=ahora;window._fbHash[d]=H[d];});
-    window._srvUpdated=window._srvUpd.datos||null;window._fbSchema=FB_SCHEMA;window._fbEnVuelo=null;
-    window._fbDirtyFlag=false;window._fbReparto=false;window._sgPermitir=0;clearInterval(_retry);_retry=null;
+      const docs={};cur.forEach((s,i)=>{if(s.exists)docs[FB_DOCS[i]]=s.data();});srvDocs=docs;
+      const cloud=docs.datos?_fbUnir(docs):null;
+      const m=_syMergeFlat(cloud||{},flat,snap);
+      const migrar=!docs.datos||docs.datos._schema!==FB_SCHEMA||!!(cloud&&cloud._legacy)||!!window._fbReparto;
+      const P=_fbPartir(m.flat);
+      const sucios=FB_DOCS.filter(d=>migrar||[...m.dirty].some(c=>_fbParteDe(c)===d)||Object.keys(snap.del).some(c=>_fbParteDe(c)===d));
+      if(!sucios.length){res={m,sucios:[],ahora};return;}
+      const out={};
+      for(const d of sucios){
+        const doc=Object.assign({},P[d],{_updated:ahora,_appv:FB_APPV,_del:_syDelDoc(d,docs[d],snap.del)},d==='datos'?{_schema:FB_SCHEMA,_partes:Object.keys(FB_PARTES)}:{_parte:d});
+        if(docSize(doc)>MAX-2048){grande=d;throw new Error('DOC_TOO_BIG');}
+        out[d]=doc;}
+      if(cloud&&!(window._sgPermitir>Date.now())){const e=encogidos(cnt(cloud),cnt(m.flat));if(e.length){bloq=e;throw new Error('SHRINK');}}
+      antes=cloud;
+      sucios.forEach(d=>tx.set(window._fbRefs[d],out[d]));
+      res={m,sucios,ahora};
+    }),30000);
+    if(res&&res.sucios)res.sucios.forEach(d=>{window._srvUpd[d]=res.ahora;});
+    window._srvUpdated=window._srvUpd.datos||null;
+    window._fbEnVuelo=null;
+    _syLimpiar(snap);SY.err=null;_syLsFallo=false;
+    window._fbSchema=FB_SCHEMA;window._fbReparto=false;window._sgPermitir=0;
+    _sySave();
     if(_bannerTipo==='nosync'||_bannerTipo==='shrink')sgOcultar();
     setSyncUI('online');
-    // v24: con 4 documentos, otro equipo pudo guardar OTRO documento mientras guardábamos: aplicarlo ya si no hay cambios locales nuevos
-    if(window._pendingFBUpdate&&!_hayFormAbierto()){try{const P2=_fbPartir(buildData());if(FB_DOCS.every(d=>hsh(P2[d])===H[d])){const pd=window._pendingFBUpdate.data;window._pendingFBUpdate=null;_ocultarBannerDatosNuevos();_aplicarUpdateFirebase(pd);try{window._renderActual&&window._renderActual();}catch(e){}toast('🔄 Datos actualizados desde otro equipo','info');}}catch(e){console.error(e);}}
-    try{pintarMedidor();}catch(e){}
-    if(migrar){console.log('v24: base partida en '+FB_DOCS.length+' documentos',sz);toast('✓ Base de datos en la nube reorganizada en 4 documentos','info');}
+    try{medir(_fbPartir(res.m.flat));}catch(e){}
+    if(res.m.ren.length)toast('⚠ Folio repetido con otro equipo: tu registro quedó como '+res.m.ren.map(r=>r.old+' → '+r.nw).join(', '),'warn');
+    // lo que trajo la nube (registros de otros equipos, folios renumerados) se aplica aquí sin pisar cambios nuevos
+    if(res.m.changed||res.m.ren.length){
+      const data=Object.assign({},res.m.flat,{_srvUpd:{},_del:{}});
+      FB_DOCS.forEach(d=>{data._srvUpd[d]=res.sucios.includes(d)?res.ahora:((srvDocs&&srvDocs[d]&&srvDocs[d]._updated)||null);
+        const dd=srvDocs&&srvDocs[d]&&srvDocs[d]._del;if(dd)Object.keys(dd).forEach(c=>{data._del[c]=Object.assign(data._del[c]||{},dd[c]);});});
+      if(_hayFormAbierto()){window._pendingFBUpdate={data};_mostrarBannerDatosNuevos();}
+      else{_aplicarUpdateFirebase(data);try{window._renderActual&&window._renderActual();}catch(e){}}
+    }else if(window._pendingFBUpdate&&!_hayFormAbierto()){const pd=window._pendingFBUpdate.data;window._pendingFBUpdate=null;_ocultarBannerDatosNuevos();_aplicarUpdateFirebase(pd);try{window._renderActual&&window._renderActual();}catch(e){}toast('🔄 Datos actualizados desde otro equipo','info');}
     if(antes&&localStorage.getItem('sg_last_snap')!==hoyStr())snapshot(antes,'diario (antes del primer guardado del día)').catch(()=>{});
   }catch(err){
     window._fbEnVuelo=null;
     const m=err&&err.message;
-    if(m==='STALE_DATA'&&window._fbReparto&&srvDocs&&srvDocs.datos&&srvDocs.datos._schema===FB_SCHEMA){window._fbReparto=false;try{_aplicarUpdateFirebase(_fbUnir(srvDocs));window._renderActual&&window._renderActual();}catch(e){console.error(e);}setSyncUI('online');return;} // otro equipo ya volvió a partir la base: sin alerta
-    if(m==='STALE_DATA'){try{if(srvDocs){_aplicarUpdateFirebase(_fbUnir(srvDocs));try{window._renderActual&&window._renderActual();}catch(e){}}}catch(e){console.error(e);}if(!(srvDocs&&srvDocs.datos&&srvDocs.datos._schema!==FB_SCHEMA&&window._fbSchema===FB_SCHEMA))window._fbDirtyFlag=false;setSyncUI('online');_alertaStale();return;}
-    window._fbDirtyFlag=true;setSyncUI('error');
-    if(m==='SHRINK'){banner('red','⛔ GUARDADO BLOQUEADO: se iban a borrar muchos registros ('+bloq.join(' · ')+'). No se subió nada a la nube.','<button onclick="sgRecargarNube()">Descartar y recargar de la nube</button><button onclick="if(sgPermitirConPIN(\'Autorizar la reducción: \'+'+JSON.stringify(bloq.join(', '))+'))fbSaveNow()">Es correcto (PIN admin)</button>');_bannerTipo='shrink';return;}
-    if(m==='DOC_TOO_BIG'){noSync('El documento «'+(DOC_NOM[grande]||grande)+'» llegó al límite de 1 MB.');return;}
-    console.error('Firestore save error:',err);noSync('Error guardando en la nube ('+(err&&err.code||m||'?')+').');
-    if(!_retry)_retry=setInterval(()=>{if(navigator.onLine&&window._fbDirtyFlag)fbSaveNow();},30000);
+    if(m==='SHRINK'){SY.err={code:'shrink',t:Date.now()};_sySave();banner('red','⛔ GUARDADO BLOQUEADO: se iban a borrar muchos registros ('+bloq.join(' · ')+'). No se subió nada a la nube.','<button onclick="sgRecargarNube()">Descartar y recargar de la nube</button><button onclick="if(sgPermitirConPIN(\'Autorizar la reducción: \'+'+JSON.stringify(bloq.join(', '))+'))sySubirPendientes()">Es correcto (PIN admin)</button>');_bannerTipo='shrink';setSyncUI('error');return;}
+    if(m==='DOC_TOO_BIG'){SY.err={code:'too-big',msg:DOC_NOM[grande]||grande,t:Date.now()};_sySave();setSyncUI('error');return;}
+    console.error('Firestore save error:',err);
+    SY.err={code:(err&&err.code)||'',msg:m||'',t:Date.now()};_sySave();setSyncUI('error');
+  }finally{
+    window._syBusy=false;_syUI();
+    const huboEscritura=!!(res&&res.sucios&&res.sucios.length);
+    if(window._syOtra){window._syOtra=false;setTimeout(()=>fbSaveNow(),300);}
+    else if(huboEscritura&&_syCount()&&!SY.err)setTimeout(()=>{if(!window._syBusy)fbSaveNow();},1500);
   }
 };
 window.sgAvisoLegacy=function(){banner('amber','⚠ Un equipo con una versión antigua de TallerSys guardó datos. Se integraron automáticamente; recarga la app en ese equipo (botón «Recargar» o F5).','<button onclick="sgOcultar()">Entendido</button>');};
-window.sgRecargarNube=async function(){if(!confirm('¿Descartar los cambios locales no guardados y recargar los datos de la nube?'))return;try{const docs=await _fbLeerTodos({source:'server'});_aplicarUpdateFirebase(_fbUnir(docs));window._fbDirtyFlag=false;sgOcultar();window._renderActual&&window._renderActual();toast('Datos recargados desde la nube');}catch(e){toast('No se pudo recargar','err');}};
+window.sgRecargarNube=async function(){if(!confirm('¿Descartar los cambios locales no guardados y recargar los datos de la nube?'))return;try{const docs=await _fbLeerTodos({source:'server'});SY.pend={};SY.del={};SY.err=null;_sySave();_aplicarUpdateFirebase(_fbUnir(docs));sgOcultar();window._renderActual&&window._renderActual();toast('Datos recargados desde la nube');}catch(e){toast('No se pudo recargar','err');}};
 let _sgEst=FBDB()?'online':(typeof firebase==='undefined'?'offline':'connecting');const _su=window.setSyncUI;window.setSyncUI=function(st){_sgEst=st;return _su.apply(this,arguments);};
-const _fs=window.fbSave;window.fbSave=function(){if(!FBDB()){if(_sgEst==='offline'||_sgEst==='error'){window._fbDirtyFlag=true;noSync('No hay conexión con la nube: los cambios quedan solo en este equipo.');}return;}return _fs.apply(this,arguments);};
-const reint=()=>{if(window._fbDirtyFlag&&FBDB()&&navigator.onLine)fbSaveNow();};
-window.addEventListener('online',reint);window.addEventListener('focus',reint);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reint();});
+const _fs=window.fbSave;window.fbSave=function(){if(!FBDB()){if(!_syNoTrack)_syTrack();_syUI();return;}return _fs.apply(this,arguments);};
+// v29: reintento automático (al volver internet, al volver a la app y cada 30 s mientras haya pendientes)
+const reint=()=>{_syUI();if(!_syCount()||!navigator.onLine||window._syBusy)return;if(SY.err&&(SY.err.code==='shrink'||SY.err.code==='too-big'))return;if(FBDB()&&window._syInitOk)fbSaveNow();else _syReinit();};
+window._syReint=reint;
+window.addEventListener('offline',()=>{_syUI();});setInterval(reint,30000);
+window.addEventListener('online',reint);
 window.addEventListener('beforeunload',e=>{if(window._fbDirtyFlag){e.preventDefault();e.returnValue='Hay cambios sin sincronizar';}});
 /* ---------- importar / borrar: PIN + respaldo antes ---------- */
 const _imp=window.importarBackup;window.importarBackup=async function(input){if(!input.files[0])return;
@@ -16363,11 +16695,11 @@ window.cotRecAbrir=function(){
 window.cotRecCerrar=()=>{$i('cotrec-modal')?.remove();};
 function refrescar(){try{pintar();}catch(e){}try{if($i('sec-inicio')?.classList.contains('active'))window.gdRenderInicio();}catch(e){}try{if($i('sec-cotizaciones')?.classList.contains('active'))renderCots();}catch(e){}}
 window.cotRecPintar=pintar;
-const _rd=window.renderDashboard;if(_rd)window.renderDashboard=function(){const r=_rd.apply(this,arguments);try{vencerCots();pintar();}catch(e){}return r;};
+const _rd=window.renderDashboard;if(_rd)window.renderDashboard=function(){const r=_rd.apply(this,arguments);try{if(typeof _dashEstaVisible!=='function'||_dashEstaVisible())pintar();}catch(e){}return r;};
 try{const _ri=renderInicio;}catch(e){}
 const _gi=window.gdInicio;if(_gi)window.gdInicio=function(){const r=_gi.apply(this,arguments);try{vencerCots();pintar();}catch(e){}return r;};
 const _rc=window.renderCots;if(_rc)window.renderCots=function(){try{vencerCots();}catch(e){}return _rc.apply(this,arguments);};
-const _au=window._aplicarUpdateFirebase;if(_au)window._aplicarUpdateFirebase=function(){const r=_au.apply(this,arguments);setTimeout(()=>{try{vencerCots();pintar();}catch(e){}},300);return r;};
+const _au=window._aplicarUpdateFirebase;if(_au)window._aplicarUpdateFirebase=function(){const r=_au.apply(this,arguments);return r;};
 setTimeout(()=>{try{vencerCots();pintar();}catch(e){}},1500);
 })();
 </script>
