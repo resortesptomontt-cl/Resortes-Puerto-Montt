@@ -7646,7 +7646,7 @@ function waPed(folio){
 
 function imprimirPedido(folio){
   const p=(DB.pedidos||[]).find(x=>x.folio===folio);if(!p)return;
-  _doPrint('Pedido '+p.folio, dosCopiasHtml(buildDocPedido(p)));
+  _doPrint(nombreDocPDF(p), dosCopiasHtml(buildDocPedido(p)));
 }
 function buildDocPedido(p){
   const mec=(p.mecanicos&&p.mecanicos.length)?p.mecanicos.map(m=>m.nombre).join(' · '):'—';
@@ -10739,22 +10739,30 @@ function dosCopiasHtml(html){
     ${html}
   </div>`;
 }
+function nombreDocPDF(rec,sufijo){
+  const folio=String(rec&&rec.folio||'').trim();
+  const nom=String(rec&&rec.clienteNombre||'').replace(/\s+/g,' ').trim();
+  const pat=String(rec&&rec.patente||'').replace(/[\s-]/g,'').toUpperCase();
+  const name=[folio,nom,pat,sufijo].filter(Boolean).join(' ').replace(/\s+/g,' ').trim();
+  return name.replace(/[/\\:*?"<>|]/g,'').replace(/\s+/g,' ').trim()||'Documento';
+}
+function _escHtmlTitle(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
 function _doPrint(titulo, bodyHtml){
-  const full=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${titulo}</title></head><body>${bodyHtml}</body></html>`;
+  const full=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${_escHtmlTitle(titulo)}</title></head><body>${bodyHtml}</body></html>`;
   const blob=new Blob([full],{type:'text/html;charset=utf-8'});
   const url=URL.createObjectURL(blob);
   const win=window.open(url,'_blank');
   if(!win){toast('⚠ Habilita ventanas emergentes para imprimir');URL.revokeObjectURL(url);return;}
-  win.onload=()=>setTimeout(()=>{win.focus();win.print();setTimeout(()=>URL.revokeObjectURL(url),15000);},300);
+  win.onload=()=>setTimeout(()=>{try{win.document.title=titulo;}catch(e){}win.focus();win.print();setTimeout(()=>URL.revokeObjectURL(url),15000);},300);
 }
 function imprimirOT(folio){
   const o=DB.ordenes.find(x=>x.folio===folio);if(!o)return;
   const v=o.vehiculoId?DB.vehiculos.find(x=>x.id===o.vehiculoId):null;
-  _doPrint('OT '+o.folio,dosCopiasHtml(buildDocOT(o,v)));
+  _doPrint(nombreDocPDF(o),dosCopiasHtml(buildDocOT(o,v)));
 }
 function imprimirHojaTrabajo(folio){
   const o=DB.ordenes.find(x=>x.folio===folio);if(!o)return;
-  _doPrint('Hoja de trabajo '+o.folio,buildHojaTrabajo(o));
+  _doPrint(nombreDocPDF(o,'Hoja de trabajo'),buildHojaTrabajo(o));
 }
 function buildHojaTrabajo(o){
   const VTYPE_NOMBRE={camion:'Camión pesado',batea:'Batea / Rampla',camioneta:'Camioneta',bus:'Bus'};
@@ -10883,12 +10891,12 @@ function buildHojaTrabajo(o){
 function imprimirCot(folio){
   const c=DB.cotizaciones.find(x=>x.folio===folio);if(!c)return;
   const v=c.vehiculoId?DB.vehiculos.find(x=>x.id===c.vehiculoId):null;
-  _doPrint('COT '+c.folio,dosCopiasHtml(buildDocCot(c,v)));
+  _doPrint(nombreDocPDF(c),dosCopiasHtml(buildDocCot(c,v)));
 }
 function imprimirVenta(folio){
   const v=DB.ventas.find(x=>x.folio===folio);if(!v)return;
   const vh=v.vehiculoId?DB.vehiculos.find(x=>x.id===v.vehiculoId):null;
-  _doPrint('VT '+v.folio,dosCopiasHtml(buildDocVenta(v,vh)));
+  _doPrint(nombreDocPDF(v),dosCopiasHtml(buildDocVenta(v,vh)));
 }
 function previsualizarDoc(tipo){
   if(tipo==='ot'){
