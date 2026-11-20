@@ -3645,6 +3645,7 @@ function _syErrTxt(e){const c=(e&&e.code)||'',m=(e&&e.msg)||'';
   if(c==='sdk')return 'no cargó Firebase al abrir la app (sin internet)';
   if(c==='ls')return 'la memoria del navegador está llena';
   if(c==='too-big')return 'el documento «'+m+'» llegó al límite de 1 MB';
+  if(c==='nested')return 'dato no admitido por la nube (lista dentro de lista en '+m+')';
   if(c==='shrink')return 'guardado bloqueado: se iban a borrar muchos registros';
   if(c==='permission-denied')return 'la nube rechazó el guardado (permiso denegado)';
   if(c==='unauthenticated')return 'la sesión con la nube no es válida';
@@ -15225,10 +15226,15 @@ const PK_DEF=[{n:'Cambio paquete trasero',it:[['Paquete resorte trasero',1,'und'
  {n:'Cambio hoja maestra',it:[['Hoja maestra',1,'und'],['Buje ballesta',2,'und'],['Mano de obra',1,'hrs']]},
  {n:'Bujes x4',it:[['Buje ballesta',4,'und'],['Mano de obra cambio bujes',1,'hrs']]},
  {n:'Reapriete abrazaderas',it:[['Reapriete de abrazaderas',1,'und']]}];
-const pks=()=>Array.isArray(CFG.paquetes)?CFG.paquetes:PK_DEF;
+// v32: Firestore no admite arrays dentro de arrays -> los ítems de paquete se guardan como objetos {nombre,qty,unidad,pu,pid}
+const _pkObj=x=>Array.isArray(x)?{nombre:x[0]??'',qty:x[1]??1,unidad:x[2]||'und',pu:x[3]??null,pid:x[4]??null}:(x||{});
+const _pkA=x=>Array.isArray(x)?x:[x.nombre,x.qty,x.unidad,x.pu,x.pid];
+const _pkGuardar=a=>(a||[]).map(p=>({n:p.n,it:(p.it||[]).map(_pkObj)}));window._pkGuardar=_pkGuardar;
+const pks=()=>(Array.isArray(CFG.paquetes)?CFG.paquetes:PK_DEF).map(p=>({n:p.n,it:(p.it||[]).map(_pkA)}));
+try{if(Array.isArray(CFG.paquetes)&&CFG.paquetes.some(p=>(p.it||[]).some(Array.isArray))){CFG.paquetes=_pkGuardar(CFG.paquetes);saveCfg(CFG);}}catch(e){}
 function paintPk(ctx){const r=$id('pk-'+ctx);if(!r)return;r.innerHTML=`<span style="font-size:11px;color:var(--text2);font-weight:600">⚡ Paquetes:</span>${pks().map((p,i)=>`<span class="pk" data-i="${i}" title="${esc(p.it.map(x=>x[1]+'× '+x[0]).join(', '))}">${esc(p.n)}<x data-del="${i}" title="Quitar paquete">×</x></span>`).join('')}<button type="button" class="btn btn-xs" data-new>＋ Guardar ítems actuales como paquete</button>`;
-  r.onclick=e=>{const d=e.target.closest('[data-del]');if(d){e.stopPropagation();if(!confirm('¿Quitar el paquete "'+pks()[+d.dataset.del].n+'"?'))return;const a=[...pks()];a.splice(+d.dataset.del,1);CFG.paquetes=a;saveCfg(CFG);save();paintPk('ot');paintPk('cot');return;}
-    if(e.target.closest('[data-new]')){const L=lines[ctx]||[];if(!L.length){toast('Agrega ítems primero','warn');return;}const n=prompt('Nombre del paquete:');if(!n)return;CFG.paquetes=[...pks(),{n:n.trim(),it:L.map(l=>[l.nombre,l.qty,l.unidad||'und',l.pu,l.pid||null])}];saveCfg(CFG);save();paintPk('ot');paintPk('cot');toast('⚡ Paquete guardado');return;}
+  r.onclick=e=>{const d=e.target.closest('[data-del]');if(d){e.stopPropagation();if(!confirm('¿Quitar el paquete "'+pks()[+d.dataset.del].n+'"?'))return;const a=[...pks()];a.splice(+d.dataset.del,1);CFG.paquetes=_pkGuardar(a);saveCfg(CFG);save();paintPk('ot');paintPk('cot');return;}
+    if(e.target.closest('[data-new]')){const L=lines[ctx]||[];if(!L.length){toast('Agrega ítems primero','warn');return;}const n=prompt('Nombre del paquete:');if(!n)return;CFG.paquetes=_pkGuardar([...pks(),{n:n.trim(),it:L.map(l=>[l.nombre,l.qty,l.unidad||'und',l.pu,l.pid||null])}]);saveCfg(CFG);save();paintPk('ot');paintPk('cot');toast('⚡ Paquete guardado');return;}
     const p=e.target.closest('.pk');if(!p)return;const pk=pks()[+p.dataset.i];lines[ctx]=lines[ctx]||[];
     pk.it.forEach(([nom,q,u,pu,pid])=>{const prod=(pid&&DB.inventario.find(x=>x.id===pid))||DB.inventario.find(x=>(x.nombre||'').toLowerCase()===String(nom).toLowerCase())||DB.inventario.find(x=>(x.nombre||'').toLowerCase().includes(String(nom).toLowerCase()));
       const price=pu!=null&&pu!==''?+pu:(prod?+prod.precio||0:0);lines[ctx].push({pid:prod?.id||null,nombre:prod?prod.nombre:nom,unidad:prod?prod.unidad:u,cat:prod?.categoria||'Libre',qty:+q||1,pu:price,sub:(+q||1)*price,libre:!prod,...ejeObj(ctx)});});
@@ -16348,11 +16354,15 @@ const enc=new TextEncoder();
 function fsz(v){if(v===null||v===undefined)return 1;const t=typeof v;if(t==='string')return enc.encode(v).length+1;if(t==='number')return 8;if(t==='boolean')return 1;
   if(Array.isArray(v)){let s=0;for(const x of v)s+=fsz(x);return s;}if(t==='object'){let s=0;for(const k in v)s+=enc.encode(k).length+1+fsz(v[k]);return s;}return 8;}
 function docSize(d){return fsz(d)+100;}
+function fsLimpio(v,ruta,enArr){if(v===undefined||typeof v==='function')return undefined;
+  if(Array.isArray(v)){if(enArr){const e=new Error('NESTED_ARRAY');e.ruta=ruta;throw e;}const o=[];v.forEach((x,i)=>{const y=fsLimpio(x,ruta+'['+i+']',true);o.push(y===undefined?null:y);});return o;}
+  if(v&&typeof v==='object'&&!(v instanceof Date)){const o={};for(const k in v){const y=fsLimpio(v[k],ruta+'.'+k,false);if(y!==undefined)o[k]=y;}return o;}
+  return v;}
 window.sgDocSize=docSize;
 /* ---------- arma el documento que se sube (igual que antes + logo fuera) ---------- */
 function buildData(){const data={};
   Object.keys(DB).forEach(k=>{if(Array.isArray(DB[k])){data[k]=DB[k].map(it=>{if(it&&(it.docAdj||it.imgs||it.tsxFotosRec||(it.tsxFirmas&&Object.keys(it.tsxFirmas).length))){const c={...it};if(c.docAdj)c.docAdj='';if(c.imgs)c.imgs=[];if(c.tsxFotosRec)c.tsxFotosRec=[];if(c.tsxFirmas)c.tsxFirmas={};return c;}return it;});}else data[k]=DB[k];});
-  const cfg={...CFG};if(cfg.logo===LOGO_DOC||cfg.logo===(typeof BRAND_LOGO!=='undefined'?BRAND_LOGO:null))cfg.logo='@doc';data._cfg=cfg;return data;}
+  const cfg={...CFG};if(Array.isArray(cfg.paquetes)&&window._pkGuardar)cfg.paquetes=window._pkGuardar(cfg.paquetes);if(cfg.logo===LOGO_DOC||cfg.logo===(typeof BRAND_LOGO!=='undefined'?BRAND_LOGO:null))cfg.logo='@doc';data._cfg=cfg;return data;}
 window.sgBuildData=buildData;
 /* logo: el doc guarda '@doc' y cada equipo usa la copia incluida en la app */
 const _sc=window.saveCfg;window.saveCfg=function(c){if(c&&c.logo==='@doc')c.logo=LOGO_DOC;return _sc.apply(this,arguments);};
@@ -16432,8 +16442,9 @@ window.fbSaveNow=async function(){
       const out={};
       for(const d of sucios){
         const doc=Object.assign({},P[d],{_updated:ahora,_appv:FB_APPV,_del:_syDelDoc(d,docs[d],snap.del)},d==='datos'?{_schema:FB_SCHEMA,_partes:Object.keys(FB_PARTES)}:{_parte:d});
-        if(docSize(doc)>MAX-2048){grande=d;throw new Error('DOC_TOO_BIG');}
-        out[d]=doc;}
+        const limpio=fsLimpio(doc,d,false);
+        if(docSize(limpio)>MAX-2048){grande=d;throw new Error('DOC_TOO_BIG');}
+        out[d]=limpio;}
       if(cloud&&!(window._sgPermitir>Date.now())){const e=encogidos(cnt(cloud),cnt(m.flat));if(e.length){bloq=e;throw new Error('SHRINK');}}
       antes=cloud;
       sucios.forEach(d=>tx.set(window._fbRefs[d],out[d]));
@@ -16463,6 +16474,7 @@ window.fbSaveNow=async function(){
     const m=err&&err.message;
     if(m==='SHRINK'){SY.err={code:'shrink',t:Date.now()};_sySave();banner('red','⛔ GUARDADO BLOQUEADO: se iban a borrar muchos registros ('+bloq.join(' · ')+'). No se subió nada a la nube.','<button onclick="sgRecargarNube()">Descartar y recargar de la nube</button><button onclick="if(sgPermitirConPIN(\'Autorizar la reducción: \'+'+JSON.stringify(bloq.join(', '))+'))sySubirPendientes()">Es correcto (PIN admin)</button>');_bannerTipo='shrink';setSyncUI('error');return;}
     if(m==='DOC_TOO_BIG'){SY.err={code:'too-big',msg:DOC_NOM[grande]||grande,t:Date.now()};_sySave();setSyncUI('error');return;}
+    if(m==='NESTED_ARRAY'){console.error('Firestore: lista dentro de lista en',err.ruta);SY.err={code:'nested',msg:err.ruta,t:Date.now()};_sySave();setSyncUI('error');return;}
     console.error('Firestore save error:',err);
     SY.err={code:(err&&err.code)||'',msg:m||'',t:Date.now()};_sySave();setSyncUI('error');
   }finally{
