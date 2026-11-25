@@ -18081,6 +18081,13 @@ body.dark .vac-per-cur .e{color:#93C5FD}body.dark .vac-per-next .e{color:#5EEAD4
 @media (max-width:640px){.vac-top{align-items:flex-start}.vac-ring,.vac-ring svg{width:62px;height:62px}.vac-ring-n b{font-size:18px}}
 @media (prefers-reduced-motion:reduce){.vac-ring .v,.pv-meter i,#sec-pedidos .exp-row,#sec-proveedores .exp-row,#ant-resumen-tabla>div{transition:none!important}}
 @media print{.pv-paytag{display:none!important}}
+/* v36b · móvil: .layout era un contexto de apilamiento (z-index:1) y el fondo #mob-backdrop (z 499, hijo de body) quedaba ENCIMA del menú lateral (z 500, dentro de .layout): cada toque caía en el fondo y cerraba el menú. */
+@media (max-width:768px){
+  .layout{z-index:auto!important}
+  .pv-ambient{z-index:-1!important}
+  .sidebar{z-index:600!important}
+  #mob-backdrop{z-index:590!important}
+}
 </style>
 <script id="pv34-js">
 /* ══ TALLERSYS v34 · MOVIMIENTO E ÍCONOS PREMIUM (solo presentación; no toca datos ni sincronización) ══ */
