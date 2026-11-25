@@ -417,6 +417,40 @@ body.dark .folio-tag,body.dark .pill-val,body.dark .pill-lbl{color:#B0B8C0}
 #pin-overlay .pin-card{z-index:2}
 .pin-btn:hover{border-color:rgba(230,40,45,.45)}
 .sidebar-logo .logo-title,.pin-card .pin-title{display:none!important}
+
+/* Informe técnico al imprimir OT */
+.print-informe-chk{
+  display:flex;align-items:center;gap:8px;
+  font-size:13px;font-weight:600;color:var(--text);
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius);padding:8px 12px;
+  cursor:pointer;user-select:none;min-height:40px;line-height:1.25;
+}
+.print-informe-chk input{
+  width:18px;height:18px;accent-color:#B2121C;flex-shrink:0;margin:0;
+}
+.informe-tec-break{
+  display:flex;align-items:center;gap:10px;
+  margin:22px 0 16px;padding:8px 0;
+  font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:#B2121C;border-top:2px dashed #B2121C;
+}
+#modal-print-hdr{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#modal-print-hdr h3{min-width:0;flex:1 1 140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#modal-print-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+#modal-print-close{flex-shrink:0}
+@media(max-width:768px){
+  #modal-print-hdr{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+  #modal-print-title{grid-column:1;grid-row:1;flex:none;min-width:0;max-width:100%}
+  #modal-print-close{grid-column:2;grid-row:1}
+  #modal-print-actions{grid-column:1/-1;grid-row:2;width:100%;display:flex;flex-direction:column;align-items:stretch}
+  #print-informe-wrap.print-informe-chk,
+  #print-informe-wrap{width:100%;order:2;justify-content:flex-start}
+  #modal-print-btn{width:100%;order:1;justify-content:center}
+}
+@media print{
+  .print-informe-chk,.informe-tec-break{display:none!important}
+}
 </style>
 <script>
 /* Abre WhatsApp: en celular usa wa.me (abre la app); en PC intenta la app de escritorio y si no responde abre WhatsApp Web */
@@ -1172,7 +1206,7 @@ window.abrirWA=function(url){
           <div id="ot-mec-picker" style="display:none;position:absolute;z-index:200;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow-md);padding:6px;margin-top:2px;min-width:240px;max-height:220px;overflow-y:auto"></div>
           <input type="hidden" id="ot-mec-ids">
         </div>
-        <div class="field" style="margin-bottom:10px"><label>Diagnóstico / trabajo solicitado</label><textarea id="ot-diag" placeholder="Descripción del problema o trabajo a realizar..."></textarea></div>
+        <div class="field" style="margin-bottom:10px"><label>Diagnóstico / trabajo solicitado</label><textarea id="ot-diag" placeholder="Descripción del problema o trabajo a realizar..."></textarea><div class="hx-hint">Se usa en el informe técnico si lo incluye al imprimir la OT.</div></div>
         <div class="sec-label" style="margin-bottom:6px">Repuestos y mano de obra</div>
         <div class="g4 g-it" style="margin-bottom:10px;align-items:end">
           <div class="field ac-wrap">
@@ -3244,7 +3278,7 @@ window.abrirWA=function(url){
           <select id="edit-ot-estado"><option>Recibido</option><option>En proceso</option><option>Listo</option><option>Entregado s/OC</option><option>Entregado</option></select>
         </div>
       </div>
-      <div class="field" style="margin-bottom:10px"><label>Diagnóstico</label><textarea id="edit-ot-diag" style="min-height:50px"></textarea></div>
+      <div class="field" style="margin-bottom:10px"><label>Diagnóstico / trabajo solicitado</label><textarea id="edit-ot-diag" style="min-height:50px" placeholder="Descripción del problema o trabajo a realizar..."></textarea><div class="hx-hint">Se usa en el informe técnico si lo incluye al imprimir la OT.</div></div>
       <div class="field" style="margin-bottom:12px"><label>Observaciones</label><textarea id="edit-ot-obs" style="min-height:50px"></textarea></div>
       <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);margin-bottom:12px;cursor:pointer">
         <input type="checkbox" id="edit-ot-reapriete" style="width:auto">
@@ -3347,12 +3381,16 @@ window.abrirWA=function(url){
 
 <div id="modal-print" class="modal-overlay" style="display:none" onclick="if(event.target===this)cerrarPrint()">
   <div class="modal" style="max-width:700px;max-height:92vh">
-    <div class="modal-hdr no-print">
+    <div class="modal-hdr no-print" id="modal-print-hdr">
       <h3 id="modal-print-title">Documento</h3>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-primary btn-sm" onclick="window.print()">🖨 Imprimir / PDF</button>
-        <button class="btn btn-ghost btn-sm" onclick="cerrarPrint()">✕</button>
+      <div id="modal-print-actions" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;min-width:0">
+        <label id="print-informe-wrap" class="print-informe-chk" style="display:none" for="print-incluir-informe">
+          <input type="checkbox" id="print-incluir-informe">
+          <span>Incluir informe técnico</span>
+        </label>
+        <button class="btn btn-primary btn-sm" id="modal-print-btn" onclick="window.print()">🖨 Imprimir / PDF</button>
       </div>
+      <button class="btn btn-ghost btn-sm" id="modal-print-close" onclick="cerrarPrint()" style="flex-shrink:0">✕</button>
     </div>
     <div class="modal-body" style="padding:0">
       <div id="print-content" style="padding:28px 32px"></div>
@@ -10644,7 +10682,20 @@ function borrarTodo(){
 // ══════════════════════════════════════════════════
 // PDF — IMPRESIÓN OT, COTIZACIÓN Y VENTAS
 // ══════════════════════════════════════════════════
-function cerrarPrint(){$('modal-print').style.display='none';document.body.style.overflow='';}
+function _resetPrintModalExtras(){
+  _printOTFolio=null;
+  const wrap=$('print-informe-wrap');
+  const chk=$('print-incluir-informe');
+  if(wrap)wrap.style.display='none';
+  if(chk){chk.checked=false;chk.onchange=null;}
+  const btn=$('modal-print-btn');
+  if(btn)btn.onclick=()=>window.print();
+}
+function cerrarPrint(){
+  _resetPrintModalExtras();
+  $('modal-print').style.display='none';
+  document.body.style.overflow='';
+}
 function verOTRapido(folio){
   const o=DB.ordenes.find(x=>x.folio===folio);
   if(!o){toast('OT no encontrada','err');return;}
@@ -10719,6 +10770,7 @@ function cerrarOTPreview(){
   document.body.style.overflow='';
 }
 function abrirPrint(titulo,html){
+  _resetPrintModalExtras();
   $('modal-print-title').textContent=titulo;
   $('print-content').innerHTML=html;
   $('modal-print').style.display='flex';
@@ -10756,10 +10808,44 @@ function _doPrint(titulo, bodyHtml){
   if(!win){toast('⚠ Habilita ventanas emergentes para imprimir');URL.revokeObjectURL(url);return;}
   win.onload=()=>setTimeout(()=>{try{win.document.title=titulo;}catch(e){}win.focus();win.print();setTimeout(()=>URL.revokeObjectURL(url),15000);},300);
 }
+let _printOTFolio=null;
 function imprimirOT(folio){
   const o=DB.ordenes.find(x=>x.folio===folio);if(!o)return;
   const v=o.vehiculoId?DB.vehiculos.find(x=>x.id===o.vehiculoId):null;
-  _doPrint(nombreDocPDF(o),dosCopiasHtml(buildDocOT(o,v)));
+  abrirPrintOT(o,v);
+}
+function abrirPrintOT(o,v){
+  _printOTFolio=o.folio;
+  const wrap=$('print-informe-wrap');
+  const chk=$('print-incluir-informe');
+  if(wrap)wrap.style.display='flex';
+  if(chk){chk.checked=false;chk.onchange=()=>_refreshPrintOTPreview();}
+  const btn=$('modal-print-btn');
+  if(btn)btn.onclick=()=>ejecutarPrintOT();
+  $('modal-print-title').textContent=nombreDocPDF(o);
+  $('modal-print').style.display='flex';
+  document.body.style.overflow='hidden';
+  _refreshPrintOTPreview();
+}
+function _refreshPrintOTPreview(){
+  const o=DB.ordenes.find(x=>x.folio===_printOTFolio);if(!o)return;
+  const v=o.vehiculoId?DB.vehiculos.find(x=>x.id===o.vehiculoId):null;
+  const chk=$('print-incluir-informe');
+  let html=buildDocOT(o,v);
+  if(chk&&chk.checked){
+    html+=`<div class="informe-tec-break">Página 2 — Informe técnico</div>`+buildInformeTecnico(o,v);
+  }
+  $('print-content').innerHTML=html;
+}
+function ejecutarPrintOT(){
+  const o=DB.ordenes.find(x=>x.folio===_printOTFolio);if(!o)return;
+  const v=o.vehiculoId?DB.vehiculos.find(x=>x.id===o.vehiculoId):null;
+  const chk=$('print-incluir-informe');
+  let body=dosCopiasHtml(buildDocOT(o,v));
+  if(chk&&chk.checked){
+    body+=`<div style="page-break-before:always;break-before:page"></div>`+buildInformeTecnico(o,v);
+  }
+  _doPrint(nombreDocPDF(o),body);
 }
 function imprimirHojaTrabajo(folio){
   const o=DB.ordenes.find(x=>x.folio===folio);if(!o)return;
@@ -11058,6 +11144,532 @@ function docZonas2(z){if(!z||!z.length)return'';const all=z.map(x=>x.codigo);ret
 function docVeh2(o,v){const r=(l,x,b)=>x?`<div class="d2-r"><span class="l">${l}</span><span class="v"${b?' style="font-weight:800;letter-spacing:.04em"':''}>${x}</span></div>`:'';
   return r('Patente',_e(o.patente),1)+r('Vehículo',_e([o.marca,o.modelo].filter(Boolean).join(' ')))+r('Año',_e(v?.anio||''))+r('Km',o.km?_e(fmtN(o.km))+' km':'')+r('Mecánico',_e(o.mecanico||''));}
 function docCli2(o){const r=(l,x)=>`<div class="d2-r"><span class="l">${l}</span><span class="v">${x?_e(x):'—'}</span></div>`;return r('Nombre',o.clienteNombre)+r('RUT',o.clienteRut)+r('Teléfono',o.tel);}
+
+// ══════════════════════════════════════════════════
+// INFORME TÉCNICO (segunda hoja al imprimir una OT)
+// Sin precios ni totales. No guarda campos nuevos.
+// ══════════════════════════════════════════════════
+function _infFechaLarga(d){
+  const s=String(d||(typeof today==='function'?today():'')||'').slice(0,10);
+  const p=s.split('-');
+  if(p.length!==3)return _e(s);
+  const meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const mes=meses[parseInt(p[1],10)-1];
+  return mes?`${parseInt(p[2],10)} de ${mes} de ${p[0]}`:_e(s);
+}
+function _infBlank(msg){
+  return `<span class="inf-blank">${msg?_e(msg):'&nbsp;'}</span>`;
+}
+function _infVal(val, missing){
+  if(val==null)return _infBlank(missing);
+  if(typeof val==='number' && val===0)return _infBlank(missing);
+  const s=String(val).trim();
+  if(!s||s==='0')return _infBlank(missing);
+  return _e(s);
+}
+function _infCli(o){
+  if(!o)return null;
+  const list=(typeof DB!=='undefined'&&DB.clientes)||[];
+  if(o.clienteId){const c=list.find(x=>x.id===o.clienteId);if(c)return c;}
+  if(o.clienteRut){const c=list.find(x=>x.rut===o.clienteRut);if(c)return c;}
+  return null;
+}
+function _infTipoEjes(o,v){
+  const labels={camion:'Camión',batea:'Batea / rampla',camioneta:'Camioneta',bus:'Bus'};
+  const parts=[];
+  const vt=labels[o.vtype]||'';
+  const comb=v&&v.combustible?String(v.combustible).trim():'';
+  if(vt&&comb)parts.push(`${vt} ${comb.toLowerCase()}`);
+  else if(vt)parts.push(vt);
+  else if(comb)parts.push(comb);
+  const nf=parseInt(o.ejeFront,10)||0;
+  const nr=parseInt(o.ejeRear,10)||0;
+  if(nf)parts.push(nf===1?'1 delantero':nf+' delanteros');
+  if(nr){
+    const types=o.ejeTypes||{};
+    const labs=[];
+    for(let i=1;i<=nr;i++){
+      const t=types[i]||types[String(i)]||'';
+      labs.push(t==='tag'?'tag':t==='traccion'||t==='tracción'?'tracción':t);
+    }
+    const uniq=[...new Set(labs.filter(Boolean))];
+    if(uniq.length===1&&uniq[0]==='tracción')parts.push(nr===1?'1 tracción':nr+' de tracción');
+    else if(uniq.length===1&&uniq[0]==='tag')parts.push(nr===1?'1 eje tag':nr+' ejes tag');
+    else if(labs.some(Boolean))parts.push(labs.map((x,i)=>'eje trasero '+(i+1)+(x?' '+x:'')).join(' · '));
+    else parts.push(nr===1?'1 trasero':nr+' traseros');
+  }
+  return parts.join(' · ');
+}
+function _infItemZonas(it){
+  if(!it)return [];
+  if(Array.isArray(it.ejes)&&it.ejes.length)return it.ejes.map(z=>String(z||'').trim()).filter(Boolean);
+  if(it.eje)return String(it.eje).split(',').map(s=>s.trim()).filter(Boolean);
+  if(it.zona)return [String(it.zona).trim()].filter(Boolean);
+  return [];
+}
+function _infZonaFrase(code,vtype){
+  const c=String(code||'').trim();
+  if(!c||c==='General')return 'de forma general';
+  const m=c.match(/^(FT|RR)(\d)(?:-(I|D))?$/);
+  if(!m)return 'en la zona '+c;
+  const cam=vtype==='camioneta';
+  const eje=m[1]==='FT'
+    ?(cam?'del eje delantero':'del eje delantero'+(m[2]&&m[2]!=='1'?' '+m[2]:''))
+    :(cam?'del eje trasero':'del eje trasero'+(m[2]&&m[2]!=='1'?' '+m[2]:''));
+  if(!m[3])return 'del paquete de resortes '+eje+' (zona '+c+')';
+  const lado=m[3]==='D'?'lado derecho':'lado izquierdo';
+  return 'del paquete de resortes '+eje+', '+lado+' (zona '+c+')';
+}
+function _infZonaCorta(code,all,vtype){
+  if(!code||code==='General')return 'General';
+  if(typeof zonaLabel==='function'){
+    const t=zonaLabel(code,all);
+    if(t&&t!==code)return t;
+  }
+  if(typeof ejeNombre==='function')return ejeNombre(code,vtype)||code;
+  return code;
+}
+function _infIsServicio(it){
+  const n=(it&&it.nombre||'').toLowerCase();
+  const cat=(it&&it.cat||it&&it.categoria||'').toLowerCase();
+  return /servicio|sacar y colocar|mano de obra|m\.?\s*obra|reapriete|alineaci[oó]n|inspecci[oó]n|diagn[oó]stico/.test(n)
+    || /servicio|mano de obra/.test(cat);
+}
+function _infIsHoja(it){
+  const n=(it&&it.nombre||'')+' '+(it&&it.cat||it&&it.categoria||'');
+  return /hoja|ptp\b|pre-?templad|parab[oó]lic/i.test(n);
+}
+function _infIsPernoCentro(it){return /perno\s*centro/i.test((it&&it.nombre)||'');}
+function _infIsBuje(it){return /\bbuje/i.test((it&&it.nombre)||'');}
+function _infIsAbrazadera(it){return /abrazadera/i.test((it&&it.nombre)||'');}
+function _infFmtNum(n){
+  const x=Number(n);
+  if(!isFinite(x))return String(n);
+  return String(Math.round(x)).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+}
+function _infParseMedida(nombre){
+  const s=String(nombre||'');
+  const m=s.match(/(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)/i);
+  if(!m)return '';
+  const a=m[1].replace('.',','),b=m[2].replace('.',','),c=_infFmtNum(parseInt(String(m[3]).replace(/\D/g,''),10));
+  return `${a}&nbsp;×&nbsp;${b}&nbsp;×&nbsp;${c}&nbsp;mm`;
+}
+function _infTituloItem(it){
+  const n=String(it&&it.nombre||'').trim()||'Ítem';
+  if(_infIsHoja(it)&&!/hoja/i.test(n))return 'Hoja madre — '+n;
+  if(_infIsServicio(it)&&/sacar y colocar/i.test(n))return 'Servicio de sacar y colocar';
+  return n;
+}
+function _infSpec(it){
+  const n=String(it&&it.nombre||'');
+  const cat=String(it&&it.cat||it&&it.categoria||'').trim();
+  const med=_infParseMedida(n);
+  if(_infIsServicio(it)&&/sacar y colocar/i.test(n))return 'Desmontaje, armado y montaje del paquete';
+  if(_infIsServicio(it))return cat&&!/^libre$/i.test(cat)?_e(cat):'Servicio de taller';
+  const bits=[];
+  if(/pre-?templad|ptp\b|parab/i.test(n+' '+cat))bits.push('Pre-templada parabólica');
+  else if(cat&&!/^libre$/i.test(cat))bits.push(_e(cat));
+  if(med)bits.push(med);
+  if(bits.length)return bits.join(', ');
+  return 'Sin especificación adicional en la OT';
+}
+function _infCant(it){
+  const q=it&&(it.qty??it.cant);
+  const u=String((it&&it.unidad)||'und');
+  if(q==null||q==='')return '—';
+  return `${q} ${u}`.trim();
+}
+function _infMecanico(o){
+  if(o.mecanicos&&o.mecanicos.length){
+    const n=o.mecanicos.map(m=>m&&m.nombre).filter(Boolean).join(' · ');
+    if(n)return n;
+  }
+  const s=String(o.mecanico||'').trim();
+  return s||'';
+}
+function _infZonasOT(o){
+  return (o.zonasVehiculo||[]).map(z=>z&&z.codigo).filter(Boolean);
+}
+function _infLogoSrc(){
+  if(typeof DOC_LOGO==='string'&&DOC_LOGO)return DOC_LOGO;
+  if(typeof BRAND_LOGO==='string'&&BRAND_LOGO)return BRAND_LOGO;
+  const c=typeof CFG!=='undefined'?CFG:{};
+  if(c.logo&&c.logo!=='@doc')return c.logo;
+  return '';
+}
+function _infMotivo(o,v){
+  const folio=_e(o.folio||'la OT');
+  const fecha=_infFechaLarga(o.fechaIn);
+  const zonas=o.zonasVehiculo||[];
+  const all=_infZonasOT(o);
+  const zt=zonas.filter(z=>z&&(z.codigo||z.detalle));
+  let zonaTxt='';
+  if(zt.length){
+    zonaTxt=zt.map(z=>{
+      const fr=_infZonaFrase(z.codigo,o.vtype);
+      const det=String(z.detalle||'').trim();
+      return det?`${fr}, con el detalle «${det}»`:`${fr}`;
+    }).join('; ');
+  }else{
+    const fromItems=[...new Set((o.items||[]).flatMap(_infItemZonas).filter(z=>z&&z!=='General'))];
+    if(fromItems.length)zonaTxt=fromItems.map(z=>_infZonaFrase(z,o.vtype)).join('; ');
+  }
+  const diag=String(o.diag||'').trim();
+  const obs=String(o.obs||'').trim();
+  const parts=[];
+  parts.push(`La ${folio}, de fecha ${fecha}, `);
+  if(zonaTxt)parts.push(`registra la intervención ${zonaTxt}. `);
+  else parts.push('registra el trabajo indicado en sus ítems. ');
+  if(diag)parts.push(`Diagnóstico consignado en la orden: ${diag}. `);
+  else parts.push('En la orden no consta un diagnóstico escrito que describa el modo de falla. ');
+  if(obs)parts.push(`Observaciones técnicas: ${obs}. `);
+  const items=o.items||[];
+  if(items.length){
+    const desc=items.map(it=>{
+      const nom=_infTituloItem(it);
+      const cant=_infCant(it);
+      return cant&&cant!=='—'?`${nom} (${cant})`:nom;
+    }).join(', ');
+    parts.push('El trabajo ejecutado, según los ítems de la OT, comprende: '+desc+'.');
+  }
+  return parts.join('').replace(/\s+/g,' ').trim();
+}
+function _infTrabajo(o){
+  const items=o.items||[];
+  const pasos=[];
+  const zonasTrab=[...new Set(items.flatMap(_infItemZonas).filter(z=>z&&z!=='General'))];
+  const all=_infZonasOT(o);
+  zonasTrab.forEach(z=>{if(!all.includes(z))all.push(z);});
+  const hayServ=items.some(_infIsServicio);
+  const hayPieza=items.some(it=>!_infIsServicio(it));
+  if(zonasTrab.length&&(hayPieza||hayServ)){
+    const lista=zonasTrab.map(z=>{
+      const fr=_infZonaFrase(z,o.vtype);
+      if(fr.startsWith('del '))return 'el '+fr.slice(4);
+      if(fr==='de forma general')return 'el conjunto de forma general';
+      return fr;
+    }).join(' y ');
+    const accParts=[];
+    if(items.some(_infIsHoja))accParts.push('la hoja madre');
+    if(items.some(_infIsPernoCentro))accParts.push('el perno centro');
+    if(items.some(_infIsBuje))accParts.push('los bujes');
+    items.filter(it=>!_infIsServicio(it)&&!_infIsHoja(it)&&!_infIsPernoCentro(it)&&!_infIsBuje(it))
+      .forEach(it=>accParts.push(_infTituloItem(it)));
+    let accTxt='.';
+    if(accParts.length){
+      const join=arr=>{
+        if(arr.length===1)return arr[0];
+        const last=arr[arr.length-1];
+        const conj=/^el /i.test(last)?('al '+last.slice(3)):('a '+last);
+        return arr.slice(0,-1).join(', ')+' y '+conj;
+      };
+      accTxt=', para acceder a '+join(accParts)+'.';
+    }
+    pasos.push(`<li><strong>Desmontaje.</strong> Se desmontó ${_e(lista)}${_e(accTxt)}</li>`);
+  }
+  items.filter(it=>!_infIsServicio(it)).forEach(it=>{
+    const titulo=_infTituloItem(it);
+    const spec=_infSpec(it);
+    const cant=_infCant(it);
+    const q=it.qty??it.cant??'';
+    const qTxt=q!==''?`en cantidad de ${q} ${(it.unidad||'unidad')}${(Number(q)===1?'':'es').replace('undes','unidades')}`:'';
+    const zonas=_infItemZonas(it).filter(z=>z&&z!=='General');
+    const zTxt=zonas.length?' en '+zonas.map(z=>_infZonaCorta(z,all,o.vtype)+' ('+z+')').join(', ')+'.':'.';
+    let cuerpo='';
+    if(_infIsHoja(it)){
+      const med=_infParseMedida(it.nombre||'');
+      const nom=String(it.nombre||'').trim();
+      cuerpo='Se retiró la hoja madre existente y se instaló una ('+String(q||1)+') hoja pre-templada parabólica'+(med?' de '+med:'')+(nom?' ('+nom+')':'')+'.';
+    }else if(_infIsPernoCentro(it)){
+      const nu=Number(q);
+      const und=String(it.unidad||'unidad');
+      const undTxt=und==='und'?(nu===1?'unidad':'unidades'):(nu===1?und:und+'s');
+      cuerpo='Se reemplazó el perno centro del paquete, en cantidad de '+String(q||1)+' '+undTxt+'.';
+    }else{
+      cuerpo='Se reemplazó '+titulo+(spec&&spec!=='Sin especificación adicional en la OT'?' ('+spec+')':'')+(qTxt?', '+qTxt:'')+zTxt;
+    }
+    const lab=_infIsHoja(it)?'Reemplazo de hoja madre':_infIsPernoCentro(it)?'Reemplazo de perno centro':'Reemplazo de '+titulo;
+    pasos.push(`<li><strong>${_e(lab)}.</strong> ${_e(cuerpo).replace(/&amp;nbsp;/g,'&nbsp;')}</li>`);
+  });
+  if(hayServ||hayPieza){
+    const serv=items.find(it=>_infIsServicio(it)&&/sacar y colocar/i.test(it.nombre||''));
+    const extra=items.filter(it=>_infIsServicio(it)&&it!==serv).map(it=>_infTituloItem(it));
+    let txt='Se armó el paquete, se montó en su posición en el vehículo y se apretaron las abrazaderas de fijación.';
+    if(!serv&&!hayPieza&&extra.length)txt='Se ejecutó el servicio consignado en la orden.';
+    txt+=' La OT no registra valores de torque ni otros trabajos complementarios.';
+    if(extra.length)txt+=' Servicios adicionales: '+extra.join(', ')+'.';
+    const tit=serv?'Armado y montaje (servicio de sacar y colocar)':'Armado y montaje / apriete';
+    pasos.push(`<li><strong>${tit}.</strong> ${_e(txt)}</li>`);
+  }
+  if(!pasos.length){
+    pasos.push('<li>No hay ítems registrados en la orden para describir el trabajo realizado.</li>');
+  }
+  return `<ol class="inf-work">${pasos.join('')}</ol>`;
+}
+function _infRecs(o){
+  const items=o.items||[];
+  const recs=[];
+  const zonas=[...new Set([
+    ..._infZonasOT(o),
+    ...items.flatMap(_infItemZonas)
+  ].filter(z=>z&&z!=='General'))];
+  const hayHoja=items.some(_infIsHoja);
+  const hayPerno=items.some(_infIsPernoCentro);
+  const hayBuje=items.some(_infIsBuje);
+  const hayAbraz=items.some(_infIsAbrazadera)||(o.reapriete||o.requiereReapriete);
+  const hayServ=items.some(it=>_infIsServicio(it)&&/sacar y colocar/i.test(it.nombre||''));
+  const hayPaquete=hayHoja||hayPerno||hayServ||zonas.some(z=>/^(FT|RR)\d/.test(z));
+  if(hayPaquete||hayHoja){
+    recs.push('Verificar el reapriete de las abrazaderas de fijación tras los primeros kilómetros de operación.');
+    zonas.forEach(z=>{
+      const m=String(z).match(/^(FT|RR)(\d)-(I|D)$/);
+      if(!m)return;
+      const op=m[1]+m[2]+'-'+(m[3]==='D'?'I':'D');
+      if(zonas.includes(op))return;
+      const lado=m[3]==='D'?'izquierdo':'derecho';
+      const tipo=m[1]==='FT'?'delantero':'trasero';
+      recs.push(`Inspeccionar el paquete ${tipo} ${lado}, de características simétricas, ante un desgaste o fatiga equivalente.`);
+    });
+    recs.push('En la mantención periódica, revisar visualmente el paquete intervenido (alineación de hojas, perno centro, holguras y apriete). Ante ruidos, desnivel u otra anomalía, detener la operación y solicitar inspección en taller.');
+  }else if(hayBuje){
+    recs.push('Verificar holguras y ruidos en los bujes intervenidos tras los primeros kilómetros de operación.');
+    recs.push('En la mantención periódica, inspeccionar el estado de los bujes y solicitar revisión en taller ante cualquier anomalía.');
+  }else{
+    recs.push('En la mantención periódica, inspeccionar el trabajo realizado. Ante ruidos, desnivel u otra anomalía, detener la operación y solicitar inspección en taller.');
+  }
+  if(hayAbraz){
+    recs.push('El reapriete de abrazaderas es obligatorio a los 7 días hábiles para mantener la garantía.');
+  }
+  // unique, keep order
+  const seen=new Set();
+  const out=[];
+  recs.forEach(r=>{if(!seen.has(r)){seen.add(r);out.push(r);}});
+  return `<ul class="inf-recs">${out.map(r=>`<li>${_e(r)}</li>`).join('')}</ul>`;
+}
+function _infCss(){
+  return `<style>
+.inf-tec,.inf-tec *{box-sizing:border-box}
+.inf-tec{
+  --inf-red:#B2121C;--inf-red2:#E9292F;--inf-ink:#1A1A1A;--inf-muted:#4A4F55;
+  --inf-line:#D6D0CC;--inf-fill:#F4F0EC;--inf-band:#161314;
+  font-family:Inter,Arial,"Source Sans 3",sans-serif;
+  font-size:8.7pt;line-height:1.35;color:var(--inf-ink);background:#fff;
+  max-width:210mm;margin:0 auto;
+}
+.inf-tec .inf-page{padding:0 4mm 2mm 4mm}
+.inf-tec header.inf-brand{
+  background:var(--inf-band);color:#fff;
+  margin:0 -4mm 4mm -4mm;padding:5mm 8mm 4.5mm 8mm;
+  display:flex;align-items:center;justify-content:space-between;gap:12mm;
+  border-bottom:3.5px solid var(--inf-red);
+}
+.inf-tec .inf-logo-wrap{background:#fff;border-radius:4px;padding:1.6mm 2.4mm;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.inf-tec .inf-logo{height:16mm;width:auto;display:block;max-width:48mm;object-fit:contain}
+.inf-tec .inf-brand-info{text-align:right;font-size:8pt;line-height:1.45;color:#E8E4E0}
+.inf-tec .inf-brand-info .name{font-weight:700;font-size:12pt;color:#fff;letter-spacing:.01em;margin-bottom:1.2mm}
+.inf-tec .inf-brand-info .name span{color:var(--inf-red2)}
+.inf-tec .inf-doc-head{
+  display:flex;justify-content:space-between;align-items:flex-end;gap:8mm;
+  margin-bottom:2.4mm;padding-bottom:2mm;border-bottom:1px solid var(--inf-line);
+}
+.inf-tec .inf-doc-head h1{font-size:14.5pt;font-weight:700;letter-spacing:.04em;line-height:1.05;color:var(--inf-ink);margin:0}
+.inf-tec .inf-doc-head h1 small{
+  display:block;font-size:7.4pt;font-weight:600;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--inf-red);margin-bottom:.6mm
+}
+.inf-tec .inf-meta{text-align:right;font-size:8pt;color:var(--inf-muted);line-height:1.45}
+.inf-tec .inf-meta .folio{font-weight:700;font-size:12pt;color:var(--inf-red);letter-spacing:.03em}
+.inf-tec .inf-meta .k{color:#7A7470}
+.inf-tec .inf-grid2{display:flex;gap:3.5mm;margin-bottom:3mm}
+.inf-tec .inf-card{flex:1;border:1px solid var(--inf-line);background:var(--inf-fill);padding:2mm 3.2mm 1.8mm 3.2mm}
+.inf-tec .inf-card h2{
+  font-size:7.4pt;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--inf-red);margin:0 0 2mm 0;padding-bottom:1.2mm;border-bottom:1px solid #E4DDD7
+}
+.inf-tec .inf-kv{width:100%;border-collapse:collapse}
+.inf-tec .inf-kv th,.inf-tec .inf-kv td{text-align:left;vertical-align:top;padding:.55mm 0;font-weight:400;font-size:8.4pt}
+.inf-tec .inf-kv th{width:26mm;color:var(--inf-muted);font-weight:600;padding-right:2mm}
+.inf-tec .inf-blank{
+  display:inline-block;min-width:22mm;border-bottom:1px solid #8A8580;color:#8A8580;
+  font-style:italic;font-weight:400;font-size:7.4pt;padding:0 1.5mm .2mm 1.5mm;white-space:nowrap
+}
+.inf-tec .inf-blank-line{display:inline-block;width:16mm;border-bottom:1px solid #8A8580;height:8pt;vertical-align:baseline;margin-right:1mm}
+.inf-tec .inf-note-miss{color:#8A8580;font-size:7pt;font-weight:400;font-style:italic;white-space:nowrap}
+.inf-tec section{margin-bottom:2.6mm}
+.inf-tec section h2{
+  font-size:8pt;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:#fff;background:var(--inf-red);padding:1.05mm 3mm;margin:0 0 1.6mm 0
+}
+.inf-tec p{margin:0 0 1.2mm 0;text-align:justify;hyphens:auto}
+.inf-tec p.last{margin-bottom:0}
+.inf-tec ol.inf-work{margin:0 0 0 4.5mm;padding:0}
+.inf-tec ol.inf-work li{margin:0 0 1.05mm 0;padding-left:1.5mm;text-align:justify}
+.inf-tec ol.inf-work li:last-child{margin-bottom:0}
+.inf-tec table.inf-parts{width:100%;border-collapse:collapse;font-size:8pt}
+.inf-tec table.inf-parts thead th{
+  background:var(--inf-band);color:#fff;font-weight:600;text-align:left;
+  padding:1.2mm 2.2mm;letter-spacing:.04em;font-size:7.2pt;text-transform:uppercase
+}
+.inf-tec table.inf-parts td{padding:1.15mm 2.2mm;border-bottom:1px solid var(--inf-line);vertical-align:top}
+.inf-tec table.inf-parts tbody tr:nth-child(even) td{background:var(--inf-fill)}
+.inf-tec table.inf-parts td.u,.inf-tec table.inf-parts .c{white-space:nowrap}
+.inf-tec table.inf-parts .c{text-align:center}
+.inf-tec table.inf-parts .n{width:8mm;text-align:center;color:var(--inf-muted)}
+.inf-tec .inf-spec{font-size:7.5pt;color:var(--inf-muted)}
+.inf-tec ul.inf-recs{margin:0 0 0 4.5mm;padding:0}
+.inf-tec ul.inf-recs li{margin:0 0 .9mm 0;text-align:justify;padding-left:1mm}
+.inf-tec ul.inf-recs li:last-child{margin-bottom:0}
+.inf-tec .inf-signs{display:flex;gap:10mm;margin-top:4mm;page-break-inside:avoid;break-inside:avoid}
+.inf-tec .inf-sign{flex:1;text-align:center;padding-top:8mm}
+.inf-tec .inf-sign .line{border-top:1px solid var(--inf-ink);padding-top:1.6mm;font-size:7.6pt;color:var(--inf-muted);line-height:1.4}
+.inf-tec .inf-sign .line b{color:var(--inf-ink);font-weight:600;display:block;font-size:8.2pt}
+.inf-tec .inf-disc{
+  margin-top:3mm;font-size:6.8pt;color:#6B6560;text-align:justify;
+  border-top:1px solid var(--inf-line);padding-top:2mm
+}
+@media print{
+  .inf-tec{max-width:none}
+  .inf-tec header.inf-brand{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .inf-tec section h2,.inf-tec table.inf-parts thead th{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+@media(max-width:700px){
+  .inf-tec .inf-grid2,.inf-tec .inf-signs,.inf-tec header.inf-brand{flex-direction:column;gap:3mm}
+  .inf-tec .inf-brand-info,.inf-tec .inf-meta,.inf-tec .inf-doc-head{text-align:left}
+}
+</style>`;
+}
+function buildInformeTecnico(o,v){
+  const c=typeof CFG!=='undefined'?CFG:{};
+  const cli=_infCli(o);
+  const dirCli=cli&&cli.dir?cli.dir:'';
+  const mailCli=cli&&cli.email?cli.email:'';
+  const tel=String(o.tel||(cli&&cli.tel)||'').trim();
+  const anio=v&&v.anio!=null&&v.anio!==''?v.anio:'';
+  const kmRaw=o.km!=null&&o.km!==''?o.km:(v&&v.km);
+  const kmOk=kmRaw!=null&&String(kmRaw).trim()!==''&&Number(kmRaw)!==0;
+  const tipo=_infTipoEjes(o,v);
+  const folio=o.folio||'';
+  const year=String(o.fechaIn||'').slice(0,4)||String(new Date().getFullYear());
+  const nro=(folio.match(/(\d+)/)||[])[1]||'';
+  const itFolio=nro?`IT-${year}-${nro.padStart(4,'0')}`:`IT-${year}`;
+  const cot=String(o.cotizacionOrigen||o.cotOrigen||'').trim();
+  const logo=_infLogoSrc();
+  const dirTaller=[c.dir,c.ciudad,c.region?('Región de '+String(c.region).replace(/^Regi[oó]n de /i,'')):''].filter(Boolean).join(', ');
+  const web=c.web?String(c.web).replace(/^https?:\/\//,'').replace(/\/$/,''):'';
+  const contacto=[c.fono,c.email].filter(Boolean).join(' · ');
+  const mec=_infMecanico(o);
+  const items=o.items||[];
+  const all=[..._infZonasOT(o)];
+  const rows=items.map((it,i)=>{
+    const zs=_infItemZonas(it);
+    const ubi=zs.length?zs.join(', '):'—';
+    return `<tr>
+        <td class="n">${i+1}</td>
+        <td>${_e(_infTituloItem(it))}</td>
+        <td class="inf-spec">${_infSpec(it)}</td>
+        <td class="c">${_e(_infCant(it))}</td>
+        <td class="u">${_e(ubi)}</td>
+      </tr>`;
+  }).join('')||`<tr><td class="n">—</td><td colspan="4">Sin ítems registrados en la OT</td></tr>`;
+  const kmCell=kmOk
+    ? `${_e(typeof fmtN==='function'?fmtN(kmRaw):_infFmtNum(kmRaw))} km`
+    : `<span class="inf-blank-line"></span>km <span class="inf-note-miss">(no consignado)</span>`;
+  const nombreTaller=_e(c.nombre||'Resortes Puerto Montt');
+  const nombreMarca=nombreTaller.includes('Puerto Montt')
+    ? nombreTaller.replace(/Puerto Montt/,'<span>Puerto Montt</span>')
+    : nombreTaller;
+  return _infCss()+`<div class="inf-tec"><div class="inf-page">
+<header class="inf-brand">
+  ${logo?`<div class="inf-logo-wrap"><img class="inf-logo" src="${logo}" alt="${nombreTaller}"></div>`:''}
+  <div class="inf-brand-info">
+    <div class="name">${nombreMarca}</div>
+    ${c.rut?`RUT ${_e(c.rut)}<br>`:''}
+    ${dirTaller?`${_e(dirTaller)}<br>`:''}
+    ${contacto?`${_e(contacto)}<br>`:''}
+    ${web?_e(web):''}
+  </div>
+</header>
+<div class="inf-doc-head">
+  <h1>
+    <small>Taller de suspensión y paquetes de resortes</small>
+    Informe técnico
+  </h1>
+  <div class="inf-meta">
+    <div class="folio">${_e(folio)}</div>
+    <div>Informe N.° ${_e(itFolio)}</div>
+    <div><span class="k">Fecha de la OT:</span> ${_infFechaLarga(o.fechaIn)}</div>
+    <div><span class="k">Lugar de emisión:</span> ${_e(c.ciudad||'Puerto Montt')}${c.ciudad?', Chile':''}</div>
+    <div><span class="k">Cotización de origen:</span> ${cot?_e(cot):_infBlank('sin cotización')}</div>
+  </div>
+</div>
+<div class="inf-grid2">
+  <div class="inf-card">
+    <h2>Cliente</h2>
+    <table class="inf-kv">
+      <tr><th>Razón social</th><td>${_infVal(o.clienteNombre,'no registrado')}</td></tr>
+      <tr><th>RUT</th><td>${_infVal(o.clienteRut,'no registrado')}</td></tr>
+      <tr><th>Dirección</th><td>${dirCli?_e(dirCli):_infBlank('no registrada en la OT')}</td></tr>
+      <tr><th>Correo</th><td>${mailCli?_e(mailCli):_infBlank('no registrado')}</td></tr>
+      <tr><th>Teléfono</th><td>${tel?_e(tel):_infBlank('no registrado en la OT')}</td></tr>
+    </table>
+  </div>
+  <div class="inf-card">
+    <h2>Vehículo</h2>
+    <table class="inf-kv">
+      <tr><th>Patente</th><td>${_infVal(o.patente,'no registrada')}</td></tr>
+      <tr><th>Marca / modelo</th><td>${_infVal([o.marca,o.modelo].filter(Boolean).join(' '),'no registrado')}</td></tr>
+      <tr><th>Tipo / ejes</th><td>${tipo?_e(tipo):_infBlank('no registrado')}</td></tr>
+      <tr><th>Año</th><td>${anio!==''&&anio!=null&&Number(anio)!==0?_e(anio):_infBlank('no registrado')}</td></tr>
+      <tr><th>Kilometraje</th><td>${kmCell}</td></tr>
+    </table>
+  </div>
+</div>
+<section>
+  <h2>1. Motivo de la intervención</h2>
+  <p class="last">${_e(_infMotivo(o,v))}</p>
+</section>
+<section>
+  <h2>2. Trabajo realizado</h2>
+  ${_infTrabajo(o)}
+</section>
+<section>
+  <h2>3. Repuestos e insumos utilizados</h2>
+  <table class="inf-parts">
+    <thead>
+      <tr>
+        <th class="n">#</th>
+        <th>Descripción</th>
+        <th>Especificación / categoría</th>
+        <th class="c">Cant.</th>
+        <th>Ubicación</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+</section>
+<section>
+  <h2>4. Recomendaciones</h2>
+  ${_infRecs(o)}
+</section>
+<div class="inf-signs">
+  <div class="inf-sign">
+    <div class="line">
+      <b>Técnico responsable</b>
+      ${mec?_e(mec)+'<br>Nombre y firma':`Nombre y firma<br><span class="inf-note-miss">No hay mecánico asignado en la ${ _e(folio) }</span>`}
+    </div>
+  </div>
+  <div class="inf-sign">
+    <div class="line">
+      <b>${nombreTaller}</b>
+      V.° B.° del taller · ${_e(c.ciudad||'Puerto Montt')}<br>
+      ${_infFechaLarga(o.fechaIn||(typeof today==='function'?today():''))}
+    </div>
+  </div>
+</div>
+<p class="inf-disc last">Documento técnico sin valores comerciales. ${nombreTaller}${c.rut?' · RUT '+_e(c.rut):''}. Generado para acompañar la orden de trabajo ${_e(folio)}.</p>
+</div></div>`;
+}
+
 function buildDocOT(o,v){
   const f=o.tsxFirmas||{};
   return docCSS2()+`<div class="d2">${docHdr2('Orden de trabajo',o.folio,['Ingreso '+_fF(o.fechaIn||today()),o.fechaEst?'Entrega est. '+_fF(o.fechaEst):''].filter(Boolean),o.estado)}
